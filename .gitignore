@@ -1,6 +1,8 @@
 .env
 .env.local
 .env.*.local
+.env.production
+.env.production.local
 node_modules/
 .next/
 out/
@@ -10,3 +12,6 @@ build/
 *.db-shm
 *.db-wal
 prisma/migrations/
+*.log
+tsconfig.tsbuildinfo
+.vercel

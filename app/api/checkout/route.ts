@@ -80,14 +80,25 @@ export async function POST(request: NextRequest) {
     const orderId = generateOrderId();
 
     // ─── Create Midtrans QRIS charge ───────────────────────────────────────
+    let qrString: string | undefined;
+    let qrCodeUrl: string | undefined;
+
     try {
-      await createQrisCharge({
+      const chargeResponse = await createQrisCharge({
         orderId,
         amount: finalAmount,
         customerName: sanitizedCustomerName,
         productName: product.name,
       });
-      // QR data is fetched separately by the client via /api/order/qr
+
+      // The QR data (qr_string / generate-qr-code action url) is only present
+      // in this initial charge response — Midtrans's status endpoint does not
+      // return it for QRIS transactions. Persist it now so /api/order/qr can
+      // simply read it back from the DB.
+      qrString = chargeResponse.qr_string;
+      qrCodeUrl = chargeResponse.actions?.find(
+        (a) => a.name === "generate-qr-code"
+      )?.url;
     } catch (midtransError) {
       console.error("Midtrans charge error:", midtransError);
       if (process.env.NODE_ENV !== "development") {
@@ -111,6 +122,8 @@ export async function POST(request: NextRequest) {
         discountAmount,
         finalAmount,
         status: "PENDING",
+        qrString,
+        qrCodeUrl,
       },
     });
 

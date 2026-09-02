@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getMidtransStatus } from "@/lib/midtrans";
-import midtransClient from "midtrans-client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +18,13 @@ export async function GET(request: NextRequest) {
 
     const transaction = await prisma.transaction.findUnique({
       where: { orderId },
-      select: { agentId: true, status: true, finalAmount: true },
+      select: {
+        agentId: true,
+        status: true,
+        finalAmount: true,
+        qrString: true,
+        qrCodeUrl: true,
+      },
     });
 
     if (!transaction) {
@@ -39,36 +43,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ qrString: "", qrCodeUrl: "" });
     }
 
-    // Try to get QR from Midtrans
-    try {
-      const isProduction = process.env.MIDTRANS_IS_PRODUCTION === "true";
-      const coreApi = new midtransClient.CoreApi({
-        isProduction,
-        serverKey: process.env.MIDTRANS_SERVER_KEY!,
-        clientKey: process.env.MIDTRANS_CLIENT_KEY!,
-      });
-
-      // Get transaction status which also contains QR info for QRIS
-      const midtransData = await coreApi.transaction.status(orderId);
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = midtransData as any;
-      const qrString = data?.qr_string || "";
-      const generateAction = (data?.actions || []).find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (a: any) => a.name === "generate-qr-code"
-      );
-
-      return NextResponse.json({
-        qrString,
-        qrCodeUrl: generateAction?.url || "",
-      });
-    } catch {
-      // Midtrans not configured or sandbox — return empty
-      return NextResponse.json({ qrString: "", qrCodeUrl: "" });
-    }
+    // QR data (qr_string / generate-qr-code action url) was captured once at
+    // checkout time from the Midtrans charge response and stored on the
+    // transaction — Midtrans's status endpoint does not return it for QRIS,
+    // so we don't re-query Midtrans here.
+    return NextResponse.json({
+      qrString: transaction.qrString || "",
+      qrCodeUrl: transaction.qrCodeUrl || "",
+    });
   } catch (error) {
     console.error("QR endpoint error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

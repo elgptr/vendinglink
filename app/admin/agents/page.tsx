@@ -52,8 +52,7 @@ export default function AgentsPage() {
 
   useEffect(() => { fetchAgents(); }, []);
 
-  const handleAddAgent = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitAddAgent = async () => {
     setSubmitting(true);
 
     const res = await fetch("/api/admin/agents", {
@@ -75,8 +74,12 @@ export default function AgentsPage() {
     setSubmitting(false);
   };
 
-  const handleResetPassword = async (e: FormEvent) => {
+  const handleAddAgent = async (e: FormEvent) => {
     e.preventDefault();
+    await submitAddAgent();
+  };
+
+  const submitResetPassword = async () => {
     if (!selectedAgent) return;
     setSubmitting(true);
 
@@ -94,6 +97,11 @@ export default function AgentsPage() {
       toast.error("Gagal mereset password");
     }
     setSubmitting(false);
+  };
+
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    await submitResetPassword();
   };
 
   const handleToggle = async (agent: Agent) => {
@@ -227,7 +235,7 @@ export default function AgentsPage() {
             <Button variant="ghost" onClick={() => setModalMode(null)}>Batal</Button>
             <Button
               id="submit-add-agent-btn"
-              onClick={handleAddAgent as () => void}
+              onClick={submitAddAgent}
               loading={submitting}
             >
               Tambah Agen
@@ -270,7 +278,7 @@ export default function AgentsPage() {
             </Button>
             <Button
               id="submit-reset-pwd-btn"
-              onClick={handleResetPassword as () => void}
+              onClick={submitResetPassword}
               loading={submitting}
               variant="danger"
             >

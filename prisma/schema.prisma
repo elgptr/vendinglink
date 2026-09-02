@@ -85,6 +85,8 @@ model Transaction {
   finalAmount    Int
   status         String    @default("PENDING") // 'PENDING' | 'PAID' | 'EXPIRED'
   redeemUrl      String?
+  qrString       String?
+  qrCodeUrl      String?
   createdAt      DateTime  @default(now())
   paidAt         DateTime?
 

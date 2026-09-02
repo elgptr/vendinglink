@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import OrderPageClient from "@/components/agent/OrderPageClient";
-import { getMidtransStatus } from "@/lib/midtrans";
 
 export const metadata = {
   title: "Pembayaran QRIS",
