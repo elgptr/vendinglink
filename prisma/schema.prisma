@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("AGENT") // 'ADMIN' | 'AGENT'
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  transactions  Transaction[]
+  claimedStocks RedeemStock[]
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Int
+  description String?
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  stocks       RedeemStock[]
+  transactions Transaction[]
+
+  @@map("products")
+}
+
+model RedeemStock {
+  id               String    @id @default(cuid())
+  productId        String
+  redeemUrl        String
+  status           String    @default("AVAILABLE") // 'AVAILABLE' | 'SOLD'
+  claimedByAgentId String?
+  customerName     String?
+  claimedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  // Relations
+  product        Product @relation(fields: [productId], references: [id])
+  claimedByAgent User?   @relation(fields: [claimedByAgentId], references: [id])
+
+  @@map("redeem_stocks")
+}
+
+model Voucher {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  discountAmount Int
+  quota          Int
+  usedCount      Int       @default(0)
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  transactions Transaction[]
+
+  @@map("vouchers")
+}
+
+model Transaction {
+  id             String    @id @default(cuid())
+  orderId        String    @unique
+  productId      String
+  agentId        String
+  voucherId      String?
+  customerName   String?
+  originalPrice  Int
+  discountAmount Int       @default(0)
+  finalAmount    Int
+  status         String    @default("PENDING") // 'PENDING' | 'PAID' | 'EXPIRED'
+  redeemUrl      String?
+  createdAt      DateTime  @default(now())
+  paidAt         DateTime?
+
+  // Relations
+  product Product  @relation(fields: [productId], references: [id])
+  agent   User     @relation(fields: [agentId], references: [id])
+  voucher Voucher? @relation(fields: [voucherId], references: [id])
+
+  @@map("transactions")
+}

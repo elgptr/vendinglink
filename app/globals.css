@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-surface: #0f172a;
+    --color-surface-card: #1e293b;
+    --color-surface-hover: #334155;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface text-slate-100 font-sans;
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, rgba(34, 197, 94, 0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.04) 0%, transparent 60%);
+    min-height: 100vh;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-hover rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-brand-500/30 text-white;
+  }
+}
+
+@layer components {
+  /* Table styles */
+  .data-table {
+    @apply w-full border-collapse;
+  }
+
+  .data-table th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider
+           bg-surface border-b border-surface-border;
+  }
+
+  .data-table td {
+    @apply px-4 py-3 text-sm text-slate-200 border-b border-surface-border/50;
+  }
+
+  .data-table tr:hover td {
+    @apply bg-surface-hover/30;
+  }
+
+  .data-table tr:last-child td {
+    @apply border-b-0;
+  }
+
+  /* Toggle switch */
+  .toggle-switch {
+    @apply relative inline-flex items-center cursor-pointer;
+  }
+
+  .toggle-switch input[type="checkbox"] {
+    @apply sr-only;
+  }
+
+  .toggle-track {
+    @apply w-11 h-6 bg-surface-hover rounded-full transition-colors duration-200;
+  }
+
+  .toggle-switch input:checked + .toggle-track {
+    @apply bg-brand-500;
+  }
+
+  .toggle-thumb {
+    @apply absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full 
+           transition-transform duration-200 shadow-sm;
+  }
+
+  .toggle-switch input:checked ~ .toggle-thumb {
+    @apply translate-x-5;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-400 to-emerald-300;
+  }
+
+  /* Glass card */
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl;
+  }
+
+  /* Input focus ring */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:ring-offset-2 focus:ring-offset-surface;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
