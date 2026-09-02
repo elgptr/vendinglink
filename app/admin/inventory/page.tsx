@@ -84,8 +84,7 @@ export default function InventoryPage() {
     fetchStocks();
   }, []);
 
-  const handleUpdateProduct = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitUpdateProduct = async () => {
     if (!selectedProduct || !newPrice || !editProductName) return;
     setSubmitting(true);
 
@@ -108,6 +107,11 @@ export default function InventoryPage() {
       toast.error("Gagal memperbarui produk");
     }
     setSubmitting(false);
+  };
+
+  const handleUpdateProduct = async (e: FormEvent) => {
+    e.preventDefault();
+    await submitUpdateProduct();
   };
 
   const handleGenerateDescription = async (
@@ -142,8 +146,7 @@ export default function InventoryPage() {
     }
   };
 
-  const handleBulkUpload = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitBulkUpload = async () => {
     if (!uploadProductId || !bulkLinks.trim()) return;
     setSubmitting(true);
 
@@ -165,8 +168,12 @@ export default function InventoryPage() {
     setSubmitting(false);
   };
 
-  const handleAddProduct = async (e: FormEvent) => {
+  const handleBulkUpload = async (e: FormEvent) => {
     e.preventDefault();
+    await submitBulkUpload();
+  };
+
+  const submitAddProduct = async () => {
     if (!newProductName || !newProductPrice) return;
     setSubmitting(true);
 
@@ -191,6 +198,11 @@ export default function InventoryPage() {
       toast.error("Gagal menambahkan produk");
     }
     setSubmitting(false);
+  };
+
+  const handleAddProduct = async (e: FormEvent) => {
+    e.preventDefault();
+    await submitAddProduct();
   };
 
   return (
@@ -365,7 +377,7 @@ export default function InventoryPage() {
             </Button>
             <Button
               id="save-price-btn"
-              onClick={handleUpdateProduct as () => void}
+              onClick={submitUpdateProduct}
               loading={submitting}
             >
               Simpan Produk
@@ -441,7 +453,7 @@ export default function InventoryPage() {
             </Button>
             <Button
               id="save-links-btn"
-              onClick={handleBulkUpload as () => void}
+              onClick={submitBulkUpload}
               loading={submitting}
               icon={<Upload size={14} />}
             >
@@ -491,7 +503,7 @@ export default function InventoryPage() {
             </Button>
             <Button
               id="save-product-btn"
-              onClick={handleAddProduct as () => void}
+              onClick={submitAddProduct}
               loading={submitting}
             >
               Simpan Produk

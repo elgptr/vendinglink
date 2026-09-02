@@ -45,8 +45,7 @@ export default function VouchersPage() {
 
   useEffect(() => { fetchVouchers(); }, []);
 
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitCreate = async () => {
     setSubmitting(true);
 
     const res = await fetch("/api/admin/vouchers", {
@@ -70,6 +69,11 @@ export default function VouchersPage() {
       toast.error(data.error || "Gagal membuat voucher");
     }
     setSubmitting(false);
+  };
+
+  const handleCreate = async (e: FormEvent) => {
+    e.preventDefault();
+    await submitCreate();
   };
 
   const handleToggle = async (voucher: Voucher) => {
@@ -212,7 +216,7 @@ export default function VouchersPage() {
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
             <Button
               id="submit-voucher-btn"
-              onClick={handleCreate as () => void}
+              onClick={submitCreate}
               loading={submitting}
             >
               Simpan Voucher
