@@ -101,6 +101,26 @@ export async function POST(request: NextRequest) {
       )?.url;
     } catch (midtransError) {
       console.error("Midtrans charge error:", midtransError);
+
+      // Detect specific Midtrans error codes for clearer user messages
+      const httpStatus =
+        (midtransError as { httpStatusCode?: string }).httpStatusCode;
+      if (httpStatus === "402") {
+        return NextResponse.json(
+          {
+            error:
+              "QRIS belum diaktifkan di akun Midtrans Anda. Aktifkan melalui Dashboard Midtrans → Settings → Payment Methods.",
+          },
+          { status: 502 }
+        );
+      }
+      if (httpStatus === "401") {
+        return NextResponse.json(
+          { error: "Konfigurasi Midtrans tidak valid. Periksa SERVER_KEY di .env." },
+          { status: 502 }
+        );
+      }
+
       if (process.env.NODE_ENV !== "development") {
         return NextResponse.json(
           { error: "Gagal membuat QRIS. Periksa konfigurasi Midtrans." },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { sanitizeString } from "@/lib/utils";
-import { askChatbot, buildSystemPrompt } from "@/lib/anthropic";
+import { askChatbot, buildSystemPrompt } from "@/lib/gemini";
 import { z } from "zod";
 
 const chatMessageSchema = z.object({
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
         { error: "Fitur chat belum dikonfigurasi. Hubungi admin." },
         { status: 503 }
