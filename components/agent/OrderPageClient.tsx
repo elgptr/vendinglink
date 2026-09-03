@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import QRDisplay from "@/components/agent/QRDisplay";
 import SuccessScreen from "@/components/agent/SuccessScreen";
@@ -42,11 +42,26 @@ export default function OrderPageClient({
   const [qrData, setQrData] = useState<QRData | null>(null);
   const [loading, setLoading] = useState(true);
   const [pollingActive, setPollingActive] = useState(!isPaid);
+  // Circuit breaker: count consecutive errors to avoid hammering the server
+  // when Midtrans credentials are misconfigured (e.g. 401 spam).
+  const consecutiveErrors = useRef(0);
+  const [pollInterval, setPollInterval] = useState(2000);
 
   const pollStatus = useCallback(async () => {
     try {
       const res = await fetch(`/api/order/status?orderId=${orderId}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        consecutiveErrors.current += 1;
+        if (consecutiveErrors.current >= 5) setPollInterval(10000);
+        if (consecutiveErrors.current >= 20) {
+          console.warn("[OrderPageClient] Too many errors, stopping poll.");
+          setPollingActive(false);
+        }
+        return;
+      }
+
+      consecutiveErrors.current = 0;
+      if (pollInterval !== 2000) setPollInterval(2000);
 
       const data = await res.json();
       setOrderData(data);
@@ -60,11 +75,11 @@ export default function OrderPageClient({
         setTimeout(() => router.push("/agent/catalog"), 4000);
       }
     } catch {
-      // Retry on next cycle
+      consecutiveErrors.current += 1;
     }
-  }, [orderId, router]);
+  }, [orderId, router, pollInterval]);
 
-  // Fetch QR code from Midtrans via our API
+  // Fetch QR code from DB (stored at checkout time, not re-fetched from Midtrans)
   const fetchQR = useCallback(async () => {
     try {
       const res = await fetch(`/api/order/qr?orderId=${orderId}`);
@@ -78,21 +93,19 @@ export default function OrderPageClient({
   }, [orderId]);
 
   useEffect(() => {
-    // Fetch QR data
     fetchQR();
-    // Initial status poll
     pollStatus();
   }, [fetchQR, pollStatus]);
 
   useEffect(() => {
     if (!pollingActive) return;
 
-    const interval = setInterval(async () => {
+    const timer = setInterval(async () => {
       await pollStatus();
-    }, 2000);
+    }, pollInterval);
 
-    return () => clearInterval(interval);
-  }, [pollingActive, pollStatus]);
+    return () => clearInterval(timer);
+  }, [pollingActive, pollStatus, pollInterval]);
 
   if (loading) {
     return (

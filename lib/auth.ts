@@ -69,6 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 8 * 60 * 60, // 8 jam
   },
   secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true,
 });
 
 // Type augmentation
