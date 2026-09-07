@@ -4,7 +4,7 @@ Jelaskan apa yang diubah dan why (singkat, jelas).
 
 **Relates to:** #[issue-number] (jika ada)
 
-**Stage:** Stage [N] — [nama fitur]
+**Track:** Track [A/B/C] — [nama fitur, lihat TASK_ASSIGNMENT.md]
 
 ---
 
@@ -26,8 +26,8 @@ Jelaskan apa yang diubah dan why (singkat, jelas).
 - [ ] Jika ada perubahan DB schema, sudah run `npx prisma db push` dan update seed jika perlu
 - [ ] Jika ada env var baru, sudah update `.env.example`
 - [ ] Jika ada dependency baru, sudah mendapat approval tech lead
-- [ ] PR tidak memiliki conflict dengan `dev` branch
-- [ ] Tidak ada breaking changes untuk branch/feature lain yang sedang dikerjakan
+- [ ] PR tidak memiliki conflict dengan `main` branch
+- [ ] Tidak ada breaking changes untuk track lain yang sedang dikerjakan (lihat file ownership di `TASK_ASSIGNMENT.md`)
 
 ---
 
@@ -46,7 +46,7 @@ Jelaskan testing yang sudah dilakukan:
 - [ ] Tidak ada breaking changes
 - [ ] Ada breaking changes:
   - Jelaskan perubahan apa
-  - Impact ke feature/stage lain: ...
+  - Impact ke track lain: ...
   - Action yang perlu dilakukan: ...
 
 ---
@@ -79,4 +79,5 @@ Tambahkan catatan yang penting untuk diperhatikan saat review.
 ---
 
 **Reviewer Assignment:** @dev-name-1, @dev-name-2  
-**Target merge:** [date/stage milestone]
+**Target merge:** [date] — merge segera setelah approved, tidak perlu tunggu track lain
+

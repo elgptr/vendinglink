@@ -1,14 +1,13 @@
 # GitHub Developer Setup Guide
 
-Panduan setup lokal untuk 3 developer yang bekerja simultan di project VendingLink.
+Panduan setup lokal untuk 3 developer yang bekerja **bersamaan** (model Track paralel) di project VendingLink. Lihat `TASK_ASSIGNMENT.md` untuk tahu track mana yang jadi tugasmu.
 
 ---
 
 ## 1. Prerequisites
 
-- **Node.js** v20+ ([download](https://nodejs.org/))
-- **Git** latest ([download](https://git-scm.com/))
-- **GitHub CLI** (optional but recommended)
+- **Node.js** v20+
+- **Git** latest
 - **VS Code** + extensions: ESLint, Prettier, Prisma
 
 ---
@@ -18,7 +17,7 @@ Panduan setup lokal untuk 3 developer yang bekerja simultan di project VendingLi
 ### 2.1 Clone & Install
 
 ```bash
-git clone https://github.com/your-org/antigrav.git && cd antigrav
+git clone https://github.com/elgptr/vendinglink.git && cd vendinglink
 npm install
 ```
 
@@ -26,120 +25,112 @@ npm install
 
 ```bash
 cp .env.example .env.local
-# Edit .env.local with your credentials
-
----
-
-## 4. Database Safety
-
-⚠️ **WARNING:** `.env` points to **production Neon DB**
-
-- Schema changes go via PR review before push
-- **Never** run `npx prisma db push` without team sync
-- Tech lead only handles production DB changes
-- Test locally? Setup local PostgreSQL or ask tech lead
-
----
-
-## 5. Conflict Prevention
-
-Before editing, check:
-- [ ] Which stage? Who else working on those files?
-- [ ] Protected files? (prisma/schema.prisma, middleware.ts, package.json)
-- [ ] If yes → Coordinate via GitHub Issue
-
-If conflict occurs:
-- One dev rebases & resolves
-- Both run `npm run build && npm run lint` after merge
-- Communicate in issue/slack
-
----
-
-## 6. Quick Commands
-
-```bash
-git status                                    # Check status
-git branch -a                                 # View all branches
-git reset --soft HEAD~1                       # Undo last commit (keep changes)
-git checkout -- .                             # Discard all local changes (⚠️)
-npm run build && npm run lint                 # Verify before push
-npx prisma generate                           # Regenerate Prisma Client
-```
-
----
-
-## 7. PR Review (for Reviewer)
-
-1. Checkout PR branch: `git fetch origin && git checkout origin/feat-branch-name`
-2. Test locally: `npm run build && npm run lint && npm run dev`
-3. Test feature manually (e.g., checkout flow, payment)
-4. Review code: logic, types, error handling, SQL queries
-5. Approve or request changes in GitHub UI
-
----
-
-## 8. Staging → Production
-
-**To Staging (QA):**
-- PR: `dev` → `staging`
-- Merge & test
-
-**To Production:**
-- PR: `staging` → `main`
-- Require ≥1 approval
-- Merge via Squash
-- Auto-deploy via GitHub Actions
-
----
-
-**Last Updated:** 2026-09-07
-
-# DATABASE_URL, NEXTAUTH_SECRET, MIDTRANS keys, etc.
+# Edit .env.local: DATABASE_URL, NEXTAUTH_SECRET, MIDTRANS keys, dll
 ```
 
 ### 2.3 Database
 
 ```bash
 npx prisma generate
-npx prisma db push              # Sync to production Neon DB (if allowed)
-npx prisma seed                 # Load test data
+npx prisma db push        # Sync ke production Neon DB — hati-hati, koordinasi dulu jika ada perubahan schema
+npx prisma db seed        # Load data test (admin, agent01, produk)
 ```
 
 ### 2.4 Verify
 
 ```bash
 npm run build && npm run lint && npm run dev
-# Visit http://localhost:3000
+# Buka http://localhost:3000
 ```
 
 ---
 
 ## 3. Daily Workflow
 
-### 3.1 Start of Day
+### 3.1 Mulai Kerja
 
 ```bash
-git checkout dev && git pull origin dev
-git checkout -b feat/dev-yourname/stage-N-feature
+git checkout main && git pull origin main
+git checkout -b feat/dev-yourname/track-x-feature-name
 ```
 
-### 3.2 During Work
+Ganti `track-x` dengan track kamu (`track-a`, `track-b`, atau `track-c`) — lihat `TASK_ASSIGNMENT.md`.
 
-- Push every 30-60 min: `git add . && git commit -m "..." && git push`
-- Build check before push: `npm run build && npm run lint`
+### 3.2 Selama Kerja
 
-### 3.3 Before PR
+- Push setiap 30-60 menit: `git add . && git commit -m "..." && git push`
+- Build check sebelum push: `npm run build && npm run lint`
+
+### 3.3 Sebelum PR
 
 ```bash
-git fetch origin && git rebase origin/dev
+git fetch origin && git rebase origin/main
 npm run build && npm run lint
-git push --force-with-lease origin feat/dev-yourname/stage-N-feature
+git push --force-with-lease origin feat/dev-yourname/track-x-feature-name
 ```
 
-### 3.4 Create PR
+### 3.4 Buat PR
 
 1. GitHub → **Pull Request** → **New**
-2. Base: `dev` (or `main` if hotfix)
-3. Use template from `.github/PULL_REQUEST_TEMPLATE.md`
-4. Assign reviewer, label: `stage-N`, `ready-for-review`
+2. Base: `main`
+3. Pakai template dari `.github/PULL_REQUEST_TEMPLATE.md`
+4. Assign reviewer, label: `track-a`/`track-b`/`track-c`, `ready-for-review`
+5. **Merge segera setelah approved** — tidak perlu tunggu PR track lain juga siap
 
+---
+
+## 4. Database Safety
+
+⚠️ **PENTING:** `.env`/`.env.local` mengarah ke **production Neon DB**
+
+- Perubahan schema harus lewat PR review dulu
+- **Jangan** run `npx prisma db push` tanpa koordinasi tim
+- Kalau butuh test schema lokal, setup PostgreSQL lokal atau tanya tech lead
+
+---
+
+## 5. Conflict Prevention
+
+Sebelum edit, cek:
+- [ ] File itu masuk track siapa? (lihat `TASK_ASSIGNMENT.md`)
+- [ ] Termasuk protected files? (`prisma/schema.prisma`, `package.json`)
+- [ ] Kalau iya → buka GitHub Issue dulu, jangan langsung edit
+
+Kalau conflict terjadi (jarang, karena tiap track punya file terpisah):
+- Salah satu dev rebase & resolve
+- Keduanya run `npm run build && npm run lint` setelah merge
+- Komunikasi via issue/chat
+
+---
+
+## 6. Quick Commands
+
+```bash
+git status                                    # Cek status
+git branch -a                                 # Lihat semua branch
+git reset --soft HEAD~1                       # Undo commit terakhir (keep changes)
+npm run build && npm run lint                 # Verify sebelum push
+npx prisma generate                           # Regenerate Prisma Client
+```
+
+---
+
+## 7. PR Review (untuk Reviewer)
+
+1. `git fetch origin && git checkout origin/feat-branch-name`
+2. `npm run build && npm run lint && npm run dev`
+3. Test fitur secara manual
+4. Review logic, types, error handling, query DB
+5. Approve atau Request Changes di GitHub
+
+---
+
+## 8. Deploy ke Production
+
+- PR ke `main`, ≥1 approval, Squash Merge
+- GitHub Actions jalankan CI (`build`, `lint`)
+- Auto-deploy via Vercel setelah merge ke `main`
+
+---
+
+**Last Updated:** 2026-09-07 | **Model:** Track paralel, single branch `main`

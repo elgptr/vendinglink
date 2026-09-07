@@ -1,40 +1,36 @@
 # Code Owners for VendingLink
 
-# Prisma schema — locked, tech lead only
-prisma/schema.prisma               @tech-lead
-
-# Auth & middleware — only during auth/approval stages
-lib/auth.ts                        @tech-lead
-middleware.ts                      @tech-lead
-lib/auth.config.ts                 @tech-lead
+# Prisma schema — final for now, coordinate before editing
+prisma/schema.prisma                @tech-lead
 
 # Package management — locked
-package.json                       @tech-lead
-package-lock.json                  @tech-lead
-
-# Environment config
-.env.example                       @tech-lead
+package.json                        @tech-lead
+package-lock.json                   @tech-lead
 
 # CI/CD & deployment config
-.github/workflows/                 @tech-lead
-next.config.mjs                    @tech-lead
+.github/workflows/                  @tech-lead
+next.config.mjs                     @tech-lead
 
-# Stage-specific code ownership (assign based on current stage dev)
-app/customer/                      @dev-stage2
-components/customer/               @dev-stage2
-app/api/customer/                  @dev-stage2
+# ─── Track A: Agent Checkout UX (Owner: Elang) ─────────────────────────────
+components/agent/CheckoutForm.tsx       @dev-elang
+components/agent/OrderPageClient.tsx    @dev-elang
+app/agent/order/                        @dev-elang
 
-app/agent/catalog/                 @dev-stage3
-app/api/checkout/                  @dev-stage3
+# ─── Track B: Agent Registration, Approval & Debt Settlement (Owner: Jiwo) ─
+app/register/                       @dev-jiwo
+app/api/auth/register/              @dev-jiwo
+app/admin/agents/                   @dev-jiwo
+app/api/admin/agents/               @dev-jiwo
+middleware.ts                       @dev-jiwo
+lib/auth.ts                         @dev-jiwo
 
-app/auth/register/                 @dev-stage4
-app/api/auth/register/             @dev-stage4
-app/admin/agents/                  @dev-stage4
+# ─── Track C: Product Guide Image & Inventory (Owner: Iqbal) ──────────────
+app/admin/inventory/                @dev-iqbal
+app/api/admin/products/             @dev-iqbal
 
-# Shared/cross-stage files — any dev can contribute, others review
-lib/midtrans.ts                    *
-lib/transactionStatus.ts           *
-lib/utils.ts                       *
-app/api/admin/reports/             *
-PRD.md                             *
-
+# ─── Shared/neutral files — any dev can contribute, others review ──────────
+lib/midtrans.ts                     *
+lib/transactionStatus.ts            *
+lib/utils.ts                        *
+app/api/admin/reports/              *
+PRD.md                              *
