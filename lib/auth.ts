@@ -2,8 +2,10 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -31,6 +33,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Akun Anda telah dinonaktifkan. Hubungi admin.");
         }
 
+        // Jika Anda ingin check isApproved, pastikan kolomnya ada dan dicek:
+        // if (user.role === "AGENT" && !user.isApproved) {
+        //   throw new Error("Akun agen Anda belum disetujui admin.");
+        // }
+
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
         if (!isValidPassword) {
           throw new Error("Username atau password salah");
@@ -44,32 +51,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { id: string; role: string }).role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
-  session: {
-    strategy: "jwt",
-    maxAge: 8 * 60 * 60, // 8 jam
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true,
 });
 
 // Type augmentation
