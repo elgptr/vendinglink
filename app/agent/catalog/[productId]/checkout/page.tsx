@@ -66,7 +66,6 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
       {/* Checkout form */}
       <CheckoutForm
         productId={product.id}
-        productName={product.name}
         productPrice={product.price}
       />
     </div>
