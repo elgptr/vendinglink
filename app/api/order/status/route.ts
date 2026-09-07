@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getMidtransStatus } from "@/lib/midtrans";
 import { applyMidtransStatusUpdate } from "@/lib/transactionStatus";
 
+export const dynamic = "force-dynamic";
 const transactionSelect = {
   agentId: true,
   orderId: true,
