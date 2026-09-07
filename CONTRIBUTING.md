@@ -1,6 +1,6 @@
 # Panduan Kolaborasi Git — VendingLink
 
-Dokumen ini menetapkan branching strategy, workflow PR, dan aturan isolasi task untuk mencegah konflik antar developer.
+Dokumen ini menetapkan branching strategy, workflow PR, dan aturan isolasi task untuk mencegah konflik antar developer — dan agar **3 developer bisa kerja bersamaan tanpa saling menunggu**.
 
 ---
 
@@ -8,43 +8,42 @@ Dokumen ini menetapkan branching strategy, workflow PR, dan aturan isolasi task 
 
 ### 1.1 Branch Utama
 
-| Branch | Tujuan | Siapa | Merge Rule |
-|--------|--------|-------|-----------|
-| `main` | **Production Release** — digunakan untuk deploy ke production. Setiap commit adalah rilis stabil. | — | Hanya via PR dengan ≥1 approval + passing CI/CD |
-| `staging` | **Integration & QA** — tempat testing feature bersama sebelum main. Lebih stabil dari dev. | — | Hanya via PR dengan ≥1 approval + passing CI |
-| `dev` | **Development** — branch integrasi utama. Sering diupdate, bisa unstable. | Semua | Hanya via PR dengan ≥1 approval dari team member lain |
+Project ini pakai **satu branch stabil**: `main`. Tidak ada tier `dev`/`staging` terpisah — supaya tidak ada antrian integrasi yang membuat satu track menunggu track lain selesai lebih dulu.
+
+| Branch | Tujuan | Merge Rule |
+|--------|--------|-----------|
+| `main` | Production — semua PR yang lolos review & CI langsung masuk sini | Hanya via PR dengan ≥1 approval + passing CI/CD |
 
 ### 1.2 Feature Branch (Temporary)
 
-Setiap developer membuat feature branch dari `dev` dengan konvensi penamaan:
+Setiap developer membuat feature branch dari `main` dengan konvensi penamaan:
 
 ```
 feat/<nama-dev>/<deskripsi-singkat>
 ```
 
-**Contoh:**
-- `feat/dev-kiro/stage2-customer-flow` — Stage 2 Public Customer B2C flow
-- `feat/dev-alice/stage3-agent-checkout` — Stage 3 Agent Credit/Debt Checkout
-- `feat/dev-bob/stage4-admin-approval` — Stage 4 Agent Approval Workflow
+**Contoh (lihat `TASK_ASSIGNMENT.md` untuk pembagian track):**
+- `feat/dev-elang/track-a-agent-checkout-ux`
+- `feat/dev-jiwo/track-b-agent-approval`
+- `feat/dev-iqbal/track-c-guide-image`
 
 **Aturan:**
 - Deskripsi singkat, lowercase, dash-separated (no space)
-- Selalu branch dari `dev`, bukan `main` atau `staging`
-- Satu developer = satu feature branch (hindari shared feature branch)
-- Delete branch setelah merge ke `dev`
+- Selalu branch dari `main`
+- Satu developer = satu feature branch aktif per track
+- Delete branch setelah merge
+- **3 track boleh punya feature branch aktif secara bersamaan** — tidak perlu tunggu track lain merge dulu, karena masing-masing menyentuh file yang berbeda (lihat `TASK_ASSIGNMENT.md`)
 
 ### 1.3 Hotfix Branch (Emergency)
-
-Jika ada bug urgent di production:
 
 ```
 hotfix/<nama-dev>/<deskripsi-singkat>
 ```
 
 **Aturan:**
-- Branch dari `main`, bukan `dev`
-- Merge kembali ke `main` (via PR) dan rebase ke `dev`
-- Contoh: `hotfix/dev-kiro/fix-payment-webhook`
+- Branch dari `main`
+- Merge kembali ke `main` via PR (boleh fast-track review kalau genuinely urgent)
+- Contoh: `hotfix/dev-elang/fix-payment-webhook`
 
 ---
 
@@ -53,94 +52,58 @@ hotfix/<nama-dev>/<deskripsi-singkat>
 ### 2.1 Mulai Fitur Baru
 
 ```bash
-# Update dev branch
-git checkout dev
-git pull origin dev
-
-# Buat feature branch
-git checkout -b feat/dev-yourname/feature-name
-
-# Push ke remote (setup tracking)
-git push -u origin feat/dev-yourname/feature-name
+git checkout main
+git pull origin main
+git checkout -b feat/dev-yourname/track-x-feature-name
+git push -u origin feat/dev-yourname/track-x-feature-name
 ```
 
 ### 2.2 Commit & Push
 
-- **Commit message:** Gunakan present tense, singkat tapi jelas
+- **Commit message:** present tense, singkat, jelas
   ```
-  Add nullable agentId to Transaction model
-  Update nullable agent handling in reports query
-  Fix type errors from schema change
+  Fix CheckoutForm to call /api/checkout/agent
+  Add isApproved gate to middleware
+  Add guideImageUrl input to product form
   ```
-- **Frequency:** Push setiap 30-60 menit kerja (jangan nunggu selesai)
-- **Rebase sebelum PR:** 
+- **Frequency:** push setiap 30-60 menit kerja
+- **Rebase sebelum PR:**
   ```bash
   git fetch origin
-  git rebase origin/dev
-  git push --force-with-lease origin feat/dev-yourname/feature-name
+  git rebase origin/main
+  git push --force-with-lease origin feat/dev-yourname/track-x-feature-name
   ```
 
 ### 2.3 Buat Pull Request
 
 1. Push feature branch ke GitHub
 2. Buka GitHub → **Pull Request** → **New PR**
-3. Base branch: `dev` (atau `main` jika hotfix)
-4. Gunakan **PR Template** (lihat `.github/PULL_REQUEST_TEMPLATE.md`)
-5. Assign reviewer (dev lain di team)
-6. Label: `stage-N`, `in-progress`, `ready-for-review`
+3. Base branch: `main`
+4. Gunakan **PR Template** (`.github/PULL_REQUEST_TEMPLATE.md`)
+5. Assign reviewer (dev lain, siapa saja yang available)
+6. Label: `track-a`/`track-b`/`track-c`, `ready-for-review`
 
 ### 2.4 Review & Merge
 
-- **Reviewer** harus:
-  - ✅ Check code quality, logic, dan naming conventions
-  - ✅ Run build & test lokal sebelum approve
-  - ✅ Approve jika semua checks pass
-  
-- **Jika ada conflict:** 
-  ```bash
-  git fetch origin
-  git rebase origin/dev
-  # Resolve conflicts in editor
-  git add .
-  git rebase --continue
-  git push --force-with-lease origin feat/dev-yourname/feature-name
-  ```
-
-- **Merge strategy:** **Squash and Merge** (1 clean commit per feature)
-  - GitHub Setting: Pull Request → Squash and Merge as default
-
-
-
----
 
 ## 3. Conflict Prevention — Task Isolation
 
-### 3.1 Modul Pembagian (Stages 2–6)
+### 3.1 Pembagian 3 Track Paralel (Tidak Berurutan)
 
-Setiap stage fokus pada modul terpisah untuk meminimalkan tabrakan file:
+Tidak ada "Stage 1, 2, 3, ..." yang harus dikerjakan berurutan. Semua track di bawah **independen** dan **bisa dimulai bersamaan sekarang** karena tidak menyentuh file yang sama. Detail lengkap tugas & files di `TASK_ASSIGNMENT.md`.
 
-#### Stage 2: Public Customer Flow (B2C)
-- **Files:** `app/customer/`, `components/customer/`, `app/api/customer/`
-- **Shared:** `lib/midtrans.ts` (only `createSnapTransaction()` function)
+#### Track A: Agent Checkout UX
+- **Files:** `components/agent/CheckoutForm.tsx`, `components/agent/OrderPageClient.tsx`, `app/agent/order/[orderId]/page.tsx`
 
-#### Stage 3: Agent Checkout → Credit/Debt
-- **Files:** `app/agent/catalog/[productId]/checkout/page.tsx`, `app/api/checkout/route.ts`, `components/agent/`
-- **Note:** Split from Stage 2 checkout logic by `paymentType`
+#### Track B: Agent Registration, Approval & Debt Settlement
+- **Files:** `app/register/`, `app/api/auth/register/`, `app/admin/agents/`, `app/api/admin/agents/`, `middleware.ts`, `lib/auth.ts`
 
-#### Stage 4: Agent Approval & Admin Workflow
-- **Files:** `app/auth/register/`, `app/api/auth/register/`, `app/admin/agents/`, `app/api/admin/agents/`, `middleware.ts`
-
-#### Stage 5: Debt Settlement & Guide Images
-- **Files:** `app/admin/agents/` (settlement UI), `app/admin/inventory/` (guide image upload), `app/api/admin/`
-
-#### Stage 6: Docs & Copy Sync
-- **Files:** `PRD.md`, `.env.example`, UI copy (coordinate in PR)
+#### Track C: Product Guide Image & Inventory
+- **Files:** `app/admin/inventory/`, `app/api/admin/products/`
 
 ### 3.2 ⚠️ Protected Files (Coordinate Before Edit)
 
-- `prisma/schema.prisma` — Stage 1 locked (next change: notify team)
-- `lib/auth.ts` — Only Stage 4 logic overhaul
-- `middleware.ts` — Only new permission/role gates
+- `prisma/schema.prisma` — Sudah final untuk kebutuhan saat ini, kalau perlu field baru buka issue dulu
 - `.env.example` — Notify team if env var added
 - `package.json` — **No new deps without tech lead approval**
 
@@ -169,41 +132,30 @@ Go to **Settings → Branches → Branch Protection Rules**
 - ❌ Allow force pushes
 - ❌ Allow deletions
 
-### 4.2 Setup untuk `dev` Branch
-
-**Pattern:** `dev`
-- ✅ Min **1** reviewer
-- ✅ Status checks: `build`, `lint`
-- ✅ Require up to date
-- ✅ Restrict push: Admins only
-- ❌ No force push, no deletions
-
-### 4.3 Setup untuk `staging` Branch
-
-**Pattern:** `staging`
-- ✅ Min **1** reviewer
-- ✅ Status checks, up to date, push restricted
-- ❌ No force push, no deletions
+Karena semua track merge ke `main` yang sama, protection rule ini sudah cukup — tidak perlu setup tambahan untuk `dev`/`staging` karena branch itu tidak dipakai.
 
 ---
 
 ## 5. Common Scenarios
 
-### 5.1 "Perlu update file di stage orang lain"
+### 5.1 "Perlu update file di track orang lain"
 
-- Create issue: "@dev-alice Perlu update X di stage-mu?"
+- Create issue: "@dev-jiwo Perlu update X di Track B?"
 - Wait for coordination
-- Or: branch dari feature branch mereka, merge back via PR
+- Atau: branch dari feature branch mereka, merge back via PR
 
-### 5.2 "Ada conflict di staging"
+### 5.2 "3 PR dari 3 track mau merge di waktu yang sama"
+
+Karena masing-masing track menyentuh file berbeda, ini **seharusnya tidak conflict**. Kalau tetap ada conflict (jarang, biasanya di file netral seperti `lib/utils.ts`):
 
 ```bash
-git checkout staging && git pull origin staging
-git merge --no-ff origin/dev
-# Resolve conflicts
-git add . && git commit -m "Merge dev → staging: conflicts resolved"
-git push origin staging
+git fetch origin
+git rebase origin/main
+git add . && git rebase --continue
+git push --force-with-lease origin feat/dev-yourname/track-x-feature
 ```
+
+Merge PR **begitu approved** — tidak perlu tunggu PR track lain juga selesai review.
 
 ### 5.3 "Accidentally pushed kesalahan"
 
@@ -215,14 +167,14 @@ git push origin staging
 
 ## 6. Code Review Checklist
 
-✅ Type safety (no `any`)  
-✅ Error handling (try-catch, null checks)  
-✅ Database queries (no N+1, proper includes)  
-✅ Naming conventions (camelCase, SNAKE_CASE)  
-✅ No console.log, debug code  
-✅ Build & lint pass: `npm run build && npm run lint`  
-✅ `.env.example` updated if new vars  
-✅ PR description: what/why/how tested  
+✅ Type safety (no `any`)
+✅ Error handling (try-catch, null checks)
+✅ Database queries (no N+1, proper includes)
+✅ Naming conventions (camelCase, SNAKE_CASE)
+✅ No console.log, debug code
+✅ Build & lint pass: `npm run build && npm run lint`
+✅ `.env.example` updated if new vars
+✅ PR description: what/why/how tested
 
 ---
 
@@ -230,25 +182,38 @@ git push origin staging
 
 ```bash
 # 1. Clone repo
-git clone https://github.com/yourorg/antigrav.git && cd antigrav
+git clone https://github.com/elgptr/vendinglink.git && cd vendinglink
 
-# 2. Create feature branch
-git checkout -b feat/dev-yourname/stage-X-feature
+# 2. Create feature branch (lihat TASK_ASSIGNMENT.md untuk track kamu)
+git checkout -b feat/dev-yourname/track-x-feature-name
 
 # 3. Daily work: commit & push
 git add . && git commit -m "Descriptive message" && git push
 
-# 4. Before PR: sync with dev
-git fetch origin && git rebase origin/dev && git push --force-with-lease
+# 4. Before PR: sync with main
+git fetch origin && git rebase origin/main && git push --force-with-lease
 
-# 5. Create PR on GitHub (use template)
+# 5. Create PR on GitHub (use template), base branch = main
 
 # 6. After approve & merge: cleanup
-git checkout dev && git pull origin dev
-git branch -D feat/dev-yourname/stage-X-feature
-git push origin --delete feat/dev-yourname/stage-X-feature
+git checkout main && git pull origin main
+git branch -D feat/dev-yourname/track-x-feature-name
+git push origin --delete feat/dev-yourname/track-x-feature-name
 ```
 
 ---
 
-**Last Updated:** 2026-09-07 | **Version:** 1.0
+**Last Updated:** 2026-09-07 | **Version:** 2.0 — Model Track paralel (bukan Stage sequential), single branch `main`
+
+- Reviewer: check quality, run build/lint lokal, approve
+- Conflict:
+  ```bash
+  git fetch origin
+  git rebase origin/main
+  git add . && git rebase --continue
+  git push --force-with-lease origin feat/dev-yourname/track-x-feature-name
+  ```
+- **Merge strategy:** Squash and Merge
+- **Merge segera setelah approve** — tidak perlu tunggu track lain juga selesai
+
+---

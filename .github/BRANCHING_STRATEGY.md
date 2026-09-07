@@ -1,216 +1,91 @@
-# 🚀 Branching Strategy & Collaboration — VendingLink
+# 🚀 Branching Strategy — VendingLink (Model Track Paralel)
 
-Panduan lengkap untuk setup kolaborasi 3 developer simultan tanpa konflik.
-
----
-
-## 📦 Files yang Telah Dibuat
-
-| File | Purpose |
-|------|---------|
-| `CONTRIBUTING.md` | Workflow harian, branching model, conflict prevention |
-| `TASK_ASSIGNMENT.md` | Stage ownership, file isolation, communication |
-| `.github/PULL_REQUEST_TEMPLATE.md` | PR template auto-loaded saat buat PR |
-| `.github/DEVELOPER_SETUP.md` | Setup lokal & quick reference |
-| `.github/CODEOWNERS` | Auto-assign reviewers & protect files |
-| `.github/workflows/ci.yml` | GitHub Actions: build & lint checks |
+Panduan setup kolaborasi 3 developer **kerja bersamaan, tanpa saling menunggu**.
 
 ---
 
-## 🔧 Setup GitHub Branch Protection (Admin Only)
+## Kenapa Model Ini?
 
-Go to **Repository → Settings → Branches → Add rule**
+Sebelumnya kita pakai "Stage 1 → 2 → 3 → ... → 6" berurutan — tapi itu bikin dev berikutnya harus nunggu dev sebelumnya selesai, padahal secara teknis banyak yang tidak saling bergantung. Model baru: **3 Track paralel**, masing-masing menyentuh file yang berbeda sama sekali, jadi bisa dikerjakan bersamaan mulai sekarang dari `main`.
 
-### Protect `main` Branch
+Detail pembagian lengkap: lihat `TASK_ASSIGNMENT.md`.
+
+| Track | Fokus | Files |
+|-------|-------|-------|
+| A | Agent Checkout UX | `components/agent/CheckoutForm.tsx`, `components/agent/OrderPageClient.tsx`, `app/agent/order/[orderId]/` |
+| B | Agent Registration, Approval & Debt Settlement | `app/register/`, `app/api/auth/register/`, `app/admin/agents/`, `app/api/admin/agents/`, `middleware.ts`, `lib/auth.ts` |
+| C | Product Guide Image & Inventory | `app/admin/inventory/`, `app/api/admin/products/` |
+
+---
+
+## Setup GitHub Branch Protection (Admin, Sekali Saja)
+
+Repository → Settings → Branches → Add rule
 
 **Pattern:** `main`
-
-Configure:
 - ✅ Require pull request reviews: Min `1`
 - ✅ Dismiss stale pull request approvals
 - ✅ Require status checks: `build`, `lint`
 - ✅ Require up to date before merge
 - ✅ Restrict push: Admins only
-- ❌ No force pushes, no deletions
+- ❌ No force push, no deletions
 
-### Protect `dev` Branch
-
-**Pattern:** `dev` (same as main)
-
-### Protect `staging` Branch
-
-**Pattern:** `staging` (same as dev)
+Cukup satu branch (`main`) — tidak perlu setup `dev`/`staging` karena tidak dipakai.
 
 ---
 
-## 👥 Team Setup
-
-Edit `TASK_ASSIGNMENT.md`, update nicknames:
-
-```markdown
-| Developer | Nickname | Role |
-|-----------|----------|------|
-| [Your Name] | dev-kiro | Lead / Stage 2 |
-| [Name 2] | dev-alice | Stage 3–4 |
-| [Name 3] | dev-bob | Stage 5–6 |
-```
-
----
-
-## 🎯 How 3 Developers Work Simultaneously
-
-**Key:** Each stage works on **separate directories**
-
-```
-Stage 2 (Dev A):   app/customer/, components/customer/, app/api/customer/
-Stage 3 (Dev B):   app/agent/catalog/, app/api/checkout/
-Stage 4 (Dev B):   app/auth/register/, app/admin/agents/
-Stage 5 (Dev C):   app/admin/inventory/, app/api/admin/products/
-Stage 6 (Dev C):   PRD.md, .env.example
-```
-
-**No overlap = No conflicts ✓**
-
----
-
-## 📋 Daily Workflow
-
-### 1. Start Feature
+## Cara Mulai (Setiap Developer)
 
 ```bash
-git checkout dev && git pull origin dev
-git checkout -b feat/dev-yourname/stage-N-feature
+git clone https://github.com/elgptr/vendinglink.git && cd vendinglink
+npm install
+cp .env.example .env.local   # isi credentials lokal
+
+git checkout main && git pull origin main
+git checkout -b feat/dev-yourname/track-x-feature-name
 ```
 
-### 2. During Work: Commit Every Hour
+Kerja di file-file milik track kamu (lihat tabel di atas / `TASK_ASSIGNMENT.md`), commit sering, push, lalu buka PR ke `main` begitu siap — **tidak perlu menunggu track lain**.
 
-```bash
-git add . && git commit -m "Add feature X"
-git push origin feat/dev-yourname/stage-N-feature
+---
+
+## Kenapa Ini Aman Dikerjakan Bersamaan?
+
+Ketiga track sudah dipetakan supaya **zero file overlap**:
+
+```
+Track A: components/agent/CheckoutForm.tsx, OrderPageClient.tsx, app/agent/order/*
+Track B: app/register/, app/api/auth/register/, app/admin/agents/, app/api/admin/agents/, middleware.ts, lib/auth.ts
+Track C: app/admin/inventory/, app/api/admin/products/
 ```
 
-### 3. Before PR: Sync & Verify
+Selama masing-masing tetap di file miliknya, 3 PR bisa jalan paralel dan merge kapan pun siap tanpa saling tunggu.
 
-```bash
-git fetch origin && git rebase origin/dev
-npm run build && npm run lint
-git push --force-with-lease origin feat/dev-yourname/stage-N-feature
-```
+## File yang Perlu Coordinate Dulu
 
-### 4. Create PR on GitHub
+| File | Kenapa | Aturan |
+|------|--------|--------|
+| `prisma/schema.prisma` | Skema sudah final untuk kebutuhan sekarang | Kalau butuh field baru → buka issue dulu |
+| `package.json` | Bisa bikin dependency conflict | Jangan nambah dependency tanpa approval tech lead |
 
-- Base: `dev` | Compare: `feat/dev-yourname/...`
-- Use PR template (auto-loaded)
-- Fill: What changed, Why, Testing notes
-- Assign reviewer (another dev)
-- Label: `stage-N`, `ready-for-review`
-
-### 5. Code Review
-
-Reviewer:
-```bash
-git checkout origin/feat-branch-name
-npm run build && npm run lint && npm run dev
-# Test feature manually
-# Leave GitHub review comments
-```
-
-**Approve or Request Changes**
-
-### 6. Merge After Approval
-
-Author:
-- Click **Squash and Merge**
-- Delete branch
-
-Cleanup:
-```bash
-git checkout dev && git pull origin dev
-git branch -D feat/dev-yourname/stage-N-feature
-git push origin --delete feat/dev-yourname/stage-N-feature
-```
+`middleware.ts` dan `lib/auth.ts` memang di daftar Track B, tapi itu **tidak menghalangi** Track A/C mulai kerja — mereka tidak menyentuh dua file itu sama sekali.
 
 ---
 
-## ⚠️ Protected Files — Coordinate First
+## FAQ
 
-| File | Who | When |
-|------|-----|------|
-| `prisma/schema.prisma` | Tech Lead | After Stage 1 (already done) |
-| `lib/auth.ts` | Tech Lead | Only Stage 4 |
-| `middleware.ts` | Tech Lead | Only Stage 4 |
-| `package.json` | Tech Lead | Never without approval |
+**Q: Track saya harus nunggu track lain selesai dulu?**
+A: Tidak. Semua track independen, mulai kapan saja dari `main`.
 
-**Process:**
-1. Open GitHub Issue: "Need to update FILE for Stage N"
-2. Get approval
-3. Create PR with issue link
+**Q: PR saya konflik dengan PR track lain?**
+A: Seharusnya tidak terjadi karena file terpisah. Kalau terjadi (biasanya di file netral seperti `lib/utils.ts`), rebase dan resolve manual, lalu lanjut merge — tidak perlu menunggu PR lain.
 
----
+**Q: Boleh 3 PR dari 3 track merge di hari yang sama?**
+A: Ya, silakan. Merge begitu masing-masing approved.
 
-## 🚨 Conflict Resolution
-
-**If GitHub shows "can't merge" conflict:**
-
-```bash
-git fetch origin && git rebase origin/dev
-# Resolve conflicts (<<<< ==== >>>> markers)
-git add . && git rebase --continue
-git push --force-with-lease origin feat-branch-name
-```
-
-Then Slack other dev: "Resolved conflict in FILE"
+**Q: Ada dependency riil antar track?**
+A: Tidak ada saat ini. Kalau nanti ternyata ada saat development (misal Track B butuh sesuatu dari Track A), buka issue dan koordinasi langsung — jangan diam-diam block.
 
 ---
 
-## ✅ Checks Before Pushing
-
-- ✅ `npm run build` — passes
-- ✅ `npm run lint` — passes
-- ✅ No `console.log` left in code
-- ✅ `.env.example` updated if new env var
-- ✅ TypeScript types correct (no `any`)
-
----
-
-## 💡 Tips to Avoid Conflicts
-
-1. **Commit frequently:** Every 30-60 min
-2. **Small PRs:** < 400 lines per PR
-3. **Isolated files:** Each stage, different directories
-4. **Communicate:** Ask before editing protected files
-5. **Test locally:** `npm run build && npm run lint`
-6. **Rebase often:** Keep `dev` sync
-
----
-
-## 📚 Quick Reference Docs
-
-- **CONTRIBUTING.md** → Detailed branching, rules, scenarios
-- **TASK_ASSIGNMENT.md** → Stage ownership, file mapping
-- **DEVELOPER_SETUP.md** → Setup local environment
-- **PR Template** → Auto-loaded when creating PR
-
----
-
-## ❓ FAQ
-
-**Q: Can I work on 2 features at once?**  
-A: No. One feature per branch per dev.
-
-**Q: What if my feature takes 2 weeks?**  
-A: Push daily commits. Create "Draft PR" in GitHub until ready.
-
-**Q: Can I force push to `dev`?**  
-A: NO. Branch protection blocks it.
-
-**Q: How do I know if someone is working on my file?**  
-A: Check GitHub Issues (labeled `in-progress`) and TASK_ASSIGNMENT.md.
-
-**Q: What if I accidentally pushed bad code?**  
-A: If not merged: push fix commit. If merged: coordinate rollback.
-
----
-
-**Last Updated:** 2026-09-07  
-**Ready For:** Concurrent development starting Stage 2
+**Last Updated:** 2026-09-07 | **Version:** 2.0 — Track paralel, single branch `main`

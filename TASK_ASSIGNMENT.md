@@ -1,145 +1,171 @@
-# Task Assignment & Stage Ownership
+# Task Assignment & Module Ownership
 
-Dokumen ini memetakan tanggung jawab developer per stage untuk menghindari tabrakan pekerjaan.
+Dokumen ini memetakan tanggung jawab developer per **track paralel** — bukan stage berurutan. Ketiga track di bawah **tidak punya dependency teknis satu sama lain** dan **bisa dikerjakan bersamaan mulai sekarang** dari `main`, oleh 3 developer sekaligus, tanpa perlu saling menunggu.
 
 ---
 
 ## Status: 3 Developer Team
 
-| Developer | Nickname | Role |
-|-----------|----------|------|
-| [Name 1] | dev-kiro | Lead / Stage 2 |
-| [Name 2] | dev-alice | Stage 3–4 |
-| [Name 3] | dev-bob | Stage 5–6 |
-
-*(Update nicknames dengan nama asli)*
+| Developer | Nickname | Track |
+|-----------|----------|-------|
+| Elang | dev-elang | Track A |
+| Jiwo | dev-jiwo | Track B |
+| Iqbal | dev-iqbal | Track C |
 
 ---
 
-## ✅ Stage 1: DB Schema Foundation
-**Status:** ✅ COMPLETED  
-**Owner:** @dev-kiro  
-**Key Files:** `prisma/schema.prisma`, `app/api/admin/reports/route.ts`
+## ✅ Fondasi (Sudah Selesai — Tidak Perlu Dikerjakan Ulang)
+
+Sudah live di `main`, jadi semua track di bawah bisa langsung dibangun di atasnya:
+
+- Schema DB: `isApproved`, `outstandingDebt` di `User`; `guideImageUrl` di `Product`; `agentId` nullable + `paymentType`/`isSettled`/`customerPhone` di `Transaction`
+- Public Customer (B2C) flow lengkap: `/customer`, `/customer/checkout/[productId]`, `/customer/order/[orderId]`, `/api/checkout/customer`, `/api/customer/order/*`
+- Endpoint credit checkout agent: `/api/checkout/agent` (bypass Midtrans, langsung PAID, increment `outstandingDebt`) — backend sudah ada, tinggal disambungkan ke UI (lihat Track A)
 
 ---
 
-## 🔄 Stage 2: Public Customer Flow (B2C Midtrans)
-**Status:** 📋 READY TO START  
-**Owner:** @dev-kiro  
-**Files Owned:** `app/customer/` (NEW), `components/customer/` (NEW), `app/api/customer/` (NEW)
+## 🅰️ Track A: Agent Checkout UX (Sambungkan ke Credit Flow)
+
+**Owner:** @dev-elang
+**Bisa mulai:** Sekarang, dari `main`
+**Tidak bergantung pada:** Track B, Track C
+
+**Masalah saat ini:** `CheckoutForm.tsx` masih fetch ke `/api/checkout` yang sudah dihapus (sekarang `/api/checkout/agent`). Order page agent (`OrderPageClient.tsx`) masih didesain untuk flow Midtrans/Snap — tapi checkout agent sekarang instant PAID, tidak perlu polling/payment popup.
 
 **Deliverables:**
-- [ ] Public catalog page
-- [ ] Customer checkout with Midtrans Snap
-- [ ] Success page with redeem URL + guide image
-- [ ] `agentId = null`, `paymentType = 'MIDTRANS'`
+- [ ] `CheckoutForm.tsx` — fetch ke `/api/checkout/agent`
+- [ ] Redesign `app/agent/order/[orderId]/page.tsx` — instant PAID, langsung render success screen (redeem URL + guide image), tanpa Snap popup/polling
+- [ ] Komponen baru untuk tampilkan redeem URL + `guideImageUrl` di sisi agent
+- [ ] Update copy UI: "Order berhasil, link redeem langsung tersedia"
 
-**Protected (DO NOT EDIT):** `lib/auth.ts`, `middleware.ts`, `prisma/schema.prisma`
+**Files Owned:**
+```
+components/agent/CheckoutForm.tsx
+components/agent/OrderPageClient.tsx     (redesign besar)
+components/agent/AgentSuccessScreen.tsx  (NEW, opsional)
+app/agent/order/[orderId]/page.tsx
+```
 
----
+**Boleh dihapus jika tidak dipakai lagi:** `components/agent/SnapPayment.tsx` (cek dulu tidak ada import lain)
 
-## 🔄 Stage 3: Agent Checkout → Credit/Debt
-**Status:** 📋 READY AFTER Stage 2  
-**Owner:** @dev-alice  
-**Files Owned:** `app/agent/catalog/[productId]/checkout/page.tsx`, `app/api/checkout/route.ts`
+## 🅱️ Track B: Agent Registration, Approval & Debt Settlement
 
-**Deliverables:**
-- [ ] Split checkout: agent vs customer logic
-- [ ] Agent checkout: no Midtrans, instant redeem
-- [ ] Increment `outstandingDebt`
-- [ ] `paymentType = 'AGENT_CREDIT'`
-
-**Dependency:** Await Stage 2 → separate Snap API endpoint
-
----
-
-## 🔄 Stage 4: Agent Registration & Admin Approval
-**Status:** 📋 READY AFTER Stage 3  
-**Owner:** @dev-alice  
-**Files Owned:** `app/auth/register/` (NEW), `app/api/auth/register/` (NEW), `app/admin/agents/`, `middleware.ts`
+**Owner:** @dev-jiwo
+**Bisa mulai:** Sekarang, dari `main`
+**Tidak bergantung pada:** Track A, Track C
 
 **Deliverables:**
-- [ ] Agent registration page
-- [ ] Admin approval UI + API
-- [ ] Middleware gate: block unapproved agents
-- [ ] `isApproved = false` for new, `true` when approved
+- [ ] Halaman registrasi agent baru (`app/register/page.tsx`) — CTA "Daftar menjadi agen reseller"
+- [ ] Endpoint `app/api/auth/register/route.ts` — buat user baru dengan `role: AGENT`, `isApproved: false`
+- [ ] Extend `app/api/admin/agents/route.ts`:
+  - GET: sertakan `isApproved`, `outstandingDebt` di response
+  - PATCH: tambah aksi approve/reject (`isApproved`)
+  - Endpoint baru untuk settle debt: reset `outstandingDebt` ke 0, mark transaksi terkait `isSettled: true`
+- [ ] Extend `app/admin/agents/page.tsx`:
+  - Badge "Menunggu Approval" untuk agent baru
+  - Tombol Approve/Reject
+  - Kolom outstanding debt + tombol "Tandai Lunas"
+- [ ] Extend `middleware.ts` — tambahkan `/register` ke public routes, dan blokir agent `isApproved: false` dari `/agent/*`
+- [ ] Extend `lib/auth.ts` — aktifkan pengecekan `isApproved` yang sudah di-comment (baris 36-39)
+
+**Files Owned:**
+```
+app/register/                       (NEW)
+app/api/auth/register/               (NEW)
+app/api/admin/agents/route.ts        (extend)
+app/admin/agents/page.tsx            (extend)
+middleware.ts                        (extend — tambah 1 blok public route + isApproved check)
+lib/auth.ts                          (extend — un-comment isApproved check)
+```
+
+**Protected (jangan diedit):** `prisma/schema.prisma`, `app/api/checkout/*`, `app/customer/*`, `app/admin/inventory/*`
 
 ---
 
-## 🔄 Stage 5: Debt Settlement & Guide Images
-**Status:** 📋 READY AFTER Stage 4  
-**Owner:** @dev-bob  
-**Files Owned:** `app/admin/inventory/`, `app/admin/agents/`
+## 🅲️ Track C: Product Guide Image & Inventory
+
+**Owner:** @dev-iqbal
+**Bisa mulai:** Sekarang, dari `main`
+**Tidak bergantung pada:** Track A, Track B
 
 **Deliverables:**
-- [ ] Guide image upload in product edit
-- [ ] Display guide on checkout & success pages
-- [ ] "Lunas" button to settle debt
-- [ ] Reset `outstandingDebt`, mark `isSettled`
+- [ ] Extend `app/api/admin/products/route.ts` — terima & simpan `guideImageUrl` di POST/PATCH
+- [ ] Extend `app/admin/inventory/page.tsx` — form tambah/edit produk: input URL gambar panduan
+- [ ] Preview gambar panduan di form admin
+- [ ] (Opsional) Validasi URL gambar dengan `isValidUrl()` dari `lib/utils.ts` (sudah ada)
+
+**Files Owned:**
+```
+app/api/admin/products/route.ts      (extend)
+app/admin/inventory/page.tsx         (extend)
+```
+
+**Protected (jangan diedit):** `prisma/schema.prisma`, `app/admin/agents/*`, `app/api/admin/agents/*`, `app/agent/*`
 
 ---
 
-## 🔄 Stage 6: Docs & Copy Sync
-**Status:** 📋 READY AFTER Stage 5  
-**Owner:** @dev-bob  
-**Files Owned:** `PRD.md`, `.env.example`, UI copy
+## 📋 Aturan Kolaborasi
 
-**Deliverables:**
-- [ ] Update PRD.md to match implementation
-- [ ] Sync UI copy (Indonesian)
-- [ ] End-to-end QA testing
+### File Bersama (Coordinate Dulu via Issue)
 
----
+Track A/B/C sudah didesain **zero overlap**. Kalau ternyata butuh edit file di luar daftar "Files Owned" milikmu:
 
-## 📋 Collaboration Rules
+1. Cek dulu apakah file itu milik track lain di atas
+2. Kalau iya → buka GitHub Issue, tag pemilik track, jangan langsung edit
+3. Kalau file netral (`lib/utils.ts`, `components/ui/*`) → boleh edit langsung, kecil risiko konflik karena biasanya perubahan additive
 
-### Protected Files (Always Coordinate)
-- `prisma/schema.prisma` — Locked, next change: notify tech lead
-- `lib/auth.ts` — Only Stage 4
-- `middleware.ts` — Only Stage 4
-- `package.json` — No new deps without approval
+### Protected Files (Berlaku untuk Semua Track)
 
-### Shared Files (Any Dev, Review Required)
-- `lib/midtrans.ts` — Coordinate split for Stage 2 & 3
-- `lib/utils.ts`, `app/api/admin/reports/` — All stages review carefully
-- `PRD.md` — Each stage updates, final sync in Stage 6
+- `prisma/schema.prisma` — sudah final untuk kebutuhan saat ini, kalau butuh field baru buka issue dulu
+- `package.json` — tidak boleh nambah dependency tanpa approval tech lead
 
----
+### Satu-satunya Titik yang Perlu Perhatian Ekstra
 
-## Communication Protocol
-
-**Starting a Stage:** Open GitHub Issue, label `stage-N`, mention blockers
-
-**File Changes:** Comment in issue, wait for approval before editing protected files
-
-**Conflict:** Slack immediately, one dev rebases & resolves, both verify `npm run build`
+Track B (Jiwo) mengubah `middleware.ts` untuk nambah `isApproved` check dan public route `/register`. Ini **tidak menghalangi** Track A/C mulai kerja sama sekali — mereka tidak menyentuh `middleware.ts`. Jiwo cukup review diff-nya sendiri sebelum PR supaya tidak menghapus/rusak public routes yang sudah ada (`/customer`, `/api/customer`, dll).
 
 ---
 
 ## Git Branch Naming
 
 ```
-feat/dev-yourname/stage-N-feature
+feat/dev-elang/track-a-agent-checkout-ux
+feat/dev-jiwo/track-b-agent-approval
+feat/dev-iqbal/track-c-guide-image
 ```
 
-Example:
+Kalau 1 track butuh beberapa PR terpisah, pecah lagi:
 ```
-feat/dev-kiro/stage-2-customer-flow
-feat/dev-alice/stage-3-agent-credit
+feat/dev-elang/track-a-checkout-form-fix
+feat/dev-elang/track-a-order-page-redesign
 ```
 
 ---
 
 ## PR Approval Workflow
 
-Every PR needs:
-- ✅ Passing CI/CD (build & lint)
-- ✅ ≥1 code review from another dev
-- ✅ No `dev` conflicts
-- ✅ Updated `.env.example` if needed
+Setiap PR butuh:
+- ✅ Passing CI/CD (`build`, `lint`)
+- ✅ ≥1 review dari dev lain
+- ✅ Tidak ada conflict dengan `main`
+- ✅ `.env.example` diupdate kalau ada env var baru
 
-**Merge:** Squash and Merge (1 clean commit)
+**Merge:** Squash and Merge (1 commit bersih per fitur)
 
 ---
 
-**Last Updated:** 2026-09-07 | **Maintained By:** Tech Lead
+## Communication Protocol
+
+**Mulai kerja:** Buka GitHub Issue "Starting Track A/B/C — [deskripsi]", label `track-a`/`track-b`/`track-c`
+
+**Kalau nemu overlap tak terduga:** Slack/comment issue segera, jangan diam-diam edit file track lain
+
+**Selesai:** PR ke `main`, tag reviewer, tunggu approval — track lain **tidak perlu** menunggu status track ini
+
+---
+
+**Last Updated:** 2026-09-07 | **Version:** 2.1 — Track paralel dengan tim: Elang (Track A), Jiwo (Track B), Iqbal (Track C)
+
+
+**Protected (jangan diedit):** `prisma/schema.prisma`, `lib/auth.ts`, `middleware.ts`, `app/api/checkout/agent/route.ts`
+
+---
