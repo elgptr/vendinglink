@@ -11,8 +11,8 @@ export const metadata: Metadata = {
     template: "%s | VendingLink",
   },
   description:
-    "Platform penjualan link redeem digital dengan pembayaran QRIS otomatis. Cepat, aman, dan terpercaya.",
-  keywords: ["vending machine", "link redeem", "QRIS", "pembayaran digital"],
+    "Platform penjualan link redeem digital dengan pembayaran online otomatis via Midtrans (QRIS, transfer bank, e-wallet, dan lainnya). Cepat, aman, dan terpercaya.",
+  keywords: ["vending machine", "link redeem", "QRIS", "Midtrans", "pembayaran digital"],
   robots: { index: false, follow: false }, // Private app
 };
 

@@ -17,7 +17,7 @@ export default function ChatPage() {
           <h1 className="text-2xl font-bold text-white">AI Chat Assistant</h1>
         </div>
         <p className="text-slate-400 ml-14">
-          Tanya seputar produk, stok, cara checkout QRIS, dan voucher promo yang aktif
+          Tanya seputar produk, stok, cara checkout & pembayaran, dan voucher promo yang aktif
         </p>
       </div>
 

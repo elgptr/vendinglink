@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       const csvData = allTransactions.map((t) => ({
         "Order ID": t.orderId,
         "Produk": t.product.name,
-        "Agen": t.agent.username,
+        "Agen": t.agent?.username || "Customer (Langsung)",
         "Nama Pembeli": t.customerName || "-",
         "Voucher": t.voucher?.code || "-",
         "Harga Asli": t.originalPrice,

@@ -77,6 +77,7 @@ export async function applyMidtransStatusUpdate(
         status: "SOLD",
         claimedByAgentId: transaction.agentId,
         customerName: transaction.customerName,
+        customerPhone: transaction.customerPhone,
         claimedAt: new Date(),
       },
     });

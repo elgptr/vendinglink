@@ -1,0 +1,40 @@
+# Code Owners for VendingLink
+
+# Prisma schema — locked, tech lead only
+prisma/schema.prisma               @tech-lead
+
+# Auth & middleware — only during auth/approval stages
+lib/auth.ts                        @tech-lead
+middleware.ts                      @tech-lead
+lib/auth.config.ts                 @tech-lead
+
+# Package management — locked
+package.json                       @tech-lead
+package-lock.json                  @tech-lead
+
+# Environment config
+.env.example                       @tech-lead
+
+# CI/CD & deployment config
+.github/workflows/                 @tech-lead
+next.config.mjs                    @tech-lead
+
+# Stage-specific code ownership (assign based on current stage dev)
+app/customer/                      @dev-stage2
+components/customer/               @dev-stage2
+app/api/customer/                  @dev-stage2
+
+app/agent/catalog/                 @dev-stage3
+app/api/checkout/                  @dev-stage3
+
+app/auth/register/                 @dev-stage4
+app/api/auth/register/             @dev-stage4
+app/admin/agents/                  @dev-stage4
+
+# Shared/cross-stage files — any dev can contribute, others review
+lib/midtrans.ts                    *
+lib/transactionStatus.ts           *
+lib/utils.ts                       *
+app/api/admin/reports/             *
+PRD.md                             *
+

@@ -4,7 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import OrderPageClient from "@/components/agent/OrderPageClient";
 
 export const metadata = {
-  title: "Pembayaran QRIS",
+  title: "Pembayaran",
 };
 
 interface OrderPageProps {
@@ -38,9 +38,9 @@ export default async function OrderPage({ params }: OrderPageProps) {
         orderId={transaction.orderId}
         initialAmount={transaction.finalAmount}
         productName={transaction.product.name}
-        createdAt={transaction.createdAt.toISOString()}
         isPaid={transaction.status === "PAID"}
       />
     </div>
   );
 }
+

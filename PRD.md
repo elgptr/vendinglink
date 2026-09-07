@@ -7,7 +7,7 @@
 **Target Audience:** General Customers (B2C), Reseller Agents (B2B), and System Administrators.
 
 VendingLink is a web-based platform designed to streamline digital voucher and vending machine stock distribution. 
-- **Customers (B2C)** can purchase digital redeem codes directly via QRIS (Midtrans) without needing an account.
+- **Customers (B2C)** can purchase digital redeem codes directly via Midtrans (QRIS, bank transfer/VA, e-wallet, credit card, and other enabled payment methods) without needing an account.
 - **Agents/Resellers (B2B)** can register, get approved by admins, and purchase products on credit (bypassing payment gateways) to resell, settling their debts later.
 - **Administrators** manage products, bulk-upload redeem URL stocks via CSV, approve new agents, track agent debts, and mark payments as settled. 
 
@@ -22,9 +22,9 @@ Additionally, an AI Sales Assistant is available to help answer product and oper
 - **Styling:** Tailwind CSS, Lucide React Icons
 - **Database & ORM:** PostgreSQL, Prisma ORM
 - **Authentication:** NextAuth.js (v5 Beta) with Prisma Adapter
-- **Payment Gateway:** Midtrans (Snap API & QRIS Callback Handling)
+- **Payment Gateway:** Midtrans (Snap API — supports all enabled payment methods: QRIS, bank transfer/VA, e-wallet, credit card, etc.)
 - **AI Integration:** Anthropic AI SDK & Google GenAI (`@google/genai`)
-- **Utilities:** `qrcode` (QR Code Generator), `papaparse` (CSV Parser), `zod` (Validation)
+- **Utilities:** `papaparse` (CSV Parser), `zod` (Validation)
 
 ---
 
@@ -55,7 +55,7 @@ Additionally, an AI Sales Assistant is available to help answer product and oper
 
 ### 4.1 Customer Flow (Public B2C)
 1. **Catalog & Checkout:** Customer selects a product, inputs Name and Phone Number.
-2. **Payment:** Redirected to Midtrans for QRIS/Snap payment.
+2. **Payment:** Redirected to Midtrans Snap payment popup, which shows all enabled payment methods (QRIS, bank transfer/VA, e-wallet, credit card, etc).
 3. **Fulfillment:** Upon successful payment, customer is redirected to a success page displaying:
    - The Redeem URL (with a copy button).
    - An instructional guide image on how to use the link.
@@ -161,6 +161,7 @@ model Transaction {
   status         String    @default("PENDING") // 'PENDING' | 'PAID' | 'EXPIRED'
   isSettled      Boolean   @default(false)     // For agent debt tracking
   redeemUrl      String?
+  snapToken      String?   // Midtrans Snap transaction token (all payment methods)
   createdAt      DateTime  @default(now())
   paidAt         DateTime?
 

@@ -15,22 +15,30 @@ export const midtransSnap = new midtransClient.Snap({
 });
 
 /**
- * Create a QRIS charge using Midtrans Core API
+ * Create a Snap transaction that lets the customer pick from every payment
+ * method enabled on the Midtrans dashboard (QRIS, GoPay, ShopeePay, bank
+ * transfer/VA of all supported banks, credit card, Indomaret/Alfamart,
+ * PayLater, etc). We intentionally do NOT set `enabled_payments`, so Snap
+ * shows the full set of channels active on the merchant account instead of
+ * being locked to a single method.
  */
-export async function createQrisCharge(params: {
+export async function createSnapTransaction(params: {
   orderId: string;
   amount: number;
   customerName?: string;
+  customerPhone?: string;
   productName: string;
 }) {
-  const response = await midtransCoreApi.charge({
-    payment_type: "qris",
+  const response = await midtransSnap.createTransaction({
     transaction_details: {
       order_id: params.orderId,
       gross_amount: params.amount,
     },
-    qris: {
-      acquirer: "gopay",
+    // Some channels (bank transfer/VA, over-the-counter) need more than the
+    // 15 minutes QRIS used to allow — give every method a full day to settle.
+    expiry: {
+      unit: "hours",
+      duration: 24,
     },
     item_details: [
       {
@@ -42,21 +50,16 @@ export async function createQrisCharge(params: {
     ],
     customer_details: {
       first_name: params.customerName || "Pelanggan",
+      phone: params.customerPhone || undefined,
     },
   });
 
   return response as {
-    status_code: string;
-    transaction_id: string;
-    order_id: string;
-    gross_amount: string;
-    payment_type: string;
-    transaction_status: string;
-    transaction_time: string;
-    qr_string?: string;
-    actions?: Array<{ name: string; method: string; url: string }>;
+    token: string;
+    redirect_url: string;
   };
 }
+
 
 /**
  * Get transaction status from Midtrans
