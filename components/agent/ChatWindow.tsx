@@ -15,14 +15,14 @@ interface ChatMessage {
 const SUGGESTED_QUESTIONS = [
   "Produk apa saja yang tersedia dan berapa harganya?",
   "Apakah ada voucher promo yang aktif?",
-  "Bagaimana cara checkout dan bayar dengan QRIS?",
+  "Bagaimana cara checkout dan metode pembayaran apa yang tersedia?",
 ];
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: "welcome",
   role: "assistant",
   content:
-    "Halo! Saya VendingLink Assistant \ud83d\udc4b\nSaya bisa bantu Anda seputar daftar produk, stok, cara checkout & pembayaran QRIS, serta info voucher promo yang aktif. Silakan tanya apa saja!",
+    "Halo! Saya VendingLink Assistant \ud83d\udc4b\nSaya bisa bantu Anda seputar daftar produk, stok, cara checkout & pembayaran, serta info voucher promo yang aktif. Silakan tanya apa saja!",
 };
 
 function generateId(): string {

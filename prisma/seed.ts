@@ -15,6 +15,7 @@ async function main() {
       username: "admin",
       passwordHash: adminHash,
       role: "ADMIN",
+      isApproved: true,
       isActive: true,
     },
   });
@@ -29,6 +30,7 @@ async function main() {
       username: "agent01",
       passwordHash: agentHash,
       role: "AGENT",
+      isApproved: true,
       isActive: true,
     },
   });

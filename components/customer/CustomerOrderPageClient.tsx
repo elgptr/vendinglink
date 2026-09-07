@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import SnapPayment from "@/components/agent/SnapPayment";
-import SuccessScreen from "@/components/agent/SuccessScreen";
+import CustomerSnapPayment from "@/components/customer/CustomerSnapPayment";
+import CustomerSuccessScreen from "@/components/customer/CustomerSuccessScreen";
 import Spinner from "@/components/ui/Spinner";
 
-interface OrderPageClientProps {
+interface CustomerOrderPageClientProps {
   orderId: string;
   initialAmount: number;
   productName: string;
@@ -21,6 +21,7 @@ interface OrderData {
   productName: string;
   customerName?: string | null;
   redeemUrl?: string | null;
+  guideImageUrl?: string | null;
   paidAt?: string | null;
 }
 
@@ -28,30 +29,28 @@ interface SnapTokenData {
   snapToken: string;
 }
 
-export default function OrderPageClient({
+export default function CustomerOrderPageClient({
   orderId,
   initialAmount,
   productName,
   isPaid,
-}: OrderPageClientProps) {
+}: CustomerOrderPageClientProps) {
   const router = useRouter();
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [snapData, setSnapData] = useState<SnapTokenData | null>(null);
   const [loading, setLoading] = useState(true);
   const [pollingActive, setPollingActive] = useState(!isPaid);
-  // Circuit breaker: count consecutive errors to avoid hammering the server
-  // when Midtrans credentials are misconfigured (e.g. 401 spam).
   const consecutiveErrors = useRef(0);
   const [pollInterval, setPollInterval] = useState(2000);
 
   const pollStatus = useCallback(async () => {
     try {
-      const res = await fetch(`/api/order/status?orderId=${orderId}`);
+      const res = await fetch(`/api/customer/order/status?orderId=${orderId}`);
       if (!res.ok) {
         consecutiveErrors.current += 1;
         if (consecutiveErrors.current >= 5) setPollInterval(10000);
         if (consecutiveErrors.current >= 20) {
-          console.warn("[OrderPageClient] Too many errors, stopping poll.");
+          console.warn("[CustomerOrderPageClient] Too many errors, stopping poll.");
           setPollingActive(false);
         }
         return;
@@ -69,17 +68,16 @@ export default function OrderPageClient({
       }
 
       if (data.status === "EXPIRED") {
-        setTimeout(() => router.push("/agent/catalog"), 4000);
+        setTimeout(() => router.push("/customer"), 4000);
       }
     } catch {
       consecutiveErrors.current += 1;
     }
   }, [orderId, router, pollInterval]);
 
-  // Fetch Snap token from DB (stored at checkout time, not re-fetched from Midtrans)
   const fetchSnapToken = useCallback(async () => {
     try {
-      const res = await fetch(`/api/order/snap-token?orderId=${orderId}`);
+      const res = await fetch(`/api/customer/order/snap-token?orderId=${orderId}`);
       if (res.ok) {
         const data = await res.json();
         setSnapData(data);
@@ -114,8 +112,9 @@ export default function OrderPageClient({
 
   if (orderData?.status === "PAID" && orderData.redeemUrl) {
     return (
-      <SuccessScreen
+      <CustomerSuccessScreen
         redeemUrl={orderData.redeemUrl}
+        guideImageUrl={orderData.guideImageUrl}
         productName={orderData.productName || productName}
         amount={orderData.finalAmount}
         customerName={orderData.customerName}
@@ -139,7 +138,7 @@ export default function OrderPageClient({
   }
 
   return (
-    <SnapPayment
+    <CustomerSnapPayment
       orderId={orderId}
       snapToken={snapData?.snapToken || ""}
       amount={initialAmount}
@@ -149,4 +148,3 @@ export default function OrderPageClient({
     />
   );
 }
-

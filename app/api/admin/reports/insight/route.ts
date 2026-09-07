@@ -20,7 +20,7 @@ function buildSalesDataSummary(
     finalAmount: number;
     paidAt: Date | null;
     product: { name: string };
-    agent: { username: string };
+    agent: { username: string } | null;
   }[]
 ): string {
   if (transactions.length === 0) {
@@ -46,13 +46,14 @@ function buildSalesDataSummary(
     )
     .join("\n");
 
-  // Per-agent aggregation
+  // Per-agent aggregation (customer/B2C purchases have no agent — grouped separately)
   const agentMap = new Map<string, { count: number; revenue: number }>();
   for (const t of transactions) {
-    const entry = agentMap.get(t.agent.username) || { count: 0, revenue: 0 };
+    const agentLabel = t.agent?.username || "Customer (Langsung)";
+    const entry = agentMap.get(agentLabel) || { count: 0, revenue: 0 };
     entry.count += 1;
     entry.revenue += t.finalAmount;
-    agentMap.set(t.agent.username, entry);
+    agentMap.set(agentLabel, entry);
   }
   const agentLines = Array.from(agentMap.entries())
     .sort((a, b) => b[1].revenue - a[1].revenue)

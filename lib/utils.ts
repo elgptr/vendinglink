@@ -124,12 +124,3 @@ export function parseBulkLinks(text: string): string[] {
     .filter((line) => line.length > 0 && isValidUrl(line));
 }
 
-/**
- * Calculate countdown remaining seconds from creation time
- * Midtrans QRIS expires in 15 minutes (900 seconds)
- */
-export function getExpirySeconds(createdAt: Date, expiryMinutes = 15): number {
-  const expiryMs = expiryMinutes * 60 * 1000;
-  const elapsed = Date.now() - new Date(createdAt).getTime();
-  return Math.max(0, Math.floor((expiryMs - elapsed) / 1000));
-}

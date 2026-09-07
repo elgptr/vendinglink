@@ -12,12 +12,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  passwordHash String
-  role         String   @default("AGENT") // 'ADMIN' | 'AGENT'
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  id              String   @id @default(cuid())
+  username        String   @unique
+  passwordHash    String
+  role            String   @default("AGENT") // 'ADMIN' | 'AGENT'
+  isApproved      Boolean  @default(false)   // Agents require admin approval before transacting
+  isActive        Boolean  @default(true)
+  outstandingDebt Int      @default(0)       // Debt owed to admin from credit-based agent checkouts
+  createdAt       DateTime @default(now())
 
   // Relations
   transactions  Transaction[]
@@ -27,12 +29,13 @@ model User {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  price       Int
-  description String?
-  isActive    Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  price         Int
+  description   String?
+  guideImageUrl String?  // Image guide on how to use the redeem link
+  isActive      Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
 
   // Relations
   stocks       RedeemStock[]
@@ -48,6 +51,7 @@ model RedeemStock {
   status           String    @default("AVAILABLE") // 'AVAILABLE' | 'SOLD'
   claimedByAgentId String?
   customerName     String?
+  customerPhone    String?
   claimedAt        DateTime?
   createdAt        DateTime  @default(now())
 
@@ -78,23 +82,28 @@ model Transaction {
   id             String    @id @default(cuid())
   orderId        String    @unique
   productId      String
-  agentId        String
+  agentId        String?   // Nullable for direct customer (B2C) purchases
   voucherId      String?
   customerName   String?
+  customerPhone  String?
+  paymentType    String    @default("MIDTRANS") // 'MIDTRANS' | 'AGENT_CREDIT'
   originalPrice  Int
   discountAmount Int       @default(0)
   finalAmount    Int
   status         String    @default("PENDING") // 'PENDING' | 'PAID' | 'EXPIRED'
+  isSettled      Boolean   @default(false)     // For agent debt tracking
   redeemUrl      String?
   qrString       String?
   qrCodeUrl      String?
+  snapToken      String?
   createdAt      DateTime  @default(now())
   paidAt         DateTime?
 
   // Relations
   product Product  @relation(fields: [productId], references: [id])
-  agent   User     @relation(fields: [agentId], references: [id])
+  agent   User?    @relation(fields: [agentId], references: [id])
   voucher Voucher? @relation(fields: [voucherId], references: [id])
 
   @@map("transactions")
 }
+

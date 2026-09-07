@@ -30,7 +30,7 @@ interface Transaction {
   paidAt: string | null;
   createdAt: string;
   product: { name: string };
-  agent: { username: string };
+  agent: { username: string } | null;
   voucher: { code: string } | null;
 }
 
@@ -297,7 +297,7 @@ export default function ReportsPage() {
                         </span>
                       </td>
                       <td className="font-medium text-slate-200">{tx.product.name}</td>
-                      <td className="text-slate-300">{tx.agent.username}</td>
+                      <td className="text-slate-300">{tx.agent?.username || "Customer"}</td>
                       <td className="text-slate-400">{tx.customerName || "—"}</td>
                       <td>
                         {tx.voucher ? (

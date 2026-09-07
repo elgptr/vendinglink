@@ -1,25 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createQrisCharge } from "@/lib/midtrans";
+import { createSnapTransaction } from "@/lib/midtrans";
 import { generateOrderId, sanitizeString } from "@/lib/utils";
 import { z } from "zod";
 
-const checkoutSchema = z.object({
+const customerCheckoutSchema = z.object({
   productId: z.string().min(1),
   voucherId: z.string().optional(),
-  customerName: z.string().max(100).optional(),
+  customerName: z.string().min(1).max(100),
+  customerPhone: z.string().max(20).optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
-    const parsed = checkoutSchema.safeParse(body);
+    const parsed = customerCheckoutSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Input tidak valid", details: parsed.error.flatten() },
@@ -27,10 +22,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productId, voucherId, customerName } = parsed.data;
-    const sanitizedCustomerName = customerName
-      ? sanitizeString(customerName)
-      : undefined;
+    const { productId, voucherId, customerName, customerPhone } = parsed.data;
+    const sanitizedCustomerName = sanitizeString(customerName);
+    const sanitizedCustomerPhone = customerPhone ? sanitizeString(customerPhone) : undefined;
+
+    if (!sanitizedCustomerName) {
+      return NextResponse.json(
+        { error: "Nama pembeli wajib diisi" },
+        { status: 400 }
+      );
+    }
 
     // ─── Verify product exists and is active ──────────────────────────────
     const product = await prisma.product.findFirst({
@@ -79,38 +80,26 @@ export async function POST(request: NextRequest) {
     // ─── Generate order ID ─────────────────────────────────────────────────
     const orderId = generateOrderId();
 
-    // ─── Create Midtrans QRIS charge ───────────────────────────────────────
-    let qrString: string | undefined;
-    let qrCodeUrl: string | undefined;
+    // ─── Create Midtrans Snap transaction ──────────────────────────────────
+    let snapToken: string | undefined;
 
     try {
-      const chargeResponse = await createQrisCharge({
+      const snapResponse = await createSnapTransaction({
         orderId,
         amount: finalAmount,
         customerName: sanitizedCustomerName,
+        customerPhone: sanitizedCustomerPhone,
         productName: product.name,
       });
 
-      // The QR data (qr_string / generate-qr-code action url) is only present
-      // in this initial charge response — Midtrans's status endpoint does not
-      // return it for QRIS transactions. Persist it now so /api/order/qr can
-      // simply read it back from the DB.
-      qrString = chargeResponse.qr_string;
-      qrCodeUrl = chargeResponse.actions?.find(
-        (a) => a.name === "generate-qr-code"
-      )?.url;
+      snapToken = snapResponse.token;
     } catch (midtransError) {
       console.error("Midtrans charge error:", midtransError);
 
-      // Detect specific Midtrans error codes for clearer user messages
-      const httpStatus =
-        (midtransError as { httpStatusCode?: string }).httpStatusCode;
+      const httpStatus = (midtransError as { httpStatusCode?: string }).httpStatusCode;
       if (httpStatus === "402") {
         return NextResponse.json(
-          {
-            error:
-              "QRIS belum diaktifkan di akun Midtrans Anda. Aktifkan melalui Dashboard Midtrans → Settings → Payment Methods.",
-          },
+          { error: "Metode pembayaran belum diaktifkan di akun Midtrans." },
           { status: 502 }
         );
       }
@@ -123,11 +112,10 @@ export async function POST(request: NextRequest) {
 
       if (process.env.NODE_ENV !== "development") {
         return NextResponse.json(
-          { error: "Gagal membuat QRIS. Periksa konfigurasi Midtrans." },
+          { error: "Gagal membuat transaksi pembayaran." },
           { status: 500 }
         );
       }
-      // In development, continue without Midtrans (for testing UI)
     }
 
     // ─── Save transaction to DB ────────────────────────────────────────────
@@ -135,15 +123,16 @@ export async function POST(request: NextRequest) {
       data: {
         orderId,
         productId,
-        agentId: session.user.id,
+        agentId: null, // Public B2C transaction has no agent
         voucherId: resolvedVoucherId,
         customerName: sanitizedCustomerName,
+        customerPhone: sanitizedCustomerPhone,
+        paymentType: "MIDTRANS",
         originalPrice,
         discountAmount,
         finalAmount,
         status: "PENDING",
-        qrString,
-        qrCodeUrl,
+        snapToken,
       },
     });
 
@@ -154,9 +143,10 @@ export async function POST(request: NextRequest) {
       discountAmount,
       productName: product.name,
       customerName: sanitizedCustomerName,
+      snapToken: transaction.snapToken,
     });
   } catch (error) {
-    console.error("Checkout error:", error);
+    console.error("Customer checkout error:", error);
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }

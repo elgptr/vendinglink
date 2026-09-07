@@ -23,8 +23,7 @@ export async function GET(request: NextRequest) {
         agentId: true,
         status: true,
         finalAmount: true,
-        qrString: true,
-        qrCodeUrl: true,
+        snapToken: true,
       },
     });
 
@@ -39,21 +38,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // If already paid/expired, no need for QR
+    // If already paid/expired, no need for the Snap token anymore
     if (transaction.status !== "PENDING") {
-      return NextResponse.json({ qrString: "", qrCodeUrl: "" });
+      return NextResponse.json({ snapToken: "" });
     }
 
-    // QR data (qr_string / generate-qr-code action url) was captured once at
-    // checkout time from the Midtrans charge response and stored on the
-    // transaction — Midtrans's status endpoint does not return it for QRIS,
-    // so we don't re-query Midtrans here.
     return NextResponse.json({
-      qrString: transaction.qrString || "",
-      qrCodeUrl: transaction.qrCodeUrl || "",
+      snapToken: transaction.snapToken || "",
     });
   } catch (error) {
-    console.error("QR endpoint error:", error);
+    console.error("Snap token endpoint error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

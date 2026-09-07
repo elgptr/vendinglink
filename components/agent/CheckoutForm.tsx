@@ -202,7 +202,7 @@ export default function CheckoutForm({
             </div>
           )}
           <div className="border-t border-surface-border pt-3 flex justify-between">
-            <span className="font-semibold text-white">Total Tagihan QRIS</span>
+            <span className="font-semibold text-white">Total Tagihan</span>
             <span className="text-xl font-bold text-brand-400">
               {formatRupiah(finalAmount)}
             </span>
@@ -219,7 +219,7 @@ export default function CheckoutForm({
         loading={checkoutLoading}
         icon={<ChevronRight size={18} />}
       >
-        Lanjut Bayar QRIS
+        Lanjut ke Pembayaran
       </Button>
     </form>
   );

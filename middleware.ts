@@ -10,9 +10,30 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   const userRole = session?.user?.role;
 
   // ─── Public routes (no auth needed) ───────────────────────────────────────
-  const publicRoutes = ["/login", "/api/midtrans/webhook"];
+  // /customer (pages) and /api/customer, /api/checkout/customer (endpoints)
+  // power the public B2C flow — no login required.
+  const publicRoutes = [
+    "/login",
+    "/api/midtrans/webhook",
+    "/customer",
+    "/api/customer",
+    "/api/checkout/customer",
+  ];
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
+  }
+
+  // ─── Root path ─────────────────────────────────────────────────────────────
+  // Unauthenticated visitors land on the public customer catalog instead of
+  // being forced to /login — logging in is only required for Agent/Admin.
+  if (pathname === "/") {
+    if (!session) {
+      return NextResponse.redirect(new URL("/customer", req.url));
+    }
+    if (userRole === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin/inventory", req.url));
+    }
+    return NextResponse.redirect(new URL("/agent/catalog", req.url));
   }
 
   // ─── Not authenticated → redirect to login ────────────────────────────────
@@ -38,16 +59,10 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
     return NextResponse.redirect(new URL("/agent/catalog", req.url));
   }
 
-  // ─── Root redirect ────────────────────────────────────────────────────────
-  if (pathname === "/") {
-    if (userRole === "ADMIN") {
-      return NextResponse.redirect(new URL("/admin/inventory", req.url));
-    }
-    return NextResponse.redirect(new URL("/agent/catalog", req.url));
-  }
-
   return NextResponse.next();
 });
+
+
 
 export const config = {
   matcher: [
