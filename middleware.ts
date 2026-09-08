@@ -14,6 +14,8 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   // power the public B2C flow — no login required.
   const publicRoutes = [
     "/login",
+    "/register",
+    "/api/auth/register",
     "/api/midtrans/webhook",
     "/customer",
     "/api/customer",
@@ -57,6 +59,30 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
     }
     // Page route → redirect to agent catalog
     return NextResponse.redirect(new URL("/agent/catalog", req.url));
+  }
+
+  // ─── Agent-only routes: block unapproved agents ──────────────────────────
+  // Agents who have registered but not yet approved by admin are blocked
+  // from all /agent/* pages and /api/checkout/agent until admin approves them.
+  const isAgentRoute =
+    pathname.startsWith("/agent") || pathname.startsWith("/api/checkout/agent");
+
+  if (isAgentRoute && userRole === "AGENT") {
+    const isApproved = (session as { user?: { isApproved?: boolean } } | null)
+      ?.user?.isApproved;
+    if (!isApproved) {
+      // API route → return 403 JSON
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "Akun agen Anda belum disetujui admin." },
+          { status: 403 }
+        );
+      }
+      // Page route → redirect to login with message
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("error", "unapproved");
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.next();
