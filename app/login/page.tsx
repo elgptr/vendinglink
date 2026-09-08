@@ -2,14 +2,17 @@
 
 import { useState, FormEvent } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Zap, Lock, User } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Eye, EyeOff, Zap, Lock, User, ShieldAlert } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import toast from "@/components/ui/Toast";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isUnapproved = searchParams.get("error") === "unapproved";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -64,6 +67,17 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-white mb-2">VendingLink</h1>
           <p className="text-slate-400">Masuk ke akun Anda untuk melanjutkan</p>
         </div>
+
+        {/* Unapproved agent banner */}
+        {isUnapproved && (
+          <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 animate-fade-in">
+            <ShieldAlert size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-semibold text-amber-400 mb-0.5">Akun Belum Disetujui</p>
+              <p>Akun agen Anda masih menunggu persetujuan dari Admin. Silakan hubungi admin untuk proses approval.</p>
+            </div>
+          </div>
+        )}
 
         {/* Login Card */}
         <div className="bg-surface-card border border-surface-border rounded-2xl p-8 shadow-2xl">
@@ -121,8 +135,18 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          {/* Register link */}
+          <div className="mt-4 text-center">
+            <p className="text-xs text-slate-400">
+              Ingin jadi agen reseller?{" "}
+              <Link href="/register" className="text-brand-400 hover:underline font-medium">
+                Daftar di sini
+              </Link>
+            </p>
+          </div>
+
           {/* Demo credentials */}
-          <div className="mt-6 pt-5 border-t border-surface-border">
+          <div className="mt-5 pt-5 border-t border-surface-border">
             <p className="text-xs text-slate-500 text-center mb-3">Demo Credentials</p>
             <div className="grid grid-cols-2 gap-2">
               <button
