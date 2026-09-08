@@ -2,15 +2,13 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Tag, User, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
+import { Tag, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 import { formatRupiah } from "@/lib/utils";
 import toast from "@/components/ui/Toast";
 
 interface CheckoutFormProps {
   productId: string;
-  productName: string;
   productPrice: number;
 }
 
@@ -22,11 +20,9 @@ type VoucherState = {
 
 export default function CheckoutForm({
   productId,
-  productName,
   productPrice,
 }: CheckoutFormProps) {
   const router = useRouter();
-  const [customerName, setCustomerName] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
   const [voucher, setVoucher] = useState<VoucherState>(null);
   const [voucherError, setVoucherError] = useState("");
@@ -79,13 +75,12 @@ export default function CheckoutForm({
     setCheckoutLoading(true);
 
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/checkout/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId,
           voucherId: voucher?.id,
-          customerName: customerName.trim() || undefined,
         }),
       });
 
@@ -96,7 +91,8 @@ export default function CheckoutForm({
         return;
       }
 
-      // Navigate to order/payment page
+      // Checkout agent langsung PAID (kredit) — arahkan ke halaman order,
+      // yang akan langsung menampilkan link redeem tanpa perlu pembayaran.
       router.push(`/agent/order/${data.orderId}`);
     } catch {
       toast.error("Terjadi kesalahan. Coba lagi.");
@@ -112,19 +108,6 @@ export default function CheckoutForm({
       className="bg-surface-card border border-surface-border rounded-2xl p-6 space-y-5"
     >
       <h3 className="font-semibold text-white text-lg">Detail Pembelian</h3>
-
-      {/* Customer name */}
-      <Input
-        id="customer-name-input"
-        label="Nama Pembeli"
-        type="text"
-        placeholder="Opsional — untuk catatan Anda"
-        value={customerName}
-        onChange={(e) => setCustomerName(e.target.value)}
-        leftIcon={<User size={15} />}
-        hint="Nama pembeli tidak wajib diisi"
-        maxLength={100}
-      />
 
       {/* Voucher */}
       {!voucher ? (
@@ -219,8 +202,12 @@ export default function CheckoutForm({
         loading={checkoutLoading}
         icon={<ChevronRight size={18} />}
       >
-        Lanjut ke Pembayaran
+        Ambil Produk (Kredit)
       </Button>
+      <p className="text-xs text-slate-500 text-center">
+        Link redeem akan langsung tersedia. Total tagihan ditambahkan ke saldo hutang Anda.
+      </p>
     </form>
   );
 }
+
