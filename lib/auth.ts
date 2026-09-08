@@ -33,10 +33,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Akun Anda telah dinonaktifkan. Hubungi admin.");
         }
 
-        // Jika Anda ingin check isApproved, pastikan kolomnya ada dan dicek:
-        // if (user.role === "AGENT" && !user.isApproved) {
-        //   throw new Error("Akun agen Anda belum disetujui admin.");
-        // }
+        if (user.role === "AGENT" && !user.isApproved) {
+          throw new Error("Akun agen Anda belum disetujui admin.");
+        }
 
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
         if (!isValidPassword) {
@@ -47,6 +46,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           name: user.username,
           role: user.role,
+          isApproved: user.isApproved,
         };
       },
     }),
@@ -57,6 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 declare module "next-auth" {
   interface User {
     role: string;
+    isApproved?: boolean;
   }
   interface Session {
     user: {
@@ -65,6 +66,7 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role: string;
+      isApproved?: boolean;
     };
   }
 }
@@ -74,5 +76,6 @@ import type { JWT } from "next-auth/jwt";
 declare module "next-auth/jwt" {
   interface JWT extends Record<string, unknown> {
     role: string;
+    isApproved?: boolean;
   }
 }

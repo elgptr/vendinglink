@@ -17,6 +17,8 @@ const createSchema = z.object({
 const updateSchema = z.object({
   id: z.string().min(1),
   isActive: z.boolean().optional(),
+  isApproved: z.boolean().optional(),
+  settleDebt: z.boolean().optional(),
   password: z.string().min(6).max(100).optional(),
 });
 
@@ -39,7 +41,9 @@ export async function GET() {
         id: true,
         username: true,
         role: true,
+        isApproved: true,
         isActive: true,
+        outstandingDebt: true,
         createdAt: true,
         _count: {
           select: { transactions: true },
@@ -86,13 +90,17 @@ export async function POST(request: NextRequest) {
         username,
         passwordHash,
         role: "AGENT",
+        isApproved: true, // Directly added by Admin -> Approved by default
         isActive: true,
+        outstandingDebt: 0,
       },
       select: {
         id: true,
         username: true,
         role: true,
+        isApproved: true,
         isActive: true,
+        outstandingDebt: true,
         createdAt: true,
       },
     });
@@ -117,25 +125,72 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, isActive, password } = parsed.data;
+    const { id, isActive, isApproved, settleDebt, password } = parsed.data;
 
-    const updateData: { isActive?: boolean; passwordHash?: string } = {};
+    // Handle debt settlement if requested
+    if (settleDebt) {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id },
+          data: { outstandingDebt: 0 },
+        }),
+        prisma.transaction.updateMany({
+          where: {
+            agentId: id,
+            paymentType: "AGENT_CREDIT",
+            isSettled: false,
+          },
+          data: { isSettled: true },
+        }),
+      ]);
+    }
+
+    const updateData: {
+      isActive?: boolean;
+      isApproved?: boolean;
+      passwordHash?: string;
+    } = {};
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (isApproved !== undefined) updateData.isApproved = isApproved;
     if (password) {
       updateData.passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const agent = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        username: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-      },
-    });
+    let agent;
+    if (Object.keys(updateData).length > 0) {
+      agent = await prisma.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          isApproved: true,
+          isActive: true,
+          outstandingDebt: true,
+          createdAt: true,
+          _count: {
+            select: { transactions: true },
+          },
+        },
+      });
+    } else {
+      agent = await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          isApproved: true,
+          isActive: true,
+          outstandingDebt: true,
+          createdAt: true,
+          _count: {
+            select: { transactions: true },
+          },
+        },
+      });
+    }
 
     return NextResponse.json(agent);
   } catch (error) {
