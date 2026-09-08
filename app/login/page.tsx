@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import toast from "@/components/ui/Toast";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isUnapproved = searchParams.get("error") === "unapproved";
@@ -43,7 +43,7 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+      setError("Terjadi kesalahan. Silakan coba lagi.");
       toast.error("Terjadi kesalahan sistem.");
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export default function LoginPage() {
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md animate-slide-up">
@@ -70,7 +70,7 @@ export default function LoginPage() {
 
         {/* Unapproved agent banner */}
         {isUnapproved && (
-          <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 animate-fade-in">
+          <div className="flex items-start gap-3 p-4 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 animate-fade-in">
             <ShieldAlert size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm">
               <p className="font-semibold text-amber-400 mb-0.5">Akun Belum Disetujui</p>
@@ -172,5 +172,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
