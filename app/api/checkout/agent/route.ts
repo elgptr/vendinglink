@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderId } from "@/lib/utils";
+import { claimAvailableStock } from "@/lib/stock";
 import { z } from "zod";
 
 const agentCheckoutSchema = z.object({
@@ -80,27 +81,17 @@ export async function POST(request: NextRequest) {
     // ─── Database Transaction ──────────────────────────────────────────────
     try {
       const result = await prisma.$transaction(async (tx) => {
-        // 1. Find and lock an available stock
-        const availableStock = await tx.redeemStock.findFirst({
-          where: { productId, status: "AVAILABLE" },
-          orderBy: { createdAt: "asc" }, // FIFO
+        // 1. Atomically claim an available stock unit (compare-and-swap,
+        //    safe under concurrent checkouts — see lib/stock.ts).
+        const claimedStock = await claimAvailableStock(tx, productId, {
+          claimedByAgentId: session.user.id,
         });
 
-        if (!availableStock) {
+        if (!claimedStock) {
           throw new Error("NO_STOCK");
         }
 
-        // 2. Claim the stock
-        const claimedStock = await tx.redeemStock.update({
-          where: { id: availableStock.id },
-          data: {
-            status: "SOLD",
-            claimedByAgentId: session.user.id,
-            claimedAt: new Date(),
-          },
-        });
-
-        // 3. Create the transaction as PAID
+        // 2. Create the transaction as PAID
         const transaction = await tx.transaction.create({
           data: {
             orderId,
@@ -113,13 +104,14 @@ export async function POST(request: NextRequest) {
             discountAmount,
             finalAmount,
             status: "PAID",
+            stockStatus: "FULFILLED",
             isSettled: false,
             redeemUrl: claimedStock.redeemUrl,
             paidAt: new Date(),
           },
         });
 
-        // 4. Update Voucher usage if applicable
+        // 3. Update Voucher usage if applicable
         if (resolvedVoucherId) {
           await tx.voucher.update({
             where: { id: resolvedVoucherId },
@@ -127,7 +119,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // 5. Increment agent's outstanding debt
+        // 4. Increment agent's outstanding debt
         await tx.user.update({
           where: { id: session.user.id },
           data: { outstandingDebt: { increment: finalAmount } },
