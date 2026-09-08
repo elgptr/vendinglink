@@ -33,10 +33,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Akun Anda telah dinonaktifkan. Hubungi admin.");
         }
 
-        // Jika Anda ingin check isApproved, pastikan kolomnya ada dan dicek:
-        // if (user.role === "AGENT" && !user.isApproved) {
-        //   throw new Error("Akun agen Anda belum disetujui admin.");
-        // }
+        if (user.role === "AGENT" && !user.isApproved) {
+          throw new Error("Akun agen Anda belum disetujui admin.");
+        }
 
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
         if (!isValidPassword) {
