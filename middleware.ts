@@ -14,6 +14,8 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   // power the public B2C flow — no login required.
   const publicRoutes = [
     "/login",
+    "/register",
+    "/api/auth/register",
     "/api/midtrans/webhook",
     "/customer",
     "/api/customer",
