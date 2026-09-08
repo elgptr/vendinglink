@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSnapTransaction } from "@/lib/midtrans";
 import { generateOrderId, sanitizeString } from "@/lib/utils";
+import { claimAvailableStock } from "@/lib/stock";
 import { z } from "zod";
 
 const customerCheckoutSchema = z.object({
   productId: z.string().min(1),
   voucherId: z.string().optional(),
+  promoCodeId: z.string().optional(),
   customerName: z.string().min(1).max(100),
   customerPhone: z.string().max(20).optional(),
 });
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productId, voucherId, customerName, customerPhone } = parsed.data;
+    const { productId, voucherId, promoCodeId, customerName, customerPhone } = parsed.data;
     const sanitizedCustomerName = sanitizeString(customerName);
     const sanitizedCustomerPhone = customerPhone ? sanitizeString(customerPhone) : undefined;
 
@@ -57,11 +59,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ─── Calculate price with voucher ──────────────────────────────────────
+    // ─── Calculate price with voucher or stockout-refund promo code ────────
+    // Mutually exclusive: a promo code (auto-issued full refund) takes
+    // priority over a manually-entered voucher, since it's a compensation
+    // credit rather than a marketing discount.
     let discountAmount = 0;
     let resolvedVoucherId: string | undefined;
+    let resolvedPromoCodeId: string | undefined;
 
-    if (voucherId) {
+    if (promoCodeId) {
+      const promoCode = await prisma.promoCode.findUnique({
+        where: { id: promoCodeId },
+      });
+
+      if (
+        promoCode &&
+        promoCode.isActive &&
+        !promoCode.usedAt &&
+        (!promoCode.expiresAt || new Date(promoCode.expiresAt) > new Date())
+      ) {
+        discountAmount = promoCode.discount;
+        resolvedPromoCodeId = promoCode.id;
+      }
+    } else if (voucherId) {
       const voucher = await prisma.voucher.findFirst({
         where: { id: voucherId, isActive: true },
       });
@@ -79,6 +99,80 @@ export async function POST(request: NextRequest) {
 
     // ─── Generate order ID ─────────────────────────────────────────────────
     const orderId = generateOrderId();
+
+    // ─── Full-refund promo code: skip Midtrans entirely ────────────────────
+    // Midtrans's Snap API rejects gross_amount = 0, and there's nothing left
+    // to charge anyway — fulfil the order immediately and atomically, the
+    // same way agent credit checkout does, instead of routing through a
+    // payment gateway for a Rp 0 order.
+    if (finalAmount === 0 && resolvedPromoCodeId) {
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const claimedStock = await claimAvailableStock(tx, productId, {
+            customerName: sanitizedCustomerName,
+            customerPhone: sanitizedCustomerPhone,
+          });
+
+          if (!claimedStock) {
+            throw new Error("NO_STOCK");
+          }
+
+          // Mark the promo code used atomically — guards against the same
+          // code being redeemed twice by concurrent requests.
+          const promoUpdate = await tx.promoCode.updateMany({
+            where: { id: resolvedPromoCodeId, usedAt: null },
+            data: { usedAt: new Date() },
+          });
+
+          if (promoUpdate.count === 0) {
+            throw new Error("PROMO_ALREADY_USED");
+          }
+
+          const transaction = await tx.transaction.create({
+            data: {
+              orderId,
+              productId,
+              agentId: null,
+              promoCodeId: resolvedPromoCodeId,
+              customerName: sanitizedCustomerName,
+              customerPhone: sanitizedCustomerPhone,
+              paymentType: "MIDTRANS",
+              originalPrice,
+              discountAmount,
+              finalAmount: 0,
+              status: "PAID",
+              stockStatus: "FULFILLED",
+              redeemUrl: claimedStock.redeemUrl,
+              paidAt: new Date(),
+            },
+          });
+
+          return { transaction, claimedStock };
+        });
+
+        return NextResponse.json({
+          orderId: result.transaction.orderId,
+          amount: 0,
+          originalPrice,
+          discountAmount,
+          productName: product.name,
+          customerName: sanitizedCustomerName,
+          redeemUrl: result.claimedStock.redeemUrl,
+          guideImageUrl: product.guideImageUrl,
+        });
+      } catch (txError) {
+        if (txError instanceof Error && txError.message === "NO_STOCK") {
+          return NextResponse.json({ error: "Stok produk habis" }, { status: 400 });
+        }
+        if (txError instanceof Error && txError.message === "PROMO_ALREADY_USED") {
+          return NextResponse.json(
+            { error: "Kode promo sudah digunakan" },
+            { status: 400 }
+          );
+        }
+        throw txError;
+      }
+    }
 
     // ─── Create Midtrans Snap transaction ──────────────────────────────────
     let snapToken: string | undefined;
@@ -125,6 +219,7 @@ export async function POST(request: NextRequest) {
         productId,
         agentId: null, // Public B2C transaction has no agent
         voucherId: resolvedVoucherId,
+        promoCodeId: resolvedPromoCodeId,
         customerName: sanitizedCustomerName,
         customerPhone: sanitizedCustomerPhone,
         paymentType: "MIDTRANS",
@@ -145,6 +240,7 @@ export async function POST(request: NextRequest) {
       customerName: sanitizedCustomerName,
       snapToken: transaction.snapToken,
     });
+
   } catch (error) {
     console.error("Customer checkout error:", error);
     return NextResponse.json(
