@@ -16,9 +16,9 @@ model User {
   username        String   @unique
   passwordHash    String
   role            String   @default("AGENT") // 'ADMIN' | 'AGENT'
-  isApproved      Boolean  @default(false)   // Agents require admin approval before transacting
+  isApproved      Boolean  @default(false) // Agents require admin approval before transacting
   isActive        Boolean  @default(true)
-  outstandingDebt Int      @default(0)       // Debt owed to admin from credit-based agent checkouts
+  outstandingDebt Int      @default(0) // Debt owed to admin from credit-based agent checkouts
   createdAt       DateTime @default(now())
 
   // Relations
@@ -33,7 +33,7 @@ model Product {
   name          String
   price         Int
   description   String?
-  guideImageUrl String?  // Image guide on how to use the redeem link
+  guideImageUrl String? // Image guide on how to use the redeem link
   isActive      Boolean  @default(true)
   updatedAt     DateTime @updatedAt
 
@@ -82,7 +82,7 @@ model Transaction {
   id             String    @id @default(cuid())
   orderId        String    @unique
   productId      String
-  agentId        String?   // Nullable for direct customer (B2C) purchases
+  agentId        String? // Nullable for direct customer (B2C) purchases
   voucherId      String?
   customerName   String?
   customerPhone  String?
@@ -90,9 +90,15 @@ model Transaction {
   originalPrice  Int
   discountAmount Int       @default(0)
   finalAmount    Int
-  status         String    @default("PENDING") // 'PENDING' | 'PAID' | 'EXPIRED'
-  isSettled      Boolean   @default(false)     // For agent debt tracking
+  status         String    @default("PENDING") // 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED'
+  // Tracks stock fulfillment outcome at settlement time — distinct from
+  // `status` because a MIDTRANS transaction can be PAID (money captured)
+  // while stock ran out (OUT_OF_STOCK), which triggers the promo code
+  // compensation flow instead of handing out a redeem link.
+  stockStatus    String    @default("PENDING") // 'PENDING' | 'FULFILLED' | 'OUT_OF_STOCK'
+  isSettled      Boolean   @default(false) // For agent debt tracking
   redeemUrl      String?
+  promoCodeId    String? // Set when stock ran out and a customer refund promo was issued
   qrString       String?
   qrCodeUrl      String?
   snapToken      String?
@@ -100,10 +106,29 @@ model Transaction {
   paidAt         DateTime?
 
   // Relations
-  product Product  @relation(fields: [productId], references: [id])
-  agent   User?    @relation(fields: [agentId], references: [id])
-  voucher Voucher? @relation(fields: [voucherId], references: [id])
+  product   Product    @relation(fields: [productId], references: [id])
+  agent     User?      @relation(fields: [agentId], references: [id])
+  voucher   Voucher?   @relation(fields: [voucherId], references: [id])
+  promoCode PromoCode? @relation(fields: [promoCodeId], references: [id])
 
   @@map("transactions")
 }
 
+model PromoCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  // Discount is expressed as a flat Rupiah amount (matches Voucher.discountAmount
+  // semantics). For a stockout refund this is set equal to the original
+  // transaction's finalAmount, so applying it nets the customer a free order.
+  discount  Int
+  type      String    @default("STOCKOUT_REFUND") // 'STOCKOUT_REFUND'
+  isActive  Boolean   @default(true)
+  usedAt    DateTime?
+  expiresAt DateTime? // 30 days from issuance
+  createdAt DateTime  @default(now())
+
+  // Relations
+  transactions Transaction[]
+
+  @@map("promo_codes")
+}
