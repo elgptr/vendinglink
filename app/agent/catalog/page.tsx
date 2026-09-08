@@ -5,6 +5,10 @@ import { ShoppingBag, Package } from "lucide-react";
 import { formatRupiah } from "@/lib/utils";
 import ProductCard from "@/components/agent/ProductCard";
 
+// Stock count changes every time a purchase happens — never prerender this
+// page statically at build time, always fetch fresh data per request.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Katalog Produk",
 };

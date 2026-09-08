@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle, Copy, Check, ShoppingBag, ExternalLink } from "lucide-react";
+import { CheckCircle, Copy, Check, ShoppingBag, ExternalLink, ImageIcon } from "lucide-react";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 import toast from "@/components/ui/Toast";
@@ -10,6 +10,7 @@ import Card from "@/components/ui/Card";
 
 interface SuccessScreenProps {
   redeemUrl: string;
+  guideImageUrl?: string | null;
   productName: string;
   amount: number;
   customerName?: string | null;
@@ -18,6 +19,7 @@ interface SuccessScreenProps {
 
 export default function SuccessScreen({
   redeemUrl,
+  guideImageUrl,
   productName,
   amount,
   customerName,
@@ -88,7 +90,7 @@ export default function SuccessScreen({
       </Card>
 
       {/* Redeem link box */}
-      <Card className="p-5 border-emerald-500/30" glow>
+      <Card className="p-5 border-emerald-500/30 mb-4" glow>
         <p className="text-sm font-semibold text-emerald-400 mb-3 flex items-center gap-2">
           <ExternalLink size={14} />
           Link Redeem Anda
@@ -127,6 +129,22 @@ export default function SuccessScreen({
           </a>
         </div>
       </Card>
+
+      {/* Usage guide image */}
+      {guideImageUrl && (
+        <Card className="p-5 mb-4">
+          <p className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+            <ImageIcon size={14} />
+            Panduan Cara Redeem
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={guideImageUrl}
+            alt="Panduan cara menggunakan link redeem"
+            className="w-full rounded-xl border border-surface-border"
+          />
+        </Card>
+      )}
 
       {/* Order again */}
       <div className="mt-5 text-center">
