@@ -69,13 +69,6 @@ export async function POST(request: NextRequest) {
       orderId: result.transaction.orderId,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "NO_STOCK_AVAILABLE") {
-      console.error("[Webhook] No stock available for paid transaction!");
-      return NextResponse.json(
-        { error: "No stock available" },
-        { status: 500 }
-      );
-    }
     console.error("[Webhook] Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -83,3 +76,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
