@@ -45,6 +45,17 @@ export function generateOrderId(): string {
 }
 
 /**
+ * Generate a unique, human-typeable promo code for stockout refund
+ * compensation. Format: RESTOCK-XXXXXXXX (8 random uppercase alphanumeric
+ * chars), distinct-looking from admin-issued Voucher codes so support staff
+ * can immediately tell these were auto-issued.
+ */
+export function generatePromoCode(): string {
+  const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+  return `RESTOCK-${random}`;
+}
+
+/**
  * Validate Midtrans webhook signature
  * SHA512(order_id + status_code + gross_amount + server_key)
  */
