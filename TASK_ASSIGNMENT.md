@@ -82,25 +82,33 @@ lib/auth.ts                          (extend — un-comment isApproved check)
 
 ---
 
-## 🅲️ Track C: Product Guide Image & Inventory
+## 🅲️ Track C: Support Kode Redeem & Panduan Penggunaan (Guide Text)
 
 **Owner:** @dev-iqbal
 **Bisa mulai:** Sekarang, dari `main`
 **Tidak bergantung pada:** Track A, Track B
 
 **Deliverables:**
-- [ ] Extend `app/api/admin/products/route.ts` — terima & simpan `guideImageUrl` di POST/PATCH
-- [ ] Extend `app/admin/inventory/page.tsx` — form tambah/edit produk: input URL gambar panduan
-- [ ] Preview gambar panduan di form admin
-- [ ] (Opsional) Validasi URL gambar dengan `isValidUrl()` dari `lib/utils.ts` (sudah ada)
+- [ ] Extend DB Schema (`prisma/schema.prisma`): Tambahkan `type` (String, default "LINK") dan `guideText` (String, nullable) di model `Product`.
+- [ ] Extend `app/api/admin/products/route.ts` — terima & simpan `type`, `guideText`, `guideImageUrl` di POST/PATCH.
+- [ ] Extend `app/admin/inventory/page.tsx` — form tambah/edit produk:
+  - Input dropdown/radio tipe produk ("Link" atau "Kode Redeem").
+  - Textarea untuk instruksi "Cara Penggunaan (Step-by-step)".
+  - Bypass validasi URL (`isValidUrl`) pada bulk input stock jika produk bertipe Kode Redeem.
+- [ ] Modifikasi Halaman Sukses (`app/customer/order/[orderId]/page.tsx` & `app/agent/order/[orderId]/page.tsx`):
+  - Ubah tombol "Buka Link" jadi "Salin Kode" jika tipe produk adalah "KODE".
+  - Tambahkan tombol "Cara Penggunaan" yang saat diklik memunculkan modal/popup berisi `guideText` dan `guideImageUrl` produk terkait.
 
 **Files Owned:**
 ```
+prisma/schema.prisma                 (extend)
 app/api/admin/products/route.ts      (extend)
 app/admin/inventory/page.tsx         (extend)
+app/customer/order/[orderId]/page.tsx(extend)
+app/agent/order/[orderId]/page.tsx   (extend)
 ```
 
-**Protected (jangan diedit):** `prisma/schema.prisma`, `app/admin/agents/*`, `app/api/admin/agents/*`, `app/agent/*`
+**Protected (jangan diedit):** `app/admin/agents/*`, `app/api/admin/agents/*`
 
 ---
 
