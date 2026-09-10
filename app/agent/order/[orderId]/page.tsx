@@ -41,6 +41,8 @@ export default async function OrderPage({ params }: OrderPageProps) {
       <SuccessScreen
         redeemUrl={transaction.redeemUrl}
         guideImageUrl={transaction.product.guideImageUrl}
+        guideText={transaction.product.guideText}
+        productType={transaction.product.type}
         productName={transaction.product.name}
         amount={transaction.finalAmount}
         customerName={transaction.customerName}
