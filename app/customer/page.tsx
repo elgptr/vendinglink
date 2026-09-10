@@ -28,6 +28,8 @@ async function getProducts() {
     id: p.id,
     name: p.name,
     price: p.price,
+    originalPrice: p.originalPrice,
+    showOriginalPrice: p.showOriginalPrice,
     description: p.description,
     stockCount: p._count.stocks,
   }));

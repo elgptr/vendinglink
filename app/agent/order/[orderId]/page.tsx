@@ -12,11 +12,12 @@ interface OrderPageProps {
 }
 
 export default async function OrderPage({ params }: OrderPageProps) {
+  const p = await params;
   const session = await auth();
   if (!session) redirect("/login");
 
   const transaction = await prisma.transaction.findUnique({
-    where: { orderId: params.orderId },
+    where: { orderId: p.orderId },
     include: { product: true },
   });
 

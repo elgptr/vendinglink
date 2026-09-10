@@ -12,6 +12,8 @@ interface ProductCardProps {
     id: string;
     name: string;
     price: number;
+    originalPrice?: number | null;
+    showOriginalPrice: boolean;
     description: string | null;
     stockCount: number;
   };
@@ -53,9 +55,16 @@ export default function ProductCard({ product }: ProductCardProps) {
             <Tag size={10} />
             Harga
           </p>
-          <p className="text-xl font-bold text-brand-400">
-            {formatRupiah(product.price)}
-          </p>
+          <div className="flex flex-col">
+            {product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price && (
+              <span className="text-xs text-slate-500 line-through">
+                {formatRupiah(product.originalPrice)}
+              </span>
+            )}
+            <p className="text-xl font-bold text-brand-400 leading-none mt-0.5">
+              {formatRupiah(product.price)}
+            </p>
+          </div>
         </div>
 
         {inStock ? (

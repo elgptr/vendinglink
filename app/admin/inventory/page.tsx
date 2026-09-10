@@ -15,8 +15,10 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  originalPrice: number | null;
   type: string;
   description: string | null;
+  showOriginalPrice: boolean;
   guideImageUrl: string | null;
   guideText: string | null;
   isActive: boolean;
@@ -54,9 +56,13 @@ export default function InventoryPage() {
   const [uploadProductId, setUploadProductId] = useState("");
   const [newProductName, setNewProductName] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
+  const [newOriginalPrice, setNewOriginalPrice] = useState("");
+  const [newShowOriginalPrice, setNewShowOriginalPrice] = useState(true);
   const [newProductType, setNewProductType] = useState("LINK");
   const [newProductDesc, setNewProductDesc] = useState("");
   const [editProductName, setEditProductName] = useState("");
+  const [editOriginalPrice, setEditOriginalPrice] = useState("");
+  const [editShowOriginalPrice, setEditShowOriginalPrice] = useState(true);
   const [editProductType, setEditProductType] = useState("LINK");
   const [editProductDesc, setEditProductDesc] = useState("");
   const [newProductGuideUrl, setNewProductGuideUrl] = useState("");
@@ -104,6 +110,8 @@ export default function InventoryPage() {
         id: selectedProduct.id,
         name: editProductName,
         price: parseInt(newPrice),
+        originalPrice: editOriginalPrice ? parseInt(editOriginalPrice) : undefined,
+        showOriginalPrice: editShowOriginalPrice,
         type: editProductType,
         description: editProductDesc || undefined,
         guideImageUrl: editGuideUrl,
@@ -195,6 +203,8 @@ export default function InventoryPage() {
       body: JSON.stringify({
         name: newProductName,
         price: parseInt(newProductPrice),
+        originalPrice: newOriginalPrice ? parseInt(newOriginalPrice) : undefined,
+        showOriginalPrice: newShowOriginalPrice,
         type: newProductType,
         description: newProductDesc || undefined,
         guideImageUrl: newProductGuideUrl || undefined,
@@ -208,6 +218,8 @@ export default function InventoryPage() {
       setShowAddProductModal(false);
       setNewProductName("");
       setNewProductPrice("");
+      setNewOriginalPrice("");
+      setNewShowOriginalPrice(true);
       setNewProductType("LINK");
       setNewProductDesc("");
       setNewProductGuideUrl("");
@@ -303,6 +315,8 @@ export default function InventoryPage() {
                     setSelectedProduct(product);
                     setEditProductName(product.name);
                     setNewPrice(product.price.toString());
+                    setEditOriginalPrice(product.originalPrice ? product.originalPrice.toString() : "");
+                    setEditShowOriginalPrice(product.showOriginalPrice);
                     setEditProductType(product.type);
                     setEditProductDesc(product.description || "");
                     setEditGuideUrl(product.guideImageUrl || "");
@@ -437,6 +451,28 @@ export default function InventoryPage() {
             onChange={(e) => setNewPrice(e.target.value)}
             required
           />
+          <Input
+            id="edit-original-price-input"
+            label="Harga Asli / Coret (Opsional)"
+            type="number"
+            min="1"
+            placeholder="500000"
+            value={editOriginalPrice}
+            onChange={(e) => setEditOriginalPrice(e.target.value)}
+          />
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-300">Tampilkan Harga Coret?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editShowOriginalPrice" checked={editShowOriginalPrice} onChange={() => setEditShowOriginalPrice(true)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Ya, Tampilkan</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editShowOriginalPrice" checked={!editShowOriginalPrice} onChange={() => setEditShowOriginalPrice(false)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Sembunyikan</span>
+              </label>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
             <div className="flex gap-4 mt-1">
@@ -607,6 +643,28 @@ export default function InventoryPage() {
             onChange={(e) => setNewProductPrice(e.target.value)}
             required
           />
+          <Input
+            id="new-original-price"
+            label="Harga Asli / Coret (Opsional)"
+            type="number"
+            min="1"
+            placeholder="500000"
+            value={newOriginalPrice}
+            onChange={(e) => setNewOriginalPrice(e.target.value)}
+          />
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-300">Tampilkan Harga Coret?</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="newShowOriginalPrice" checked={newShowOriginalPrice} onChange={() => setNewShowOriginalPrice(true)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Ya, Tampilkan</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="newShowOriginalPrice" checked={!newShowOriginalPrice} onChange={() => setNewShowOriginalPrice(false)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Sembunyikan</span>
+              </label>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
             <div className="flex gap-4 mt-1">

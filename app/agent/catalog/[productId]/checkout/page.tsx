@@ -15,11 +15,12 @@ interface CheckoutPageProps {
 }
 
 export default async function CheckoutPage({ params }: CheckoutPageProps) {
+  const p = await params;
   const session = await auth();
   if (!session) redirect("/login");
 
   const product = await prisma.product.findFirst({
-    where: { id: params.productId, isActive: true },
+    where: { id: p.productId, isActive: true },
   });
 
   if (!product) notFound();
@@ -56,9 +57,16 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           </div>
           <div className="ml-auto text-right">
             <p className="text-xs text-slate-500">Harga</p>
-            <p className="text-xl font-bold text-brand-400">
-              {formatRupiah(product.price)}
-            </p>
+            <div className="flex flex-col items-end">
+              {product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price && (
+                <span className="text-xs text-slate-500 line-through">
+                  {formatRupiah(product.originalPrice)}
+                </span>
+              )}
+              <p className="text-xl font-bold text-brand-400 leading-none mt-0.5">
+                {formatRupiah(product.price)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
