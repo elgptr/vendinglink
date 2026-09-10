@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { User, Phone, ChevronRight } from "lucide-react";
+import { User, Phone, Tag, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { formatRupiah } from "@/lib/utils";
@@ -14,6 +14,13 @@ interface CustomerCheckoutFormProps {
   productPrice: number;
 }
 
+type PromoState = {
+  id: string;
+  code: string;
+  discountAmount: number;
+  isVoucher?: boolean;
+} | null;
+
 export default function CustomerCheckoutForm({
   productId,
   productPrice,
@@ -21,7 +28,53 @@ export default function CustomerCheckoutForm({
   const router = useRouter();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [promo, setPromo] = useState<PromoState>(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const discountAmount = promo?.discountAmount || 0;
+  const finalAmount = Math.max(0, productPrice - discountAmount);
+
+  const handleValidatePromo = async () => {
+    if (!promoCodeInput.trim()) return;
+    setPromoError("");
+    setPromoLoading(true);
+
+    try {
+      const res = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCodeInput.trim().toUpperCase() }),
+      });
+
+      const data = await res.json();
+
+      if (data.valid) {
+        setPromo({
+          id: data.promoCodeId || data.voucherId,
+          code: data.code,
+          discountAmount: data.discountAmount,
+          isVoucher: !!data.voucherId,
+        });
+        toast.success(data.message);
+      } else {
+        setPromo(null);
+        setPromoError(data.error || "Kode promo tidak valid");
+      }
+    } catch {
+      setPromoError("Gagal memvalidasi kode promo");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setPromo(null);
+    setPromoCodeInput("");
+    setPromoError("");
+  };
 
   const handleCheckout = async (e: FormEvent) => {
     e.preventDefault();
@@ -39,6 +92,8 @@ export default function CustomerCheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId,
+          promoCodeId: promo?.isVoucher ? undefined : promo?.id,
+          voucherId: promo?.isVoucher ? promo?.id : undefined,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim() || undefined,
         }),
@@ -88,6 +143,63 @@ export default function CustomerCheckoutForm({
         hint="Opsional — untuk konfirmasi pesanan jika diperlukan"
       />
 
+      {/* Promo code (auto-issued when a previous order ran out of stock) */}
+      {!promo ? (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-300">
+            Kode Promo / Voucher (opsional)
+          </label>
+          <div className="flex gap-2">
+            <div className="flex-1 relative flex items-center">
+              <Tag size={15} className="absolute left-3 text-slate-400 pointer-events-none" />
+              <input
+                id="customer-promo-code-input"
+                type="text"
+                placeholder="Contoh: RESTOCK-XXXXXXXX"
+                value={promoCodeInput}
+                onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-surface border border-surface-border text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all"
+              />
+            </div>
+            <Button
+              id="customer-apply-promo-btn"
+              type="button"
+              variant="secondary"
+              onClick={handleValidatePromo}
+              loading={promoLoading}
+              disabled={!promoCodeInput.trim()}
+            >
+              Terapkan
+            </Button>
+          </div>
+          {promoError && (
+            <p className="text-xs text-red-400 flex items-center gap-1">
+              <XCircle size={12} /> {promoError}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+          <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-emerald-300">
+              Promo <span className="font-bold">{promo.code}</span> aktif
+            </p>
+            <p className="text-xs text-emerald-400">
+              Hemat {formatRupiah(promo.discountAmount)}
+            </p>
+          </div>
+          <button
+            type="button"
+            id="customer-remove-promo-btn"
+            onClick={handleRemovePromo}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1"
+          >
+            <XCircle size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Price summary */}
       <div className="border border-surface-border rounded-xl overflow-hidden">
         <div className="bg-surface px-4 py-2">
@@ -100,10 +212,18 @@ export default function CustomerCheckoutForm({
             <span className="text-slate-400">Harga Produk</span>
             <span className="text-slate-200">{formatRupiah(productPrice)}</span>
           </div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-emerald-400">Potongan Promo</span>
+              <span className="text-emerald-400 font-medium">
+                - {formatRupiah(discountAmount)}
+              </span>
+            </div>
+          )}
           <div className="border-t border-surface-border pt-3 flex justify-between">
             <span className="font-semibold text-white">Total Tagihan</span>
             <span className="text-xl font-bold text-brand-400">
-              {formatRupiah(productPrice)}
+              {formatRupiah(finalAmount)}
             </span>
           </div>
         </div>
@@ -117,8 +237,9 @@ export default function CustomerCheckoutForm({
         loading={checkoutLoading}
         icon={<ChevronRight size={18} />}
       >
-        Lanjut ke Pembayaran
+        {finalAmount === 0 ? "Ambil Produk (Gratis)" : "Lanjut ke Pembayaran"}
       </Button>
     </form>
   );
 }
+
