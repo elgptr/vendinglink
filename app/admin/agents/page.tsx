@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, useMemo } from "react";
 import {
   Users,
   Plus,
@@ -13,6 +13,7 @@ import {
   DollarSign,
   ShieldCheck,
   ShieldAlert,
+  Search,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -35,6 +36,7 @@ interface Agent {
 }
 
 type ModalMode = "add" | "reset-password" | "settle-debt" | null;
+type FilterTab = "ALL" | "PENDING" | "APPROVED" | "HAS_DEBT";
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -44,6 +46,10 @@ export default function AgentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
   const [approving, setApproving] = useState<string | null>(null);
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
 
   // Add form
   const [newUsername, setNewUsername] = useState("");
@@ -177,6 +183,21 @@ export default function AgentsPage() {
   };
 
   const pendingApprovalCount = agents.filter((a) => !a.isApproved).length;
+  const debtCount = agents.filter((a) => a.outstandingDebt > 0).length;
+
+  const filteredAgents = useMemo(() => {
+    return agents.filter((agent) => {
+      // Search query filter
+      if (searchQuery.trim() && !agent.username.toLowerCase().includes(searchQuery.toLowerCase().trim())) {
+        return false;
+      }
+      // Tab filter
+      if (activeTab === "PENDING") return !agent.isApproved;
+      if (activeTab === "APPROVED") return agent.isApproved;
+      if (activeTab === "HAS_DEBT") return agent.outstandingDebt > 0;
+      return true;
+    });
+  }, [agents, searchQuery, activeTab]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
@@ -209,17 +230,90 @@ export default function AgentsPage() {
               Ada <strong>{pendingApprovalCount}</strong> pendaftaran agen baru yang menunggu persetujuan Admin!
             </span>
           </div>
+          <button
+            onClick={() => setActiveTab("PENDING")}
+            className="text-xs font-semibold px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg transition-colors border border-amber-500/40"
+          >
+            Lihat Permintaan
+          </button>
         </div>
       )}
+
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Tabs */}
+        <div className="flex items-center gap-1.5 bg-surface-card p-1 rounded-xl border border-surface-border w-full sm:w-auto">
+          <button
+            onClick={() => setActiveTab("ALL")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === "ALL"
+                ? "bg-brand-500/20 text-brand-400 border border-brand-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Semua ({agents.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("PENDING")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              activeTab === "PENDING"
+                ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Menunggu Approval
+            {pendingApprovalCount > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] bg-amber-500 text-slate-950 font-bold rounded-full">
+                {pendingApprovalCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("APPROVED")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === "APPROVED"
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Disetujui ({agents.filter((a) => a.isApproved).length})
+          </button>
+          <button
+            onClick={() => setActiveTab("HAS_DEBT")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              activeTab === "HAS_DEBT"
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Punya Hutang ({debtCount})
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="w-full sm:w-72">
+          <Input
+            id="search-agent-input"
+            placeholder="Cari username agen..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftIcon={<Search size={16} />}
+          />
+        </div>
+      </div>
 
       {/* Agents Table */}
       <Card className="overflow-hidden">
         {loading ? (
           <div className="py-12"><Spinner label="Memuat data agen..." /></div>
-        ) : agents.length === 0 ? (
+        ) : filteredAgents.length === 0 ? (
           <div className="py-12 text-center text-slate-500">
             <Users size={40} className="mx-auto mb-3 opacity-40" />
-            <p>Belum ada agen terdaftar</p>
+            <p>
+              {searchQuery || activeTab !== "ALL"
+                ? "Tidak ada agen yang sesuai filter pencarian"
+                : "Belum ada agen terdaftar"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -236,7 +330,7 @@ export default function AgentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {agents.map((agent) => (
+                {filteredAgents.map((agent) => (
                   <tr key={agent.id} className={!agent.isApproved ? "bg-amber-950/10" : undefined}>
                     <td>
                       <div className="flex items-center gap-2">
