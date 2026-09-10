@@ -43,7 +43,7 @@ function LoginContent() {
         router.refresh();
       }
     } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+      setError("Terjadi kesalahan. Silakan coba lagi.");
       toast.error("Terjadi kesalahan sistem.");
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ function LoginContent() {
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md animate-slide-up">
@@ -70,7 +70,7 @@ function LoginContent() {
 
         {/* Unapproved agent banner */}
         {isUnapproved && (
-          <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 animate-fade-in">
+          <div className="flex items-start gap-3 p-4 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 animate-fade-in">
             <ShieldAlert size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm">
               <p className="font-semibold text-amber-400 mb-0.5">Akun Belum Disetujui</p>
@@ -144,8 +144,6 @@ function LoginContent() {
               </Link>
             </p>
           </div>
-
-
         </div>
 
         <p className="text-center text-xs text-slate-600 mt-6">
