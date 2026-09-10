@@ -115,6 +115,23 @@ app/agent/order/[orderId]/page.tsx   (extend)
 
 ## 📋 Aturan Kolaborasi
 
+### ⚠️ WAJIB: Pull/Clone Terbaru Sebelum Mulai Kerja
+
+> **PENTING:** Sebelum mulai mengerjakan track masing-masing, **WAJIB pull atau clone ulang** dari `main` terbaru. Sudah ada banyak perubahan (fix 404, fitur harga coret, merge conflict resolution, dll) yang belum tentu ada di branch lokal kalian.
+
+```bash
+# Jika sudah punya repo lokal:
+git checkout main
+git pull origin main
+
+# Atau clone ulang dari awal:
+git clone https://github.com/elgptr/vendinglink.git
+cd vendinglink
+npm install
+```
+
+> Jika tidak pull terbaru, **dijamin akan conflict** saat PR.
+
 ### File Bersama (Coordinate Dulu via Issue)
 
 Track A/B/C sudah didesain **zero overlap**. Kalau ternyata butuh edit file di luar daftar "Files Owned" milikmu:
