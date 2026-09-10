@@ -20,6 +20,7 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
     "/customer",
     "/api/customer",
     "/api/checkout/customer",
+    "/api/promo-codes/validate",
   ];
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
