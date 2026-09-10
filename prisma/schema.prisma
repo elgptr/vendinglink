@@ -32,8 +32,10 @@ model Product {
   id            String   @id @default(cuid())
   name          String
   price         Int
+  type          String   @default("LINK") // 'LINK' | 'KODE'
   description   String?
   guideImageUrl String? // Image guide on how to use the redeem link
+  guideText     String? // Step-by-step usage instructions (markdown/plain text)
   isActive      Boolean  @default(true)
   updatedAt     DateTime @updatedAt
 

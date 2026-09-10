@@ -15,8 +15,10 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  type: string;
   description: string | null;
   guideImageUrl: string | null;
+  guideText: string | null;
   isActive: boolean;
   updatedAt: string;
   _count: { stocks: number };
@@ -52,11 +54,15 @@ export default function InventoryPage() {
   const [uploadProductId, setUploadProductId] = useState("");
   const [newProductName, setNewProductName] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
+  const [newProductType, setNewProductType] = useState("LINK");
   const [newProductDesc, setNewProductDesc] = useState("");
   const [editProductName, setEditProductName] = useState("");
+  const [editProductType, setEditProductType] = useState("LINK");
   const [editProductDesc, setEditProductDesc] = useState("");
   const [newProductGuideUrl, setNewProductGuideUrl] = useState("");
+  const [newProductGuideText, setNewProductGuideText] = useState("");
   const [editGuideUrl, setEditGuideUrl] = useState("");
+  const [editGuideText, setEditGuideText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
@@ -98,8 +104,10 @@ export default function InventoryPage() {
         id: selectedProduct.id,
         name: editProductName,
         price: parseInt(newPrice),
+        type: editProductType,
         description: editProductDesc || undefined,
         guideImageUrl: editGuideUrl,
+        guideText: editGuideText || undefined,
       }),
     });
 
@@ -187,8 +195,10 @@ export default function InventoryPage() {
       body: JSON.stringify({
         name: newProductName,
         price: parseInt(newProductPrice),
+        type: newProductType,
         description: newProductDesc || undefined,
         guideImageUrl: newProductGuideUrl || undefined,
+        guideText: newProductGuideText || undefined,
       }),
     });
 
@@ -198,8 +208,10 @@ export default function InventoryPage() {
       setShowAddProductModal(false);
       setNewProductName("");
       setNewProductPrice("");
+      setNewProductType("LINK");
       setNewProductDesc("");
       setNewProductGuideUrl("");
+      setNewProductGuideText("");
     } else {
       toast.error("Gagal menambahkan produk");
     }
@@ -256,7 +268,12 @@ export default function InventoryPage() {
               <Card key={product.id} className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold text-white">{product.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-white">{product.name}</h3>
+                      <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
+                        {product.type === "KODE" ? "🔑 Kode" : "🔗 Link"}
+                      </Badge>
+                    </div>
                     <p className="text-xl font-bold text-purple-400 mt-1">
                       {formatRupiah(product.price)}
                     </p>
@@ -286,8 +303,10 @@ export default function InventoryPage() {
                     setSelectedProduct(product);
                     setEditProductName(product.name);
                     setNewPrice(product.price.toString());
+                    setEditProductType(product.type);
                     setEditProductDesc(product.description || "");
                     setEditGuideUrl(product.guideImageUrl || "");
+                    setEditGuideText(product.guideText || "");
                     setShowPriceModal(true);
                   }}
                 >
@@ -419,6 +438,19 @@ export default function InventoryPage() {
             required
           />
           <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editProductType" value="LINK" checked={editProductType === "LINK"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Link Redeem</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editProductType" value="KODE" checked={editProductType === "KODE"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Kode Redeem</span>
+              </label>
+            </div>
+          </div>
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label htmlFor="edit-product-desc" className="text-sm font-medium text-slate-300">
                 Deskripsi
@@ -472,6 +504,16 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
+          <Textarea
+            id="edit-product-guide-text"
+            label="Panduan Penggunaan (Opsional)"
+            placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
+            value={editGuideText}
+            onChange={(e) => setEditGuideText(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
+          />
         </form>
       </Modal>
 
@@ -515,13 +557,13 @@ export default function InventoryPage() {
           </div>
           <Textarea
             id="bulk-links-textarea"
-            label="Link Redeem (1 baris = 1 link)"
-            placeholder={"https://example.com/redeem/LINK1\nhttps://example.com/redeem/LINK2\nhttps://example.com/redeem/LINK3"}
+            label={products.find(p => p.id === uploadProductId)?.type === "KODE" ? "Kode Redeem (1 baris = 1 kode)" : "Link Redeem (1 baris = 1 link)"}
+            placeholder={products.find(p => p.id === uploadProductId)?.type === "KODE" ? "KODE123\nKODE456" : "https://example.com/redeem/LINK1\nhttps://example.com/redeem/LINK2"}
             value={bulkLinks}
             onChange={(e) => setBulkLinks(e.target.value)}
             rows={8}
             required
-            hint="Setiap baris harus berisi 1 URL valid yang diawali http:// atau https://"
+            hint={products.find(p => p.id === uploadProductId)?.type === "KODE" ? "Masukkan 1 kode per baris" : "Setiap baris harus berisi 1 URL valid yang diawali http:// atau https://"}
           />
         </form>
       </Modal>
@@ -565,6 +607,19 @@ export default function InventoryPage() {
             onChange={(e) => setNewProductPrice(e.target.value)}
             required
           />
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="newProductType" value="LINK" checked={newProductType === "LINK"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Link Redeem</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="newProductType" value="KODE" checked={newProductType === "KODE"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Kode Redeem</span>
+              </label>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label htmlFor="new-product-desc" className="text-sm font-medium text-slate-300">
@@ -619,6 +674,16 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
+          <Textarea
+            id="new-product-guide-text"
+            label="Panduan Penggunaan (Opsional)"
+            placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
+            value={newProductGuideText}
+            onChange={(e) => setNewProductGuideText(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
+          />
         </form>
       </Modal>
     </div>

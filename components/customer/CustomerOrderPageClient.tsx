@@ -19,9 +19,11 @@ interface OrderData {
   status: OrderStatus;
   finalAmount: number;
   productName: string;
+  productType?: string | null;
   customerName?: string | null;
   redeemUrl?: string | null;
   guideImageUrl?: string | null;
+  guideText?: string | null;
   paidAt?: string | null;
 }
 
@@ -115,6 +117,8 @@ export default function CustomerOrderPageClient({
       <CustomerSuccessScreen
         redeemUrl={orderData.redeemUrl}
         guideImageUrl={orderData.guideImageUrl}
+        guideText={orderData.guideText}
+        productType={orderData.productType}
         productName={orderData.productName || productName}
         amount={orderData.finalAmount}
         customerName={orderData.customerName}
