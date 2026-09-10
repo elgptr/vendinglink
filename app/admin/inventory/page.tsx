@@ -487,6 +487,19 @@ export default function InventoryPage() {
             </div>
           </div>
           <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editProductType" value="LINK" checked={editProductType === "LINK"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Link Redeem</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editProductType" value="KODE" checked={editProductType === "KODE"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Kode Redeem</span>
+              </label>
+            </div>
+          </div>
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label htmlFor="edit-product-desc" className="text-sm font-medium text-slate-300">
                 Deskripsi
@@ -662,6 +675,19 @@ export default function InventoryPage() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="newShowOriginalPrice" checked={!newShowOriginalPrice} onChange={() => setNewShowOriginalPrice(false)} className="accent-brand-500" />
                 <span className="text-sm text-slate-200">Sembunyikan</span>
+              </label>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="newProductType" value="LINK" checked={newProductType === "LINK"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Link Redeem</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="newProductType" value="KODE" checked={newProductType === "KODE"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
+                <span className="text-sm text-slate-200">Kode Redeem</span>
               </label>
             </div>
           </div>
