@@ -7,8 +7,10 @@ import { sanitizeString } from "@/lib/utils";
 const productSchema = z.object({
   name: z.string().min(1).max(100),
   price: z.number().int().positive(),
+  type: z.enum(["LINK", "KODE"]).default("LINK"),
   description: z.string().max(500).optional(),
   guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().or(z.literal("")),
+  guideText: z.string().max(2000).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -16,8 +18,10 @@ const updateSchema = z.object({
   id: z.string().min(1),
   price: z.number().int().positive().optional(),
   name: z.string().min(1).max(100).optional(),
+  type: z.enum(["LINK", "KODE"]).optional(),
   description: z.string().max(500).optional(),
   guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().nullable().or(z.literal("")),
+  guideText: z.string().max(2000).optional().nullable(),
   isActive: z.boolean().optional(),
 });
 
@@ -69,10 +73,14 @@ export async function POST(request: NextRequest) {
       data: {
         name: sanitizeString(parsed.data.name),
         price: parsed.data.price,
+        type: parsed.data.type,
         description: parsed.data.description
           ? sanitizeString(parsed.data.description)
           : null,
         guideImageUrl: parsed.data.guideImageUrl || null,
+        guideText: parsed.data.guideText
+          ? sanitizeString(parsed.data.guideText)
+          : null,
         isActive: parsed.data.isActive ?? true,
       },
     });
@@ -97,13 +105,16 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, description, guideImageUrl, ...rest } = parsed.data;
+    const { id, description, guideImageUrl, guideText, ...rest } = parsed.data;
     const updateData: Record<string, unknown> = { ...rest };
     if (description !== undefined) {
       updateData.description = description ? sanitizeString(description) : null;
     }
     if (guideImageUrl !== undefined) {
       updateData.guideImageUrl = guideImageUrl || null;
+    }
+    if (guideText !== undefined) {
+      updateData.guideText = guideText ? sanitizeString(guideText) : null;
     }
     const product = await prisma.product.update({
       where: { id },

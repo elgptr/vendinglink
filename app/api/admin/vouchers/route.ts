@@ -16,6 +16,7 @@ const updateSchema = z.object({
   id: z.string().min(1),
   isActive: z.boolean().optional(),
   quota: z.number().int().positive().optional(),
+  discountAmount: z.number().int().positive().optional(),
   expiresAt: z.string().datetime().optional().nullable(),
 });
 
@@ -98,6 +99,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { id, ...updateData } = parsed.data;
+
+    // Guard: quota must not be less than usedCount
+    if (parsed.data.quota !== undefined) {
+      const existing = await prisma.voucher.findUnique({ where: { id } });
+      if (existing && parsed.data.quota < existing.usedCount) {
+        return NextResponse.json(
+          { error: "Kuota tidak boleh lebih kecil dari jumlah pemakaian saat ini" },
+          { status: 400 }
+        );
+      }
+    }
 
     const voucher = await prisma.voucher.update({
       where: { id },
