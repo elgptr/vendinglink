@@ -8,6 +8,7 @@ const productSchema = z.object({
   name: z.string().min(1).max(100),
   price: z.number().int().positive(),
   description: z.string().max(500).optional(),
+  guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().or(z.literal("")),
   isActive: z.boolean().optional(),
 });
 
@@ -16,6 +17,7 @@ const updateSchema = z.object({
   price: z.number().int().positive().optional(),
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
+  guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().nullable().or(z.literal("")),
   isActive: z.boolean().optional(),
 });
 
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
         description: parsed.data.description
           ? sanitizeString(parsed.data.description)
           : null,
+        guideImageUrl: parsed.data.guideImageUrl || null,
         isActive: parsed.data.isActive ?? true,
       },
     });
@@ -94,7 +97,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, ...updateData } = parsed.data;
+    const { id, description, guideImageUrl, ...rest } = parsed.data;
+    const updateData: Record<string, unknown> = { ...rest };
+    if (description !== undefined) {
+      updateData.description = description ? sanitizeString(description) : null;
+    }
+    if (guideImageUrl !== undefined) {
+      updateData.guideImageUrl = guideImageUrl || null;
+    }
     const product = await prisma.product.update({
       where: { id },
       data: updateData,
