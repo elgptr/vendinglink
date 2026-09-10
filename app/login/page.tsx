@@ -145,26 +145,7 @@ function LoginContent() {
             </p>
           </div>
 
-          {/* Demo credentials */}
-          <div className="mt-5 pt-5 border-t border-surface-border">
-            <p className="text-xs text-slate-500 text-center mb-3">Demo Credentials</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => { setUsername("admin"); setPassword("adminpassword"); }}
-                className="text-xs px-3 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-purple-400 hover:bg-purple-500/20 transition-colors"
-              >
-                👑 Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => { setUsername("agent01"); setPassword("agentpassword"); }}
-                className="text-xs px-3 py-2 bg-brand-500/10 border border-brand-500/20 rounded-lg text-brand-400 hover:bg-brand-500/20 transition-colors"
-              >
-                🛒 Agent01
-              </button>
-            </div>
-          </div>
+
         </div>
 
         <p className="text-center text-xs text-slate-600 mt-6">
