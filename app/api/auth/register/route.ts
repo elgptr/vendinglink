@@ -4,6 +4,26 @@ import bcrypt from "bcryptjs";
 import { sanitizeString } from "@/lib/utils";
 import { z } from "zod";
 
+// In-memory rate limiting map: IP -> array of timestamps
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 5; // max 5 registration attempts per min per IP
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = rateLimitMap.get(ip) || [];
+  const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
+
+  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
+    rateLimitMap.set(ip, validTimestamps);
+    return true;
+  }
+
+  validTimestamps.push(now);
+  rateLimitMap.set(ip, validTimestamps);
+  return false;
+}
+
 const registerSchema = z.object({
   username: z
     .string()
@@ -15,6 +35,17 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "anonymous";
+
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan pendaftaran. Silakan tunggu 1 menit." },
+        { status: 429 }
+      );
+    }
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);
 
