@@ -94,6 +94,7 @@ lib/auth.ts                          (extend — un-comment isApproved check)
 - [ ] Extend `app/admin/inventory/page.tsx` — form tambah/edit produk:
   - Input dropdown/radio tipe produk ("Link" atau "Kode Redeem").
   - Textarea untuk instruksi "Cara Penggunaan (Step-by-step)".
+  - **[TAMBAHAN]** Tambahkan tombol "Upload .md" di samping label textarea "Panduan Penggunaan (Opsional)". Saat admin mengklik dan memilih file `.md`, isi file tersebut langsung dimuat ke textarea `guideText` (gunakan `FileReader.readAsText()`). Tampilkan error toast jika file bukan `.md`. Berlaku di **modal Tambah Produk** dan **modal Edit Produk**.
   - Bypass validasi URL (`isValidUrl`) pada bulk input stock jika produk bertipe Kode Redeem.
 - [ ] Modifikasi Halaman Sukses (`app/customer/order/[orderId]/page.tsx` & `app/agent/order/[orderId]/page.tsx`):
   - Ubah tombol "Buka Link" jadi "Salin Kode" jika tipe produk adalah "KODE".
@@ -103,7 +104,7 @@ lib/auth.ts                          (extend — un-comment isApproved check)
 ```
 prisma/schema.prisma                 (extend)
 app/api/admin/products/route.ts      (extend)
-app/admin/inventory/page.tsx         (extend)
+app/admin/inventory/page.tsx         (extend — termasuk fitur upload .md)
 app/customer/order/[orderId]/page.tsx(extend)
 app/agent/order/[orderId]/page.tsx   (extend)
 ```
