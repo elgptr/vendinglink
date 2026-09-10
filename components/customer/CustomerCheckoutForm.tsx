@@ -18,6 +18,7 @@ type PromoState = {
   id: string;
   code: string;
   discountAmount: number;
+  isVoucher?: boolean;
 } | null;
 
 export default function CustomerCheckoutForm({
@@ -52,9 +53,10 @@ export default function CustomerCheckoutForm({
 
       if (data.valid) {
         setPromo({
-          id: data.promoCodeId,
+          id: data.promoCodeId || data.voucherId,
           code: data.code,
           discountAmount: data.discountAmount,
+          isVoucher: !!data.voucherId,
         });
         toast.success(data.message);
       } else {
@@ -90,7 +92,8 @@ export default function CustomerCheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId,
-          promoCodeId: promo?.id,
+          promoCodeId: promo?.isVoucher ? undefined : promo?.id,
+          voucherId: promo?.isVoucher ? promo?.id : undefined,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim() || undefined,
         }),
@@ -144,7 +147,7 @@ export default function CustomerCheckoutForm({
       {!promo ? (
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-300">
-            Kode Promo (opsional)
+            Kode Promo / Voucher (opsional)
           </label>
           <div className="flex gap-2">
             <div className="flex-1 relative flex items-center">
