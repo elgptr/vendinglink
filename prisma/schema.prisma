@@ -32,6 +32,8 @@ model Product {
   id            String   @id @default(cuid())
   name          String
   price         Int
+  originalPrice Int?
+  showOriginalPrice Boolean @default(true)
   type          String   @default("LINK") // 'LINK' | 'KODE'
   description   String?
   guideImageUrl String? // Image guide on how to use the redeem link

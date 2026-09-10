@@ -7,6 +7,8 @@ import { sanitizeString } from "@/lib/utils";
 const productSchema = z.object({
   name: z.string().min(1).max(100),
   price: z.number().int().positive(),
+  originalPrice: z.number().int().positive().optional().nullable(),
+  showOriginalPrice: z.boolean().optional(),
   type: z.enum(["LINK", "KODE"]).default("LINK"),
   description: z.string().max(500).optional(),
   guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().or(z.literal("")),
@@ -17,6 +19,8 @@ const productSchema = z.object({
 const updateSchema = z.object({
   id: z.string().min(1),
   price: z.number().int().positive().optional(),
+  originalPrice: z.number().int().positive().optional().nullable(),
+  showOriginalPrice: z.boolean().optional(),
   name: z.string().min(1).max(100).optional(),
   type: z.enum(["LINK", "KODE"]).optional(),
   description: z.string().max(500).optional(),
@@ -73,6 +77,8 @@ export async function POST(request: NextRequest) {
       data: {
         name: sanitizeString(parsed.data.name),
         price: parsed.data.price,
+        originalPrice: parsed.data.originalPrice || null,
+        showOriginalPrice: parsed.data.showOriginalPrice ?? true,
         type: parsed.data.type,
         description: parsed.data.description
           ? sanitizeString(parsed.data.description)
@@ -105,8 +111,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, description, guideImageUrl, guideText, ...rest } = parsed.data;
+    const { id, description, guideImageUrl, guideText, originalPrice, showOriginalPrice, ...rest } = parsed.data;
     const updateData: Record<string, unknown> = { ...rest };
+    if (originalPrice !== undefined) {
+      updateData.originalPrice = originalPrice || null;
+    }
+    if (showOriginalPrice !== undefined) {
+      updateData.showOriginalPrice = showOriginalPrice;
+    }
     if (description !== undefined) {
       updateData.description = description ? sanitizeString(description) : null;
     }

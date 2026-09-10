@@ -11,8 +11,9 @@ interface OrderPageProps {
 }
 
 export default async function CustomerOrderPage({ params }: OrderPageProps) {
+  const p = await params;
   const transaction = await prisma.transaction.findUnique({
-    where: { orderId: params.orderId },
+    where: { orderId: p.orderId },
     include: { product: true },
   });
 
