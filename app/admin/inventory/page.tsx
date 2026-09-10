@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles } from "lucide-react";
+import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input, { Textarea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
@@ -16,6 +16,7 @@ interface Product {
   name: string;
   price: number;
   description: string | null;
+  guideImageUrl: string | null;
   isActive: boolean;
   updatedAt: string;
   _count: { stocks: number };
@@ -54,6 +55,8 @@ export default function InventoryPage() {
   const [newProductDesc, setNewProductDesc] = useState("");
   const [editProductName, setEditProductName] = useState("");
   const [editProductDesc, setEditProductDesc] = useState("");
+  const [newProductGuideUrl, setNewProductGuideUrl] = useState("");
+  const [editGuideUrl, setEditGuideUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
@@ -96,6 +99,7 @@ export default function InventoryPage() {
         name: editProductName,
         price: parseInt(newPrice),
         description: editProductDesc || undefined,
+        guideImageUrl: editGuideUrl,
       }),
     });
 
@@ -184,6 +188,7 @@ export default function InventoryPage() {
         name: newProductName,
         price: parseInt(newProductPrice),
         description: newProductDesc || undefined,
+        guideImageUrl: newProductGuideUrl || undefined,
       }),
     });
 
@@ -194,6 +199,7 @@ export default function InventoryPage() {
       setNewProductName("");
       setNewProductPrice("");
       setNewProductDesc("");
+      setNewProductGuideUrl("");
     } else {
       toast.error("Gagal menambahkan produk");
     }
@@ -261,7 +267,14 @@ export default function InventoryPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm text-slate-400 mb-4">
                   <span>{product._count.stocks} stok tersedia</span>
-                  <span>{formatDate(product.updatedAt)}</span>
+                  <div className="flex items-center gap-2">
+                    {product.guideImageUrl && (
+                      <span className="flex items-center gap-1 text-emerald-400" title="Gambar panduan tersedia">
+                        <ImageIcon size={12} />
+                      </span>
+                    )}
+                    <span>{formatDate(product.updatedAt)}</span>
+                  </div>
                 </div>
                 <Button
                   id={`edit-price-btn-${product.id}`}
@@ -274,6 +287,7 @@ export default function InventoryPage() {
                     setEditProductName(product.name);
                     setNewPrice(product.price.toString());
                     setEditProductDesc(product.description || "");
+                    setEditGuideUrl(product.guideImageUrl || "");
                     setShowPriceModal(true);
                   }}
                 >
@@ -437,6 +451,27 @@ export default function InventoryPage() {
               hint={`${editProductDesc.length}/200 karakter disarankan`}
             />
           </div>
+          <div className="space-y-1.5">
+            <Input
+              id="edit-guide-url"
+              label="URL Gambar Panduan (Opsional)"
+              placeholder="https://example.com/guide-image.jpg"
+              value={editGuideUrl}
+              onChange={(e) => setEditGuideUrl(e.target.value)}
+            />
+            {editGuideUrl && (
+              <div className="mt-2 rounded-xl border border-surface-border overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={editGuideUrl}
+                  alt="Preview panduan"
+                  className="w-full max-h-48 object-contain bg-black/20"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                />
+              </div>
+            )}
+          </div>
         </form>
       </Modal>
 
@@ -562,6 +597,27 @@ export default function InventoryPage() {
               maxLength={500}
               hint={`${newProductDesc.length}/200 karakter disarankan`}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Input
+              id="new-product-guide-url"
+              label="URL Gambar Panduan (Opsional)"
+              placeholder="https://example.com/guide-image.jpg"
+              value={newProductGuideUrl}
+              onChange={(e) => setNewProductGuideUrl(e.target.value)}
+            />
+            {newProductGuideUrl && (
+              <div className="mt-2 rounded-xl border border-surface-border overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={newProductGuideUrl}
+                  alt="Preview panduan"
+                  className="w-full max-h-48 object-contain bg-black/20"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                />
+              </div>
+            )}
           </div>
         </form>
       </Modal>
