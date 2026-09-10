@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     // to charge anyway — fulfil the order immediately and atomically, the
     // same way agent credit checkout does, instead of routing through a
     // payment gateway for a Rp 0 order.
-    if (finalAmount === 0 && resolvedPromoCodeId) {
+    if (finalAmount === 0 && (resolvedPromoCodeId || resolvedVoucherId)) {
       try {
         const result = await prisma.$transaction(async (tx) => {
           const claimedStock = await claimAvailableStock(tx, productId, {
@@ -117,15 +117,22 @@ export async function POST(request: NextRequest) {
             throw new Error("NO_STOCK");
           }
 
-          // Mark the promo code used atomically — guards against the same
-          // code being redeemed twice by concurrent requests.
-          const promoUpdate = await tx.promoCode.updateMany({
-            where: { id: resolvedPromoCodeId, usedAt: null },
-            data: { usedAt: new Date() },
-          });
+          if (resolvedPromoCodeId) {
+            const promoUpdate = await tx.promoCode.updateMany({
+              where: { id: resolvedPromoCodeId, usedAt: null },
+              data: { usedAt: new Date() },
+            });
 
-          if (promoUpdate.count === 0) {
-            throw new Error("PROMO_ALREADY_USED");
+            if (promoUpdate.count === 0) {
+              throw new Error("PROMO_ALREADY_USED");
+            }
+          }
+
+          if (resolvedVoucherId) {
+            await tx.voucher.update({
+              where: { id: resolvedVoucherId },
+              data: { usedCount: { increment: 1 } },
+            });
           }
 
           const transaction = await tx.transaction.create({
@@ -134,6 +141,7 @@ export async function POST(request: NextRequest) {
               productId,
               agentId: null,
               promoCodeId: resolvedPromoCodeId,
+              voucherId: resolvedVoucherId,
               customerName: sanitizedCustomerName,
               customerPhone: sanitizedCustomerPhone,
               paymentType: "MIDTRANS",
