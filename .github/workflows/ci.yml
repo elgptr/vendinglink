@@ -1,4 +1,4 @@
-name: CI — Build & Lint
+name: CI — Build, Lint & Test
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [main, staging, dev]
 
 jobs:
-  build-and-lint:
-    name: Build & Lint
+  build-lint-test:
+    name: Build, Lint & Test
     runs-on: ubuntu-latest
 
     steps:
@@ -32,3 +32,25 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: Run unit and integration tests
+        run: npm run test:run
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
