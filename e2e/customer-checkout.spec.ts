@@ -1,44 +1,53 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("E2E: Customer Checkout Flow", () => {
-  test("should complete customer happy path", async ({ page }) => {
-    // Navigate to home
-    await page.goto("/");
-    expect(page).toHaveTitle(/VendingLink|checkout|customer/i);
+  test("should load the customer catalog at /customer", async ({ page }) => {
+    await page.goto("/customer");
 
-    // Find and click product
-    const productLink = page.locator("a:has-text('Product')").first();
-    if (await productLink.count() > 0) {
-      await productLink.click();
-    }
+    // The catalog heading is always rendered (force-dynamic page).
+    await expect(
+      page.locator("h1", { hasText: /Katalog Produk/i })
+    ).toBeVisible();
 
-    // Fill customer form if visible
-    const customerInput = page.locator("input[name='customerName']");
-    if (await customerInput.count() > 0) {
-      await customerInput.fill("Test Customer");
-    }
+    // Meaningful page state: either products are listed, or the empty state is shown.
+    const productCard = page.locator(
+      "a:has(button[id^='customer-buy-btn-'])"
+    );
+    const emptyState = page.locator("text=Belum ada produk tersedia");
 
-    const phoneInput = page.locator("input[name='customerPhone']");
-    if (await phoneInput.count() > 0) {
-      await phoneInput.fill("081234567890");
-    }
-
-    // Look for checkout or next button
-    const checkoutBtn = page.locator("button:has-text('Checkout'), button:has-text('Next'), button:has-text('Continue')").first();
-    if (await checkoutBtn.count() > 0) {
-      await checkoutBtn.click();
-    }
-
-    // Verify page loaded
-    await page.waitForTimeout(1000);
-    expect(page.url()).toMatch(/(checkout|payment)/i);
+    const hasProducts = (await productCard.count()) > 0;
+    const isEmpty = (await emptyState.count()) > 0;
+    expect(hasProducts || isEmpty).toBe(true);
   });
 
-  test("should display product list", async ({ page }) => {
-    await page.goto("/");
-    
-    // Should show some products or a catalog
-    const page_content = await page.content();
-    expect(page_content).toBeDefined();
+  test("should complete customer happy path when an in-stock product exists", async ({ page }) => {
+    // Navigate to the public catalog.
+    await page.goto("/customer");
+
+    // Find the first "Beli" (buy) link wrapping an enabled button.
+    // Out-of-stock products render a disabled button (id ends with "-disabled").
+    const buyLink = page
+      .locator("a:has(button[id^='customer-buy-btn-']:not([disabled]))")
+      .first();
+
+    // Skip gracefully when the test database has no in-stock product to buy.
+    // When a product exists, the full real happy-path flow runs below.
+    test.skip((await buyLink.count()) === 0, "No in-stock product to buy");
+
+    // Click "Beli" → navigation to the per-product checkout page.
+    await buyLink.click();
+    await expect(page).toHaveURL(/\/customer\/checkout\//);
+    await expect(page.locator("#customer-checkout-form")).toBeVisible();
+
+    // Fill the required buyer details.
+    await page.fill("#customer-name-input", "Test Customer");
+    await page.fill("#customer-phone-input", "081234567890");
+
+    // Submit the checkout form (client-side POST to /api/checkout/customer).
+    await page.click("#customer-proceed-payment-btn");
+
+    // Happy path completes by redirecting to the order page.
+    await expect(page).toHaveURL(/\/customer\/order\//);
+    await expect(page.locator("body")).toBeVisible();
   });
 });

@@ -32,6 +32,7 @@ describe("Integration: Agent Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-AGENT`,
         productId: product.id,
+        originalPrice: 50000,
         finalAmount: 50000,
         status: "PENDING",
         paymentType: "AGENT_CREDIT",
@@ -60,6 +61,7 @@ describe("Integration: Agent Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-DEBT`,
         productId: product.id,
+        originalPrice: 50000,
         finalAmount: 50000,
         status: "PENDING",
         paymentType: "AGENT_CREDIT",
@@ -89,6 +91,7 @@ describe("Integration: Agent Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-AGENT-PAY`,
         productId: product.id,
+        originalPrice: 50000,
         finalAmount: 50000,
         status: "PENDING",
         paymentType: "AGENT_CREDIT",
@@ -125,6 +128,7 @@ describe("Integration: Agent Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-A1`,
         productId: product.id,
+        originalPrice: 50000,
         finalAmount: 50000,
         status: "PENDING",
         paymentType: "AGENT_CREDIT",
@@ -138,6 +142,7 @@ describe("Integration: Agent Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-A2`,
         productId: product.id,
+        originalPrice: 30000,
         finalAmount: 30000,
         status: "PENDING",
         paymentType: "AGENT_CREDIT",
