@@ -1,6 +1,8 @@
-# Panduan Kolaborasi Git — VendingLink
+# Panduan Kolaborasi Git - VendingLink
 
-Dokumen ini menetapkan branching strategy, workflow PR, dan aturan isolasi task untuk mencegah konflik antar developer — dan agar **3 developer bisa kerja bersamaan tanpa saling menunggu**.
+Dokumen ini menetapkan branching strategy, workflow PR, dan aturan isolasi task untuk mencegah konflik antar developer.
+
+Dua model: **Track A/B/C (paralel)** untuk foundational work, **Phase 1-5 (sequential)** untuk roadmap initiatives.
 
 ---
 
@@ -8,11 +10,11 @@ Dokumen ini menetapkan branching strategy, workflow PR, dan aturan isolasi task 
 
 ### 1.1 Branch Utama
 
-Project ini pakai **satu branch stabil**: `main`. Tidak ada tier `dev`/`staging` terpisah — supaya tidak ada antrian integrasi yang membuat satu track menunggu track lain selesai lebih dulu.
+Project ini pakai **satu branch stabil**: `main`. Tidak ada tier `dev`/`staging` terpisah.
 
 | Branch | Tujuan | Merge Rule |
-|--------|--------|-----------|
-| `main` | Production — semua PR yang lolos review & CI langsung masuk sini | Hanya via PR dengan ≥1 approval + passing CI/CD |
+|--------|--------|-----------| 
+| `main` | Production - semua PR yang lolos review & CI langsung masuk sini | Hanya via PR dengan >=1 approval + passing CI/CD |
 
 ### 1.2 Feature Branch (Temporary)
 
@@ -22,17 +24,23 @@ Setiap developer membuat feature branch dari `main` dengan konvensi penamaan:
 feat/<nama-dev>/<deskripsi-singkat>
 ```
 
-**Contoh (lihat `TASK_ASSIGNMENT.md` untuk pembagian track):**
+**Contoh Track work (lihat TASK_ASSIGNMENT.md):**
 - `feat/dev-elang/track-a-agent-checkout-ux`
 - `feat/dev-jiwo/track-b-agent-approval`
 - `feat/dev-iqbal/track-c-guide-image`
 
+**Contoh Phase work:**
+- `feat/dev-elang/phase-1-unit-tests`
+- `feat/dev-jiwo/phase-2-middleware-security`
+- `feat/dev-elang/phase-3-observability`
+
 **Aturan:**
 - Deskripsi singkat, lowercase, dash-separated (no space)
 - Selalu branch dari `main`
-- Satu developer = satu feature branch aktif per track
+- Satu developer = satu feature branch aktif per track/phase
 - Delete branch setelah merge
-- **3 track boleh punya feature branch aktif secara bersamaan** — tidak perlu tunggu track lain merge dulu, karena masing-masing menyentuh file yang berbeda (lihat `TASK_ASSIGNMENT.md`)
+- **Track work:** 3 tracks boleh punya feature branch aktif bersamaan (zero file overlap)
+- **Phase work:** Only one phase development at a time (dependencies enforced)
 
 ### 1.3 Hotfix Branch (Emergency)
 
@@ -49,14 +57,11 @@ hotfix/<nama-dev>/<deskripsi-singkat>
 
 ## 2. Workflow Harian
 
-### 2.1 Mulai Fitur Baru
+### 2.1 Mulai Fitur/Phase Baru
 
+**Track work:**
 ```bash
-git checkout main
-git pull origin main
-git checkout -b feat/dev-yourname/track-x-feature-name
-git push -u origin feat/dev-yourname/track-x-feature-name
-```
+
 
 ### 2.2 Commit & Push
 
@@ -71,149 +76,131 @@ git push -u origin feat/dev-yourname/track-x-feature-name
   ```bash
   git fetch origin
   git rebase origin/main
-  git push --force-with-lease origin feat/dev-yourname/track-x-feature-name
+  git push --force-with-lease origin feat/dev-yourname/track-x-or-phase-N-feature
   ```
 
 ### 2.3 Buat Pull Request
 
 1. Push feature branch ke GitHub
-2. Buka GitHub → **Pull Request** → **New PR**
+2. Buka GitHub - **Pull Request** - **New PR**
 3. Base branch: `main`
 4. Gunakan **PR Template** (`.github/PULL_REQUEST_TEMPLATE.md`)
 5. Assign reviewer (dev lain, siapa saja yang available)
-6. Label: `track-a`/`track-b`/`track-c`, `ready-for-review`
+6. Label: `track-a`/`track-b`/`track-c` OR `phase-1`/`phase-2`/etc., plus `ready-for-review`
 
 ### 2.4 Review & Merge
 
-
-## 3. Conflict Prevention — Task Isolation
-
-### 3.1 Pembagian 3 Track Paralel (Tidak Berurutan)
-
-Tidak ada "Stage 1, 2, 3, ..." yang harus dikerjakan berurutan. Semua track di bawah **independen** dan **bisa dimulai bersamaan sekarang** karena tidak menyentuh file yang sama. Detail lengkap tugas & files di `TASK_ASSIGNMENT.md`.
-
-#### Track A: Agent Checkout UX
-- **Files:** `components/agent/CheckoutForm.tsx`, `components/agent/OrderPageClient.tsx`, `app/agent/order/[orderId]/page.tsx`
-
-#### Track B: Agent Registration, Approval & Debt Settlement
-- **Files:** `app/register/`, `app/api/auth/register/`, `app/admin/agents/`, `app/api/admin/agents/`, `middleware.ts`, `lib/auth.ts`
-
-#### Track C: Product Guide Image & Inventory
-- **Files:** `app/admin/inventory/`, `app/api/admin/products/`
-
-### 3.2 ⚠️ Protected Files (Coordinate Before Edit)
-
-- `prisma/schema.prisma` — Sudah final untuk kebutuhan saat ini, kalau perlu field baru buka issue dulu
-- `.env.example` — Notify team if env var added
-- `package.json` — **No new deps without tech lead approval**
-
-### 3.3 Dependency Management
-
-- ✅ Upgrade existing package: OK
-- ❌ Add new dependency: Create issue, wait approval
-- Process: Issue → Approve → Add → Test → PR
+- **Reviewer check:** build, lint, test (if applicable), code quality, file ownership (for Phase PRs)
+- **Track work:** Merge segera setelah approved - tidak perlu tunggu track lain
+- **Phase work:** Merge after approved, but ensure previous phases merged first
 
 ---
 
-## 4. GitHub Branch Protection Rules
+## 3. Conflict Prevention - Task Isolation & Phase Dependencies
 
-### 4.1 Setup untuk `main` Branch
+### 3.1 Track A/B/C Model (Paralel)
 
-Go to **Settings → Branches → Branch Protection Rules**
+Tidak ada dependency - semua track independen. Detail lengkap di `TASK_ASSIGNMENT.md`:
 
-**Pattern:** `main`
+- **Track A:** Agent Checkout UX (Elang)
+- **Track B:** Agent Registration & Approval (Jiwo)
+- **Track C:** Product Guides & Inventory (Iqbal)
 
-**Configure:**
-- ✅ Require pull request reviews: Min **1** reviewer
-- ✅ Dismiss stale pull request approvals
-- ✅ Require status checks: `build`, `lint`
-- ✅ Require up to date before merge
-- ✅ Restrict who can push: Admins only
-- ❌ Allow force pushes
-- ❌ Allow deletions
+### 3.2 Phase 1-5 Model (Sequential + Partial Parallel)
 
-Karena semua track merge ke `main` yang sama, protection rule ini sudah cukup — tidak perlu setup tambahan untuk `dev`/`staging` karena branch itu tidak dipakai.
-
----
-
-## 5. Common Scenarios
-
-### 5.1 "Perlu update file di track orang lain"
-
-- Create issue: "@dev-jiwo Perlu update X di Track B?"
-- Wait for coordination
-- Atau: branch dari feature branch mereka, merge back via PR
-
-### 5.2 "3 PR dari 3 track mau merge di waktu yang sama"
-
-Karena masing-masing track menyentuh file berbeda, ini **seharusnya tidak conflict**. Kalau tetap ada conflict (jarang, biasanya di file netral seperti `lib/utils.ts`):
-
-```bash
-git fetch origin
-git rebase origin/main
-git add . && git rebase --continue
-git push --force-with-lease origin feat/dev-yourname/track-x-feature
+**Dependency chain:**
+```
+Phase 1 (Testing) <- BLOCKER for all
+    |
+    v
+Phase 2 (Security)
+    |
+    +----+ 
+    |    |
+    v    v
+Phase 3 Phase 4  [paralel]
+(Observ)(DB Perf)
+    |
+    v
+Phase 5 (Revenue)
 ```
 
-Merge PR **begitu approved** — tidak perlu tunggu PR track lain juga selesai review.
+**Rules:**
+- Phase N+1 cannot start until Phase N merged to main AND tests passing
+- Phase 3 & 4 can run simultaneously after Phase 2 done (different files)
+- Phase 5 needs both Phase 3 & 4 complete
 
-### 5.3 "Accidentally pushed kesalahan"
+### 3.3 File Ownership Per Phase
 
-- Belum PR: `git reset HEAD~1 && git push --force-with-lease`
-- Sudah PR: Push fix commit, rebase sebelum merge
-- Sudah merge: Coordinate untuk revert atau hotfix
+See `TASK_ASSIGNMENT.md` Phase assignment tables for full details. Each phase specifies which developer owns which files.
 
----
+**Protected files per phase:** See `TASK_ASSIGNMENT.md` Protected Files table.
 
-## 6. Code Review Checklist
+**High-risk files with multi-phase touching:**
+- `middleware.ts` (Track B owned, Phase 2 refactors)
+- `prisma/schema.prisma` (Track C owned, Phase 4 indexes, Phase 5 as needed)
+- `app/admin/inventory/page.tsx` (Track C form, Phase 3 badge, Phase 5 upload)
 
-✅ Type safety (no `any`)
-✅ Error handling (try-catch, null checks)
-✅ Database queries (no N+1, proper includes)
-✅ Naming conventions (camelCase, SNAKE_CASE)
-✅ No console.log, debug code
-✅ Build & lint pass: `npm run build && npm run lint`
-✅ `.env.example` updated if new vars
-✅ PR description: what/why/how tested
+**Koordinasi strategy:** Open GitHub Issue for multi-phase file edits, tag all owners, discuss scope before merging previous phase.
 
 ---
 
-## 7. Quick Reference
+## 4. Code Review Checklist
 
-```bash
-# 1. Clone repo
-git clone https://github.com/elgptr/vendinglink.git && cd vendinglink
+Standard checklist for all PRs:
 
-# 2. Create feature branch (lihat TASK_ASSIGNMENT.md untuk track kamu)
+- [ ] Type safety (no `any`)
+- [ ] Error handling (try-catch, null checks)
+- [ ] Database queries (no N+1, proper includes)
+- [ ] Naming conventions (camelCase, SNAKE_CASE)
+- [ ] No console.log, debug code
+- [ ] .env.example updated if new vars
+- [ ] npm run build && npm run lint pass
+- [ ] npm test pass (if Phase 1+ and applicable)
+- [ ] .github/PULL_REQUEST_TEMPLATE.md filled out
+
+**For Phase PRs additionally:**
+- [ ] All files edited assigned to my role (check assignment table)
+- [ ] No edits to protected files for this phase
+- [ ] Confirm previous phases merged (if not first phase)
+
+---
+
+## 5. Deployment & CI/CD
+
+### CI Pipeline
+
+Runs on all PR + push to main:
+- `npm run build`
+- `npm run lint`
+- `npm test` (after Phase 1 launch)
+
+All must pass before merge.
+
+### Deploy to Production
+
+1. PR reviewed & approved
+2. Rebase & ensure no conflicts
+3. Squash & Merge to main
+4. GitHub Actions CI runs
+5. Auto-deploy via Vercel
+
+---
+
+**Last Updated:** 2026-09-11 | **Version:** 3.0 | **Model:** Track paralel + Phase sequential, single branch `main`
+
+git checkout main
+git pull origin main
 git checkout -b feat/dev-yourname/track-x-feature-name
-
-# 3. Daily work: commit & push
-git add . && git commit -m "Descriptive message" && git push
-
-# 4. Before PR: sync with main
-git fetch origin && git rebase origin/main && git push --force-with-lease
-
-# 5. Create PR on GitHub (use template), base branch = main
-
-# 6. After approve & merge: cleanup
-git checkout main && git pull origin main
-git branch -D feat/dev-yourname/track-x-feature-name
-git push origin --delete feat/dev-yourname/track-x-feature-name
+git push -u origin feat/dev-yourname/track-x-feature-name
 ```
 
----
+**Phase work:**
+```bash
+git checkout main
+git pull origin main
+# CRITICAL: Ensure previous phases merged and tested!
+git checkout -b feat/dev-yourname/phase-N-feature-name
+git push -u origin feat/dev-yourname/phase-N-feature-name
+```
 
-**Last Updated:** 2026-09-07 | **Version:** 2.0 — Model Track paralel (bukan Stage sequential), single branch `main`
-
-- Reviewer: check quality, run build/lint lokal, approve
-- Conflict:
-  ```bash
-  git fetch origin
-  git rebase origin/main
-  git add . && git rebase --continue
-  git push --force-with-lease origin feat/dev-yourname/track-x-feature-name
-  ```
-- **Merge strategy:** Squash and Merge
-- **Merge segera setelah approve** — tidak perlu tunggu track lain juga selesai
-
----

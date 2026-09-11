@@ -1,22 +1,18 @@
 # Code Owners for VendingLink
 
-# Prisma schema — final for now, coordinate before editing
+# Protected files - tech lead only
 prisma/schema.prisma                @tech-lead
-
-# Package management — locked
 package.json                        @tech-lead
 package-lock.json                   @tech-lead
-
-# CI/CD & deployment config
 .github/workflows/                  @tech-lead
 next.config.mjs                     @tech-lead
 
-# ─── Track A: Agent Checkout UX (Owner: Elang) ─────────────────────────────
-components/agent/CheckoutForm.tsx       @dev-elang
-components/agent/OrderPageClient.tsx    @dev-elang
-app/agent/order/                        @dev-elang
+# --- Track A: Agent Checkout UX (Owner: Elang) ---
+components/agent/CheckoutForm.tsx   @dev-elang
+components/agent/OrderPageClient.tsx @dev-elang
+app/agent/order/                    @dev-elang
 
-# ─── Track B: Agent Registration, Approval & Debt Settlement (Owner: Jiwo) ─
+# --- Track B: Agent Registration, Approval & Debt Settlement (Owner: Jiwo) ---
 app/register/                       @dev-jiwo
 app/api/auth/register/              @dev-jiwo
 app/admin/agents/                   @dev-jiwo
@@ -24,13 +20,54 @@ app/api/admin/agents/               @dev-jiwo
 middleware.ts                       @dev-jiwo
 lib/auth.ts                         @dev-jiwo
 
-# ─── Track C: Product Guide Image & Inventory (Owner: Iqbal) ──────────────
+# --- Track C: Product Guide Image & Inventory (Owner: Iqbal) ---
 app/admin/inventory/                @dev-iqbal
 app/api/admin/products/             @dev-iqbal
 
-# ─── Shared/neutral files — any dev can contribute, others review ──────────
+# --- Phase 1: Testing Foundation (Owners: All devs) ---
+vitest.config.ts                    @dev-elang @dev-jiwo @dev-iqbal
+__tests__/helpers/prisma.ts         @dev-elang
+__tests__/helpers/fixtures.ts       @dev-elang
+__tests__/lib/                      @dev-elang
+__tests__/api/checkout-customer.test.ts @dev-jiwo
+__tests__/api/checkout-agent.test.ts    @dev-jiwo
+__tests__/api/webhook.test.ts           @dev-jiwo
+playwright.config.ts                @dev-iqbal
+e2e/                                @dev-iqbal
+.github/workflows/ci.yml            @dev-iqbal
+
+# --- Phase 2: Middleware & Security (Owners: Jiwo, Elang, Iqbal) ---
+lib/rateLimit.ts                    @dev-jiwo
+lib/security/                       @dev-elang
+e2e/security-*.spec.ts              @dev-iqbal
+
+# --- Phase 3: Observability (Owners: Elang, Jiwo, Iqbal) ---
+lib/logger.ts                       @dev-elang
+app/api/admin/health/               @dev-elang
+e2e/observability-*.spec.ts         @dev-iqbal
+
+# --- Phase 4: Database Performance (Owners: Jiwo, Elang) ---
+lib/cache.ts                        @dev-elang
+prisma/migrations/                  @dev-jiwo
+
+# --- Phase 5: Revenue Features (Owners: Elang, Jiwo, Iqbal) ---
+lib/whatsapp.ts                     @dev-jiwo
+lib/storage.ts                      @dev-iqbal
+app/customer/orders/                @dev-jiwo
+app/api/customer/orders/            @dev-jiwo
+app/api/admin/upload/               @dev-iqbal
+e2e/revenue-*.spec.ts               @dev-iqbal
+
+# --- Shared/neutral files - any dev can contribute ---
 lib/midtrans.ts                     *
 lib/transactionStatus.ts            *
 lib/utils.ts                        *
 app/api/admin/reports/              *
+components/ui/                      *
 PRD.md                              *
+ROADMAP.md                          *
+implementation_plan.md              *
+TASK_ASSIGNMENT.md                  *
+BRANCHING_STRATEGY.md               *
+DEVELOPER_SETUP.md                  *
+CONTRIBUTING.md                     *

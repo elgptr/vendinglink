@@ -540,16 +540,55 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
-          <Textarea
-            id="edit-product-guide-text"
-            label="Panduan Penggunaan (Opsional)"
-            placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
-            value={editGuideText}
-            onChange={(e) => setEditGuideText(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
-          />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="edit-product-guide-text" className="text-sm font-medium text-slate-300">
+                Panduan Penggunaan (Opsional)
+              </label>
+              <div>
+                <input
+                  type="file"
+                  accept=".md"
+                  id="edit-upload-md"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!file.name.endsWith(".md")) {
+                      toast.error("Hanya file .md yang diperbolehkan");
+                      e.target.value = "";
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      setEditGuideText(ev.target?.result as string);
+                      toast.success("File .md berhasil dimuat");
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Upload size={14} />}
+                  onClick={() => document.getElementById("edit-upload-md")?.click()}
+                >
+                  Upload .md
+                </Button>
+              </div>
+            </div>
+            <Textarea
+              id="edit-product-guide-text"
+              placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
+              value={editGuideText}
+              onChange={(e) => setEditGuideText(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
+            />
+          </div>
         </form>
       </Modal>
 
@@ -732,16 +771,55 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
-          <Textarea
-            id="new-product-guide-text"
-            label="Panduan Penggunaan (Opsional)"
-            placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
-            value={newProductGuideText}
-            onChange={(e) => setNewProductGuideText(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
-          />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="new-product-guide-text" className="text-sm font-medium text-slate-300">
+                Panduan Penggunaan (Opsional)
+              </label>
+              <div>
+                <input
+                  type="file"
+                  accept=".md"
+                  id="new-upload-md"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!file.name.endsWith(".md")) {
+                      toast.error("Hanya file .md yang diperbolehkan");
+                      e.target.value = "";
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      setNewProductGuideText(ev.target?.result as string);
+                      toast.success("File .md berhasil dimuat");
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Upload size={14} />}
+                  onClick={() => document.getElementById("new-upload-md")?.click()}
+                >
+                  Upload .md
+                </Button>
+              </div>
+            </div>
+            <Textarea
+              id="new-product-guide-text"
+              placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
+              value={newProductGuideText}
+              onChange={(e) => setNewProductGuideText(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
+            />
+          </div>
         </form>
       </Modal>
     </div>
