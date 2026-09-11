@@ -42,7 +42,10 @@
 **Version:** v0.1.0 → v0.2.0  
 **Target:** 2 minggu  
 **Impact:** Revenue Protection — prevent broken deployments from killing live sales  
+
+
 **Priority:** 🔴 CRITICAL — blocks all other phases
+
 
 ### Motivation
 
