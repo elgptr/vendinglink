@@ -31,6 +31,7 @@ describe("Integration: Customer Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-TEST`,
         productId: product.id,
+        originalPrice: 50000,
         finalAmount: 50000,
         status: "PENDING",
         paymentType: "MIDTRANS",
@@ -52,8 +53,8 @@ describe("Integration: Customer Checkout Flow", () => {
     const voucher = await prisma.voucher.create({
       data: {
         code: `VOUCHER-${Date.now()}`,
-        discount: 10000,
-        maxUses: 100,
+        discountAmount: 10000,
+        quota: 100,
         usedCount: 0,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
@@ -64,6 +65,7 @@ describe("Integration: Customer Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-VOUCHER`,
         productId: product.id,
+        originalPrice: 100000,
         finalAmount: 90000, // 100000 - 10000 discount
         status: "PENDING",
         paymentType: "MIDTRANS",
@@ -98,6 +100,7 @@ describe("Integration: Customer Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-PROMO`,
         productId: product.id,
+        originalPrice: 50000,
         finalAmount: 45000, // 50000 - 5000
         status: "PENDING",
         paymentType: "MIDTRANS",
@@ -124,6 +127,7 @@ describe("Integration: Customer Checkout Flow", () => {
       data: {
         orderId: `VM-${Date.now()}-FLOW`,
         productId: product.id,
+        originalPrice: 50000,
         finalAmount: 50000,
         status: "PENDING",
         paymentType: "MIDTRANS",

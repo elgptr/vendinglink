@@ -53,12 +53,13 @@ export async function createMockProduct(
 /**
  * Create mock redeem stock entries for a product
  * Creates `count` number of AVAILABLE stock items
+ * Uses UncheckedInput so scalar `productId` can be passed directly
  */
 export async function createMockStock(
   prisma: PrismaClient,
   productId: string,
   count: number,
-  overrides?: Partial<Prisma.RedeemStockCreateInput>
+  overrides?: Partial<Prisma.RedeemStockUncheckedCreateInput>
 ): Promise<TestRedeemStock[]> {
   const stocks: TestRedeemStock[] = [];
 
@@ -79,12 +80,13 @@ export async function createMockStock(
 
 /**
  * Create a mock transaction for testing
+ * Uses UncheckedInput so scalar fields (productId, agentId, etc.) can be passed directly
  */
 export async function createMockTransaction(
   prisma: PrismaClient,
-  overrides?: Partial<Prisma.TransactionCreateInput>
+  overrides?: Partial<Prisma.TransactionUncheckedCreateInput>
 ): Promise<any> {
-  const orderId = `VM-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  const orderId = overrides?.orderId ?? `VM-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
   // Ensure productId exists or create one
   let productId = overrides?.productId;
@@ -102,13 +104,24 @@ export async function createMockTransaction(
   const transaction = await prisma.transaction.create({
     data: {
       orderId,
-      productId: productId as string,
+      productId,
+      originalPrice: overrides?.originalPrice ?? overrides?.finalAmount ?? 50000,
       finalAmount: overrides?.finalAmount ?? 50000,
       status: overrides?.status ?? "PENDING",
-      paymentType: (overrides?.paymentType as any) ?? "MIDTRANS",
-      customerName: overrides?.customerName || "Test Customer",
-      customerPhone: overrides?.customerPhone || "081234567890",
-      ...overrides,
+      paymentType: overrides?.paymentType ?? "MIDTRANS",
+      customerName: overrides?.customerName ?? "Test Customer",
+      customerPhone: overrides?.customerPhone ?? "081234567890",
+      agentId: overrides?.agentId,
+      voucherId: overrides?.voucherId,
+      promoCodeId: overrides?.promoCodeId,
+      discountAmount: overrides?.discountAmount,
+      stockStatus: overrides?.stockStatus,
+      redeemUrl: overrides?.redeemUrl,
+      qrString: overrides?.qrString,
+      qrCodeUrl: overrides?.qrCodeUrl,
+      snapToken: overrides?.snapToken,
+      paidAt: overrides?.paidAt,
+      isSettled: overrides?.isSettled,
     },
   });
 
@@ -199,11 +212,24 @@ export async function seedTestDatabase(prisma: PrismaClient): Promise<{
  * Deletes all test data (use with caution!)
  */
 export async function cleanupTestDatabase(prisma: PrismaClient): Promise<void> {
-  // Delete in order of dependencies
-  await prisma.transaction.deleteMany({});
-  await prisma.voucher.deleteMany({});
-  await prisma.promoCode.deleteMany({});
-  await prisma.redeemStock.deleteMany({});
-  await prisma.product.deleteMany({});
-  await prisma.user.deleteMany({});
+  // Delete in order of dependencies.
+  // Wrapped in individual try/catch so a foreign-key conflict in one step
+  // (e.g. from a parallel suite already having cleaned up) doesn't prevent
+  // the rest from running.
+  const deletions = [
+    () => prisma.transaction.deleteMany({}),
+    () => prisma.voucher.deleteMany({}),
+    () => prisma.promoCode.deleteMany({}),
+    () => prisma.redeemStock.deleteMany({}),
+    () => prisma.product.deleteMany({}),
+    () => prisma.user.deleteMany({}),
+  ];
+
+  for (const del of deletions) {
+    try {
+      await del();
+    } catch {
+      // Another suite may have already removed the rows; continue cleanup.
+    }
+  }
 }
