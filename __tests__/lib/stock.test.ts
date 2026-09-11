@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { claimAvailableStock } from "@/lib/stock";
-import { createMockProduct, createMockStock, cleanupTestDatabase } from "../helpers/fixtures";
+import { createMockProduct, createMockStock, createMockUser, cleanupTestDatabase } from "../helpers/fixtures";
 
 describe("stock.ts — claimAvailableStock", () => {
   let prisma: PrismaClient;
@@ -99,15 +99,21 @@ describe("stock.ts — claimAvailableStock", () => {
   });
 
   it("should claim stock with agent ID when provided", async () => {
-    // Arrange
+    // Arrange: Create a real agent so the claimedByAgentId FK holds
+    // (RedeemStock.claimedByAgentId references User.id).
     const product = await createMockProduct(prisma);
     const stock = await createMockStock(prisma, product.id, 1);
-    const agentId = "test-agent-id-123";
+    const agent = await createMockUser(prisma, {
+      username: `agent-stock-${Date.now()}`,
+      passwordHash: "$2a$10$fakehash",
+      role: "AGENT",
+      isApproved: true,
+    });
 
     // Act
     const result = await prisma.$transaction(async (tx) => {
       return claimAvailableStock(tx, product.id, {
-        claimedByAgentId: agentId,
+        claimedByAgentId: agent.id,
       });
     });
 
@@ -117,7 +123,7 @@ describe("stock.ts — claimAvailableStock", () => {
     const updatedStock = await prisma.redeemStock.findUnique({
       where: { id: stock[0].id },
     });
-    expect(updatedStock?.claimedByAgentId).toBe(agentId);
+    expect(updatedStock?.claimedByAgentId).toBe(agent.id);
   });
 
   it("should mark FIFO: claims oldest AVAILABLE stock first", async () => {
