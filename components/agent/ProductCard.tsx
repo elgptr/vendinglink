@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ShoppingCart, Package, Tag } from "lucide-react";
-import { formatRupiah } from "@/lib/utils";
+import { cn, formatRupiah } from "@/lib/utils";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -25,7 +25,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <Card
       hoverable={inStock}
-      className={`p-6 flex flex-col gap-4 ${!inStock ? "opacity-60" : ""}`}
+      className={cn("p-6 flex flex-col gap-4", !inStock && "opacity-60")}
     >
       {/* Product header */}
       <div className="flex items-start justify-between gap-3">

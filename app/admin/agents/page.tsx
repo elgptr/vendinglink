@@ -22,7 +22,7 @@ import Card from "@/components/ui/Card";
 import Modal from "@/components/ui/Modal";
 import Spinner from "@/components/ui/Spinner";
 import toast from "@/components/ui/Toast";
-import { formatDate, formatRupiah } from "@/lib/utils";
+import { cn, formatDate, formatRupiah } from "@/lib/utils";
 
 interface Agent {
   id: string;
@@ -245,21 +245,23 @@ export default function AgentsPage() {
         <div className="flex items-center gap-1.5 bg-surface-card p-1 rounded-xl border border-surface-border w-full sm:w-auto">
           <button
             onClick={() => setActiveTab("ALL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
               activeTab === "ALL"
                 ? "bg-brand-500/20 text-brand-400 border border-brand-500/30"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+            )}
           >
             Semua ({agents.length})
           </button>
           <button
             onClick={() => setActiveTab("PENDING")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5",
               activeTab === "PENDING"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+            )}
           >
             Menunggu Approval
             {pendingApprovalCount > 0 && (
@@ -270,21 +272,23 @@ export default function AgentsPage() {
           </button>
           <button
             onClick={() => setActiveTab("APPROVED")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
               activeTab === "APPROVED"
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+            )}
           >
             Disetujui ({agents.filter((a) => a.isApproved).length})
           </button>
           <button
             onClick={() => setActiveTab("HAS_DEBT")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5",
               activeTab === "HAS_DEBT"
                 ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
                 : "text-slate-400 hover:text-slate-200"
-            }`}
+            )}
           >
             Punya Hutang ({debtCount})
           </button>
@@ -331,7 +335,10 @@ export default function AgentsPage() {
               </thead>
               <tbody>
                 {filteredAgents.map((agent) => (
-                  <tr key={agent.id} className={!agent.isApproved ? "bg-amber-950/10" : undefined}>
+                  <tr
+                    key={agent.id}
+                    className={cn(!agent.isApproved && "bg-amber-950/10")}
+                  >
                     <td>
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 text-xs font-bold flex-shrink-0">
@@ -359,9 +366,12 @@ export default function AgentsPage() {
                     <td>
                       <div className="flex items-center gap-2">
                         <span
-                          className={`font-semibold ${
-                            agent.outstandingDebt > 0 ? "text-amber-400" : "text-slate-400"
-                          }`}
+                          className={cn(
+                            "font-semibold",
+                            agent.outstandingDebt > 0
+                              ? "text-amber-400"
+                              : "text-slate-400"
+                          )}
                         >
                           {formatRupiah(agent.outstandingDebt)}
                         </span>
