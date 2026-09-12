@@ -2,27 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sanitizeString } from "@/lib/utils";
+import { createRateLimiter } from "@/lib/rateLimit";
+import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
+import { validatePayloadSize } from "@/lib/inputValidation";
 import { z } from "zod";
 
-// In-memory rate limiting map: IP -> array of timestamps
-const rateLimitMap = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 5; // max 5 registration attempts per min per IP
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const timestamps = rateLimitMap.get(ip) || [];
-  const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
-
-  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    rateLimitMap.set(ip, validTimestamps);
-    return true;
-  }
-
-  validTimestamps.push(now);
-  rateLimitMap.set(ip, validTimestamps);
-  return false;
-}
+// Shared rate limiter (5 registration attempts / min / IP).
+const registerLimiter = createRateLimiter(5, 60 * 1000);
 
 const registerSchema = z.object({
   username: z
@@ -40,12 +26,30 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-real-ip") ||
       "anonymous";
 
-    if (isRateLimited(ip)) {
+    // ── Rate limiting ───────────────────────────────────────────────────────
+    if (!registerLimiter.check(ip).allowed) {
       return NextResponse.json(
         { error: "Terlalu banyak percobaan pendaftaran. Silakan tunggu 1 menit." },
         { status: 429 }
       );
     }
+
+    // ── CSRF guard (fail-open for legacy clients, strict when tokens present) ─
+    const { cookieToken, submittedToken } = extractCsrfTokens(
+      request.headers.get("cookie"),
+      request.headers.get("x-csrf-token")
+    );
+    if (!verifyCsrfRequest(cookieToken, submittedToken)) {
+      return NextResponse.json({ error: "CSRF token tidak valid" }, { status: 403 });
+    }
+
+    // ── Payload size guard (prevent oversized memory abuse) ─────────────────
+    const contentLength = request.headers.get("content-length");
+    const sizeCheck = validatePayloadSize(contentLength ? Number(contentLength) : null);
+    if (!sizeCheck.allowed) {
+      return NextResponse.json({ error: sizeCheck.reason }, { status: 413 });
+    }
+
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);
 
