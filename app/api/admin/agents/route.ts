@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sanitizeString } from "@/lib/utils";
+import { checkAdminRateLimit } from "@/lib/adminRateLimit";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -28,8 +29,12 @@ async function requireAdmin() {
   return session;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Admin rate limit (5/min/IP)
+    const rateCheck = checkAdminRateLimit(request);
+    if (!rateCheck.allowed) return rateCheck.response;
+
     const session = await requireAdmin();
     if (!session) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -61,6 +66,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Admin rate limit (5/min/IP)
+    const rateCheck = checkAdminRateLimit(request);
+    if (!rateCheck.allowed) return rateCheck.response;
+
     const session = await requireAdmin();
     if (!session) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -114,6 +123,10 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Admin rate limit (5/min/IP)
+    const rateCheck = checkAdminRateLimit(request);
+    if (!rateCheck.allowed) return rateCheck.response;
+
     const session = await requireAdmin();
     if (!session) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
