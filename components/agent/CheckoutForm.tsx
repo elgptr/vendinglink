@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Tag, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import Button from "@/components/ui/Button";
@@ -28,6 +28,25 @@ export default function CheckoutForm({
   const [voucherError, setVoucherError] = useState("");
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  // Double-submit CSRF token distributed by GET /api/csrf; attached to the
+  // checkout POST as `x-csrf-token`. Best-effort — if the bootstrap fails no
+  // token is sent and the server's CSRF guard fails open (no token anywhere).
+  const [csrfToken, setCsrfToken] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/csrf")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("csrf"))))
+      .then((data) => {
+        if (!cancelled && data?.token) setCsrfToken(data.token);
+      })
+      .catch(() => {
+        // Best-effort token distribution; see note above.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const discountAmount = voucher?.discountAmount || 0;
   const finalAmount = Math.max(0, productPrice - discountAmount);
@@ -77,7 +96,10 @@ export default function CheckoutForm({
     try {
       const res = await fetch("/api/checkout/agent", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        },
         body: JSON.stringify({
           productId,
           voucherId: voucher?.id,

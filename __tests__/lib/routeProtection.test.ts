@@ -55,6 +55,7 @@ describe("resolveRouteProtection", () => {
       ["/api/customer/order/snap-token"],
       ["/api/checkout/customer"],
       ["/api/promo-codes/validate"],
+      ["/api/csrf"],
     ])("%s → next even without a session", (path) => {
       expect(resolveRouteProtection(path, noSession)).toEqual({ type: "next" });
     });
