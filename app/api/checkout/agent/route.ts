@@ -3,7 +3,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderId } from "@/lib/utils";
 import { claimAvailableStock } from "@/lib/stock";
+import { createRateLimiter } from "@/lib/rateLimit";
+import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
+import { validatePayloadSize } from "@/lib/inputValidation";
 import { z } from "zod";
+
+// Rate limiter for agent checkout (20 attempts / min / per user).
+const checkoutLimiter = createRateLimiter(20, 60 * 1000);
 
 const agentCheckoutSchema = z.object({
   productId: z.string().min(1),
@@ -32,6 +38,28 @@ export async function POST(request: NextRequest) {
         { error: "Akun agen Anda belum disetujui oleh admin." },
         { status: 403 }
       );
+    }
+
+    // ── Security guards (rate limit, CSRF, payload size) ────────────────────
+    if (!checkoutLimiter.check(session.user.id).allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan. Silakan coba lagi nanti." },
+        { status: 429 }
+      );
+    }
+
+    const { cookieToken, submittedToken } = extractCsrfTokens(
+      request.headers.get("cookie"),
+      request.headers.get("x-csrf-token")
+    );
+    if (!verifyCsrfRequest(cookieToken, submittedToken)) {
+      return NextResponse.json({ error: "CSRF token tidak valid" }, { status: 403 });
+    }
+
+    const contentLength = request.headers.get("content-length");
+    const sizeCheck = validatePayloadSize(contentLength ? Number(contentLength) : null);
+    if (!sizeCheck.allowed) {
+      return NextResponse.json({ error: sizeCheck.reason }, { status: 413 });
     }
 
     const body = await request.json();
