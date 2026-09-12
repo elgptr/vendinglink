@@ -114,12 +114,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 5898,
+                      "duration": 2152,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:07:49.542Z",
+                      "startTime": "2026-09-12T22:56:38.448Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -148,12 +148,12 @@
                       "workerIndex": 1,
                       "parallelIndex": 1,
                       "status": "passed",
-                      "duration": 5739,
+                      "duration": 2084,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:07:49.527Z",
+                      "startTime": "2026-09-12T22:56:38.324Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -182,12 +182,12 @@
                       "workerIndex": 4,
                       "parallelIndex": 4,
                       "status": "passed",
-                      "duration": 8568,
+                      "duration": 3316,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:07:49.704Z",
+                      "startTime": "2026-09-12T22:56:38.420Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -216,12 +216,12 @@
                       "workerIndex": 5,
                       "parallelIndex": 5,
                       "status": "passed",
-                      "duration": 10450,
+                      "duration": 2849,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:07:49.796Z",
+                      "startTime": "2026-09-12T22:56:38.477Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -267,12 +267,12 @@
                       "workerIndex": 2,
                       "parallelIndex": 2,
                       "status": "passed",
-                      "duration": 5735,
+                      "duration": 2137,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:07:49.642Z",
+                      "startTime": "2026-09-12T22:56:38.393Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -287,66 +287,51 @@
             },
             {
               "title": "should complete customer happy path when an in-stock product exists",
-              "ok": false,
+              "ok": true,
               "tags": [],
               "tests": [
                 {
                   "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "No in-stock product to buy",
+                      "location": {
+                        "file": "C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts",
+                        "line": 35,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
                   "projectId": "chromium",
                   "projectName": "chromium",
                   "results": [
                     {
                       "workerIndex": 3,
                       "parallelIndex": 3,
-                      "status": "failed",
-                      "duration": 15406,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/customer\\/order\\//\u001b[39m\nReceived string:  \u001b[31m\"http://localhost:3000/customer/checkout/product-premium-01\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    13 × locator resolved to <html lang=\"id\" class=\"dark\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://localhost:3000/customer/checkout/product-premium-01\"\u001b[22m\n",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/customer\\/order\\//\u001b[39m\nReceived string:  \u001b[31m\"http://localhost:3000/customer/checkout/product-premium-01\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    13 × locator resolved to <html lang=\"id\" class=\"dark\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://localhost:3000/customer/checkout/product-premium-01\"\u001b[22m\n\n    at C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts:50:24",
-                        "location": {
-                          "file": "C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts",
-                          "column": 24,
-                          "line": 50
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 48 |\u001b[39m\n \u001b[90m 49 |\u001b[39m     \u001b[90m// Happy path completes by redirecting to the order page.\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 50 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/\\/customer\\/order\\//\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 51 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m\"body\"\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 52 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 53 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts",
-                            "column": 24,
-                            "line": 50
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/customer\\/order\\//\u001b[39m\nReceived string:  \u001b[31m\"http://localhost:3000/customer/checkout/product-premium-01\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    13 × locator resolved to <html lang=\"id\" class=\"dark\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://localhost:3000/customer/checkout/product-premium-01\"\u001b[22m\n\n\n\u001b[0m \u001b[90m 48 |\u001b[39m\n \u001b[90m 49 |\u001b[39m     \u001b[90m// Happy path completes by redirecting to the order page.\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 50 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/\\/customer\\/order\\//\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 51 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m\"body\"\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 52 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 53 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts:50:24\u001b[22m"
-                        }
-                      ],
+                      "status": "skipped",
+                      "duration": 2115,
+                      "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:07:49.700Z",
-                      "annotations": [],
-                      "attachments": [
+                      "startTime": "2026-09-12T22:56:38.386Z",
+                      "annotations": [
                         {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\harai\\git\\vendinglink\\test-results\\customer-checkout-E2E-Cust-d4f6f--an-in-stock-product-exists-chromium\\test-failed-1.png"
-                        },
-                        {
-                          "name": "error-context",
-                          "contentType": "text/markdown",
-                          "path": "C:\\Users\\harai\\git\\vendinglink\\test-results\\customer-checkout-E2E-Cust-d4f6f--an-in-stock-product-exists-chromium\\error-context.md"
+                          "type": "skip",
+                          "description": "No in-stock product to buy",
+                          "location": {
+                            "file": "C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts",
+                            "line": 35,
+                            "column": 10
+                          }
                         }
                       ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts",
-                        "column": 24,
-                        "line": 50
-                      }
+                      "attachments": []
                     }
                   ],
-                  "status": "unexpected"
+                  "status": "skipped"
                 }
               ],
               "id": "1ca36c046fb5f260a5e2-a107b2972618bab3693d",
@@ -370,12 +355,12 @@
                       "workerIndex": 6,
                       "parallelIndex": 1,
                       "status": "passed",
-                      "duration": 9588,
+                      "duration": 2315,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:08:00.422Z",
+                      "startTime": "2026-09-12T22:56:42.963Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -395,26 +380,46 @@
               "tests": [
                 {
                   "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "No in-stock product to buy",
+                      "location": {
+                        "file": "C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts",
+                        "line": 35,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
                   "projectId": "firefox",
                   "projectName": "firefox",
                   "results": [
                     {
                       "workerIndex": 7,
-                      "parallelIndex": 2,
-                      "status": "passed",
-                      "duration": 7345,
+                      "parallelIndex": 3,
+                      "status": "skipped",
+                      "duration": 2765,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-09-11T11:08:00.552Z",
-                      "annotations": [],
+                      "startTime": "2026-09-12T22:56:43.127Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "No in-stock product to buy",
+                          "location": {
+                            "file": "C:\\Users\\harai\\git\\vendinglink\\e2e\\customer-checkout.spec.ts",
+                            "line": 35,
+                            "column": 10
+                          }
+                        }
+                      ],
                       "attachments": []
                     }
                   ],
-                  "status": "expected"
+                  "status": "skipped"
                 }
               ],
               "id": "1ca36c046fb5f260a5e2-f911d72fdbc441aee31e",
@@ -429,11 +434,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-11T11:07:39.175Z",
-    "duration": 37606.796,
-    "expected": 7,
-    "skipped": 0,
-    "unexpected": 1,
+    "startTime": "2026-09-12T22:56:31.066Z",
+    "duration": 18400.620000000003,
+    "expected": 6,
+    "skipped": 2,
+    "unexpected": 0,
     "flaky": 0
   }
 }
