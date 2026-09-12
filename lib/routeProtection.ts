@@ -42,6 +42,9 @@ const PUBLIC_ROUTES = [
   "/api/customer",
   "/api/checkout/customer",
   "/api/promo-codes/validate",
+  // CSRF token bootstrap — must remain reachable WITHOUT a session so an
+  // unauthenticated customer can obtain a token before checkout.
+  "/api/csrf",
 ];
 
 // Used (like proxy.ts's `pathname.startsWith("/api/")`) to distinguish API
