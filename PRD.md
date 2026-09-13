@@ -17,7 +17,7 @@ Additionally, an AI Sales Assistant is available to help answer product and oper
 
 ## 2. Technology Stack & Architecture
 
-- **Frontend Framework:** Next.js 14 (App Router, Server & Client Components)
+- **Frontend Framework:** Next.js 16 (App Router, Server & Client Components)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS, Lucide React Icons
 - **Database & ORM:** PostgreSQL, Prisma ORM
@@ -185,14 +185,14 @@ model Transaction {
 | `GET/POST` | `/api/admin/inventory` | Admin | Manage products & bulk upload stock links |
 | `POST` | `/api/checkout/customer`| Public | Customer checkout via Midtrans |
 | `POST` | `/api/checkout/agent`   | Agent | Agent checkout bypassing Midtrans (adds debt) |
-| `POST` | `/api/midtrans` | Webhook | Process Midtrans payment notifications for customers |
+| `POST` | `/api/midtrans/webhook` | Webhook | Process Midtrans payment notifications for customers |
 | `POST` | `/api/chat` | Agent | Interface with AI Sales Assistant |
 
 ---
 
 ## 7. Security & Non-Functional Requirements
 
-- **Authentication & Authorization:** Secure session handling via NextAuth JWT/Prisma tokens with role-based route protection via Next.js Middleware (`middleware.ts`). Unapproved agents are blocked from transacting.
+- **Authentication & Authorization:** Secure session handling via NextAuth JWT/Prisma tokens with role-based route protection via Next.js proxy boundary (`proxy.ts`). Unapproved agents are blocked from transacting.
 - **Data Integrity:** Database transactions ensure stock link double-claiming is prevented during concurrent orders.
 - **Payment Verification:** Webhook signatures verified against Midtrans Server Key to prevent tampering.
 - **Responsiveness:** Mobile-first layout for agent portal for easy use on smartphones/tablets in field environments.

@@ -17,7 +17,7 @@ app/register/                       @dev-jiwo
 app/api/auth/register/              @dev-jiwo
 app/admin/agents/                   @dev-jiwo
 app/api/admin/agents/               @dev-jiwo
-middleware.ts                       @dev-jiwo
+proxy.ts                            @dev-jiwo
 lib/auth.ts                         @dev-jiwo
 
 # --- Track C: Product Guide Image & Inventory (Owner: Iqbal) ---
