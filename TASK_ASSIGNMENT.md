@@ -58,12 +58,91 @@ Semua work di bawah **sudah live di main** dan tidak memerlukan perubahan lebih 
 
 ---
 
-## Initiative 1: Roadmap v0.1 to v0.5 (5 Phases)
+## Initiative Model — Roadmap v2.0 (3 Business Initiatives)
 
+Replaces prior 5-phase structure. Phase 1 (Testing) & Phase 2 (Security) are **merged to `main`** — no further work. Remaining work organized as 3 initiatives, executed sequentially (1 → 2 → 3). **All Playwright E2E owned end-to-end by @dev-iqbal (QA).**
+
+### Completed Foundation (merged, no action)
+
+| Phase | Status | Details |
+|-------|--------|---------|
+| Phase 1 (Testing) | ✅ merged | Vitest + helpers + `__tests__/*` + `e2e/*` + CI gate |
+| Phase 2 (Security) | ✅ merged (PR #20) | `proxy.ts` routing, rate-limiting, CSRF, input validation, security headers |
 
 ---
 
-### Phase 1: Testing Foundation & Quality Gate (v0.1.0 to v0.2.0)
+### Initiative 1 — "Never Lose a Paid Order" (Reliability & Observability) → v0.4.0
+
+**Timeline:** 3–4 minggu | **Dependency:** none | **Priority:** RED (protects MVP launch)
+
+| Developer | Role | Deliverables | Files |
+|-----------|------|--------------|-------|
+| **Elang** | Lead (Observability) | Structured logger + health endpoint + dashboard widget | `lib/logger.ts`, `app/api/admin/health/route.ts`, `app/admin/page.tsx` (health widget), `__tests__/lib/logger.test.ts`, `__tests__/api/health.test.ts` |
+| **Jiwo** | Logger Integration | Replace `console.*` (≈59 sites) with `logger` across route handlers + stockout logging | `app/api/**/route.ts` (catch blocks), `lib/transactionStatus.ts` |
+| **Iqbal** | QA / E2E Owner | Low-stock badge + observability E2E | `app/admin/inventory/page.tsx` (badge only; **do NOT touch forms/upload**), `e2e/observability-*.spec.ts` |
+
+**Deliverables Checklist:**
+- [ ] Structured logger with levels/context
+- [ ] `/api/admin/health` returns metrics + stuck orders + low stock
+- [ ] Dashboard health widget + low-stock badge
+- [ ] ≥ 15 route files on logger
+- [ ] ≥ 1 E2E spec passing
+- [ ] All existing tests green
+
+**Protected:** `prisma/schema.prisma`, `next.config.mjs` (tech-lead), Track B files (`app/api/admin/agents/*`).
+
+---
+
+### Initiative 2 — "Safe to Open the Doors" (Abuse Protection remainder) → v0.5.0 (p1)
+
+**Timeline:** ~2 minggu | **Dependency:** Initiative 1 merged | **Note:** builds on already-merged security layer
+
+| Developer | Role | Deliverables | Files |
+|-----------|------|--------------|-------|
+| **Jiwo** | Lead (Safety) | Rate-limit discount endpoints + unify discount validation | `app/api/voucher/validate/route.ts`, `app/api/promo-codes/validate/route.ts`, `lib/discount.ts` |
+| **Elang** | Consolidation | Wire checkout routes + remove duplicate endpoints | `app/api/checkout/customer/route.ts`, `app/api/checkout/agent/route.ts`, delete `app/api/order/*` |
+| **Iqbal** | QA / E2E Owner | Discount-throttle E2E | `e2e/security-*.spec.ts` |
+
+**Deliverables Checklist:**
+- [ ] Both validate endpoints rate-limited
+- [ ] Single `validateDiscountCode` used by endpoints + checkout
+- [ ] Duplicate `/api/order/*` removed
+- [ ] ≥ 1 E2E spec passing
+- [ ] All prior tests green
+
+**Protected:** `prisma/schema.prisma`, `package.json` (no new deps).
+
+---
+
+### Initiative 3 — "Buy More, Come Back, Tell a Friend" (Growth) → v0.5.0 (p2)
+
+**Timeline:** ~3 minggu | **Dependency:** Initiative 1 merged (observability needed) | **Risk:** highest (touches checkout) — ships last
+
+| Developer | Role | Deliverables | Files |
+|-----------|------|--------------|-------|
+| **Elang** | Lead (Multi-Qty) | Qty selector + batch stock claim + multi-link screens | `components/agent/CheckoutForm.tsx`, customer form, `app/api/checkout/agent/route.ts`, `app/api/checkout/customer/route.ts`, `lib/stock.ts`, success/order screens |
+| **Jiwo** | Delivery & Reorders | WhatsApp + phone lookup + DB indexes/migration | `lib/whatsapp.ts`, `app/api/midtrans/webhook/route.ts`, `app/api/customer/orders/route.ts`, `app/customer/orders/page.tsx`, `prisma/schema.prisma` (@@index — coordinate w/ tech-lead), `prisma/migrations/*` |
+| **Iqbal** | QA / E2E Owner + Uploads | Image upload + revenue E2E (3+) | `lib/storage.ts`, `app/api/admin/upload/route.ts`, `app/admin/inventory/page.tsx` (upload widget — after Init 1 badge), `e2e/revenue-*.spec.ts` (3+) |
+
+**Deliverables Checklist:**
+- [ ] Multi-qty (max 10) for agent + customer
+- [ ] WhatsApp on PAID (mock/live via env)
+- [ ] `/customer/orders` phone lookup live
+- [ ] Image upload persists URL
+- [ ] ≥ 3 E2E specs passing
+- [ ] Single-qty backward compatible
+- [ ] All prior tests green
+
+**Special Notes:**
+- `app/api/checkout/agent/route.ts` — no longer protected; Elang owns multi-qty edits. Coordinate with Jiwo (webhook).
+- `app/admin/inventory/page.tsx` — triple-touch: Track C form → Init 1 badge → Init 3 upload. Sequential: Initiative 1 badge merge first.
+- `prisma/schema.prisma` index changes require tech-lead review (CODEOWNERS gate).
+
+**Protected:** none frozen, but `package.json` + `prisma/schema.prisma` changes need tech-lead sign-off.
+
+---
+
+## REMOVED: Phase 1: Testing Foundation & Quality Gate (v0.1.0 to v0.2.0)
 
 **Timeline:** 2 minggu
 **Priority:** RED CRITICAL - blocks semua phase lain
@@ -317,7 +396,11 @@ feat/dev-elang/phase-5-multi-qty-checkout
 
 ---
 
-**Last Updated:** 2026-09-11 | **Version:** 3.0 | **Model:** Track A/B/C (legacy) + Initiative 1 Roadmap v0.1 to v0.5 (5 phases sequential + partial parallel)
+**Last Updated:** 2026-09-13 | **Version:** 4.0 | **Model:** Track A/B/C (legacy, merged) + Initiative 1-3 Roadmap v2.0 (3 initiatives sequential) | **Baseline:** Phase 1 & 2 merged to `main`
+
+| Version | Date | Changes |
+|---------|------|---------|
+| v4.0 | 2026-09-13 | **Reframed to ROADMAP v2.0:** Initiative model reorganized around 3 business initiatives (Reliability/Observability, Safety remainder, Growth). Phase 1 & 2 marked as merged foundation. Dynamic file owners per work item; all Playwright E2E consolidated under @dev-iqbal |
 
 | Phase | Protected (Do Not Edit) |
 |-------|------------------------|
