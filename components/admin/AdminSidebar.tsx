@@ -23,6 +23,7 @@ interface AdminSidebarProps {
 }
 
 const navItems = [
+  { href: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/admin/inventory", icon: Package, label: "Inventori & Stok" },
   { href: "/admin/vouchers", icon: Ticket, label: "Voucher" },
   { href: "/admin/agents", icon: Users, label: "Manajemen Agen" },
@@ -55,7 +56,7 @@ export default function AdminSidebar({ username }: AdminSidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive = (item as any).exact ? pathname === item.href : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
