@@ -149,6 +149,13 @@ export async function applyMidtransStatusUpdate(
       });
     }
 
+    if (transaction.promoCodeId) {
+      await tx.promoCode.update({
+        where: { id: transaction.promoCodeId },
+        data: { usedAt: new Date() },
+      });
+    }
+
     return updatedTransaction;
   });
 

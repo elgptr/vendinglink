@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Tag, User, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
+import { Tag, CheckCircle2, XCircle, ChevronRight, Plus, Minus } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 import { formatRupiah } from "@/lib/utils";
 import toast from "@/components/ui/Toast";
 
 interface CheckoutFormProps {
   productId: string;
-  productName: string;
   productPrice: number;
 }
 
@@ -22,19 +20,37 @@ type VoucherState = {
 
 export default function CheckoutForm({
   productId,
-  productName,
   productPrice,
 }: CheckoutFormProps) {
   const router = useRouter();
-  const [customerName, setCustomerName] = useState("");
   const [voucherCode, setVoucherCode] = useState("");
   const [voucher, setVoucher] = useState<VoucherState>(null);
   const [voucherError, setVoucherError] = useState("");
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  // Double-submit CSRF token distributed by GET /api/csrf; attached to the
+  // checkout POST as `x-csrf-token`. Best-effort — if the bootstrap fails no
+  // token is sent and the server's CSRF guard fails open (no token anywhere).
+  const [csrfToken, setCsrfToken] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/csrf")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("csrf"))))
+      .then((data) => {
+        if (!cancelled && data?.token) setCsrfToken(data.token);
+      })
+      .catch(() => {
+        // Best-effort token distribution; see note above.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const discountAmount = voucher?.discountAmount || 0;
-  const finalAmount = Math.max(0, productPrice - discountAmount);
+  const finalAmount = Math.max(0, (productPrice * quantity) - discountAmount);
 
   const handleValidateVoucher = async () => {
     if (!voucherCode.trim()) return;
@@ -79,13 +95,16 @@ export default function CheckoutForm({
     setCheckoutLoading(true);
 
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/checkout/agent", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        },
         body: JSON.stringify({
           productId,
+          quantity,
           voucherId: voucher?.id,
-          customerName: customerName.trim() || undefined,
         }),
       });
 
@@ -96,7 +115,8 @@ export default function CheckoutForm({
         return;
       }
 
-      // Navigate to order/payment page
+      // Checkout agent langsung PAID (kredit) — arahkan ke halaman order,
+      // yang akan langsung menampilkan link redeem tanpa perlu pembayaran.
       router.push(`/agent/order/${data.orderId}`);
     } catch {
       toast.error("Terjadi kesalahan. Coba lagi.");
@@ -113,18 +133,29 @@ export default function CheckoutForm({
     >
       <h3 className="font-semibold text-white text-lg">Detail Pembelian</h3>
 
-      {/* Customer name */}
-      <Input
-        id="customer-name-input"
-        label="Nama Pembeli"
-        type="text"
-        placeholder="Opsional — untuk catatan Anda"
-        value={customerName}
-        onChange={(e) => setCustomerName(e.target.value)}
-        leftIcon={<User size={15} />}
-        hint="Nama pembeli tidak wajib diisi"
-        maxLength={100}
-      />
+      {/* Quantity Selector */}
+      <div className="flex items-center justify-between border-b border-surface-border pb-4">
+        <label className="text-sm font-medium text-slate-300">Jumlah Pembelian</label>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+            disabled={quantity <= 1}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-surface-border text-slate-300 disabled:opacity-50 transition-colors hover:bg-surface-hover"
+          >
+            <Minus size={14} />
+          </button>
+          <span className="w-6 text-center font-semibold text-white">{quantity}</span>
+          <button
+            type="button"
+            onClick={() => setQuantity((prev) => Math.min(10, prev + 1))}
+            disabled={quantity >= 10}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-surface-border text-slate-300 disabled:opacity-50 transition-colors hover:bg-surface-hover"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+      </div>
 
       {/* Voucher */}
       {!voucher ? (
@@ -190,8 +221,8 @@ export default function CheckoutForm({
         </div>
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400">Harga Produk</span>
-            <span className="text-slate-200">{formatRupiah(productPrice)}</span>
+            <span className="text-slate-400">Harga Produk (x{quantity})</span>
+            <span className="text-slate-200">{formatRupiah(productPrice * quantity)}</span>
           </div>
           {discountAmount > 0 && (
             <div className="flex justify-between text-sm">
@@ -219,8 +250,12 @@ export default function CheckoutForm({
         loading={checkoutLoading}
         icon={<ChevronRight size={18} />}
       >
-        Lanjut ke Pembayaran
+        Ambil Produk (Kredit)
       </Button>
+      <p className="text-xs text-slate-500 text-center">
+        Link redeem akan langsung tersedia. Total tagihan ditambahkan ke saldo hutang Anda.
+      </p>
     </form>
   );
 }
+

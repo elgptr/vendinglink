@@ -1,10 +1,10 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
-import OrderPageClient from "@/components/agent/OrderPageClient";
+import SuccessScreen from "@/components/agent/SuccessScreen";
 
 export const metadata = {
-  title: "Pembayaran",
+  title: "Detail Order",
 };
 
 interface OrderPageProps {
@@ -12,11 +12,12 @@ interface OrderPageProps {
 }
 
 export default async function OrderPage({ params }: OrderPageProps) {
+  const p = await params;
   const session = await auth();
   if (!session) redirect("/login");
 
   const transaction = await prisma.transaction.findUnique({
-    where: { orderId: params.orderId },
+    where: { orderId: p.orderId },
     include: { product: true },
   });
 
@@ -30,17 +31,26 @@ export default async function OrderPage({ params }: OrderPageProps) {
     redirect("/agent/catalog");
   }
 
-  // If already PAID, client will detect and show success screen on first poll
-  // Pass order data to client for immediate display
+  // Agent checkout (credit flow) is always created as PAID instantly — there
+  // is no PENDING/Midtrans step, so the redeem URL is guaranteed to exist.
+  if (transaction.status !== "PAID" || !transaction.redeemUrl) {
+    redirect("/agent/catalog");
+  }
+
   return (
     <div className="py-4">
-      <OrderPageClient
-        orderId={transaction.orderId}
-        initialAmount={transaction.finalAmount}
+      <SuccessScreen
+        redeemUrl={transaction.redeemUrl}
+        guideImageUrl={transaction.product.guideImageUrl}
+        guideText={transaction.product.guideText}
+        productType={transaction.product.type}
         productName={transaction.product.name}
-        isPaid={transaction.status === "PAID"}
+        amount={transaction.finalAmount}
+        customerName={transaction.customerName}
+        paidAt={transaction.paidAt?.toISOString() ?? null}
       />
     </div>
   );
 }
+
 

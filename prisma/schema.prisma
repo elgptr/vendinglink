@@ -32,8 +32,12 @@ model Product {
   id            String   @id @default(cuid())
   name          String
   price         Int
+  originalPrice Int?
+  showOriginalPrice Boolean @default(true)
+  type          String   @default("LINK") // 'LINK' | 'KODE'
   description   String?
   guideImageUrl String? // Image guide on how to use the redeem link
+  guideText     String? // Step-by-step usage instructions (markdown/plain text)
   isActive      Boolean  @default(true)
   updatedAt     DateTime @updatedAt
 
@@ -59,6 +63,10 @@ model RedeemStock {
   product        Product @relation(fields: [productId], references: [id])
   claimedByAgent User?   @relation(fields: [claimedByAgentId], references: [id])
 
+  // Index: stock claim query — productId + status is the hot path in claimAvailableStock()
+  @@index([productId, status])
+  // Index: agent stock lookup (e.g. list all stocks claimed by a specific agent)
+  @@index([claimedByAgentId, status])
   @@map("redeem_stocks")
 }
 
@@ -111,6 +119,14 @@ model Transaction {
   voucher   Voucher?   @relation(fields: [voucherId], references: [id])
   promoCode PromoCode? @relation(fields: [promoCodeId], references: [id])
 
+  // Index: admin reports filter — status + paidAt covers the most common query
+  @@index([status, paidAt])
+  // Index: agent debt dashboard — agentId + paymentType + isSettled
+  @@index([agentId, paymentType, isSettled])
+  // Index: customer order lookup by phone — customerPhone + status
+  @@index([customerPhone, status])
+  // Index: product sales analytics — productId + status
+  @@index([productId, status])
   @@map("transactions")
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Ticket, Plus, ToggleLeft, ToggleRight } from "lucide-react";
+import { Ticket, Plus, ToggleLeft, ToggleRight, Edit3 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
@@ -29,11 +29,18 @@ export default function VouchersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
 
-  // Form
+  // Form Create
   const [code, setCode] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
   const [quota, setQuota] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+
+  // Form Edit
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editVoucher, setEditVoucher] = useState<Voucher | null>(null);
+  const [editDiscountAmount, setEditDiscountAmount] = useState("");
+  const [editQuota, setEditQuota] = useState("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
 
   const fetchVouchers = async () => {
     setLoading(true);
@@ -91,6 +98,51 @@ export default function VouchersPage() {
       toast.error("Gagal mengubah status voucher");
     }
     setToggling(null);
+  };
+
+  const handleEditClick = (voucher: Voucher) => {
+    setEditVoucher(voucher);
+    setEditDiscountAmount(voucher.discountAmount.toString());
+    setEditQuota(voucher.quota.toString());
+    
+    if (voucher.expiresAt) {
+      const date = new Date(voucher.expiresAt);
+      const localDatetime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      setEditExpiresAt(localDatetime);
+    } else {
+      setEditExpiresAt("");
+    }
+    setShowEditModal(true);
+  };
+
+  const submitEdit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editVoucher) return;
+    
+    setSubmitting(true);
+    const res = await fetch("/api/admin/vouchers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: editVoucher.id,
+        discountAmount: parseInt(editDiscountAmount),
+        quota: parseInt(editQuota),
+        expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      toast.success("Voucher berhasil diupdate!");
+      fetchVouchers();
+      setShowEditModal(false);
+      setEditVoucher(null);
+    } else {
+      toast.error(data.error || "Gagal mengupdate voucher");
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -183,19 +235,29 @@ export default function VouchersPage() {
                         </Badge>
                       </td>
                       <td>
-                        <button
-                          id={`toggle-voucher-${v.id}`}
-                          onClick={() => handleToggle(v)}
-                          disabled={toggling === v.id}
-                          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-                        >
-                          {v.isActive ? (
-                            <ToggleRight size={20} className="text-brand-400" />
-                          ) : (
-                            <ToggleLeft size={20} />
-                          )}
-                          {v.isActive ? "Nonaktifkan" : "Aktifkan"}
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            id={`edit-voucher-${v.id}`}
+                            onClick={() => handleEditClick(v)}
+                            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+                          >
+                            <Edit3 size={18} />
+                            Edit
+                          </button>
+                          <button
+                            id={`toggle-voucher-${v.id}`}
+                            onClick={() => handleToggle(v)}
+                            disabled={toggling === v.id}
+                            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                          >
+                            {v.isActive ? (
+                              <ToggleRight size={20} className="text-brand-400" />
+                            ) : (
+                              <ToggleLeft size={20} />
+                            )}
+                            {v.isActive ? "Nonaktifkan" : "Aktifkan"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -261,6 +323,57 @@ export default function VouchersPage() {
             type="datetime-local"
             value={expiresAt}
             onChange={(e) => setExpiresAt(e.target.value)}
+            hint="Kosongkan jika tidak ada batas waktu"
+          />
+        </form>
+      </Modal>
+
+      {/* Edit Voucher Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title={`Edit Voucher ${editVoucher?.code}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowEditModal(false)}>Batal</Button>
+            <Button
+              id="submit-edit-voucher-btn"
+              onClick={submitEdit}
+              loading={submitting}
+            >
+              Simpan Perubahan
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={submitEdit} className="space-y-4">
+          <Input
+            id="edit-voucher-discount-field"
+            label="Nilai Diskon (Rp)"
+            type="number"
+            min="1"
+            placeholder="100000"
+            value={editDiscountAmount}
+            onChange={(e) => setEditDiscountAmount(e.target.value)}
+            required
+          />
+          <Input
+            id="edit-voucher-quota-field"
+            label="Kuota Pemakaian Total"
+            type="number"
+            min={editVoucher?.usedCount || 1}
+            placeholder="10"
+            value={editQuota}
+            onChange={(e) => setEditQuota(e.target.value)}
+            required
+            hint={`Minimal ${editVoucher?.usedCount || 0} (sudah terpakai ${editVoucher?.usedCount || 0} kali)`}
+          />
+          <Input
+            id="edit-voucher-expiry-field"
+            label="Berlaku Hingga (Opsional)"
+            type="datetime-local"
+            value={editExpiresAt}
+            onChange={(e) => setEditExpiresAt(e.target.value)}
             hint="Kosongkan jika tidak ada batas waktu"
           />
         </form>

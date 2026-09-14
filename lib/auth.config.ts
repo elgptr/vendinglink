@@ -6,7 +6,8 @@ export const authConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { id: string; role: string }).role;
+        token.role = (user as { id: string; role: string; isApproved?: boolean }).role;
+        token.isApproved = (user as { id: string; role: string; isApproved?: boolean }).isApproved;
       }
       return token;
     },
@@ -14,6 +15,7 @@ export const authConfig = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.isApproved = token.isApproved as boolean | undefined;
       }
       return session;
     },

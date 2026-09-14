@@ -62,3 +62,52 @@ export async function claimAvailableStock(
 
   return null;
 }
+
+/**
+ * Atomically claim multiple AVAILABLE stock units for a product using an
+ * optimistic compare-and-swap.
+ */
+export async function claimAvailableStockBatch(
+  tx: TxClient,
+  productId: string,
+  quantity: number,
+  claim: {
+    claimedByAgentId?: string | null;
+    customerName?: string | null;
+    customerPhone?: string | null;
+  }
+): Promise<{ id: string; redeemUrl: string }[] | null> {
+  for (let attempt = 0; attempt < MAX_CLAIM_ATTEMPTS; attempt++) {
+    const candidates = await tx.redeemStock.findMany({
+      where: { productId, status: "AVAILABLE" },
+      orderBy: { createdAt: "asc" },
+      take: quantity,
+      select: { id: true, redeemUrl: true },
+    });
+
+    if (candidates.length < quantity) {
+      return null; // genuinely out of stock for the requested quantity
+    }
+
+    const candidateIds = candidates.map((c) => c.id);
+
+    const result = await tx.redeemStock.updateMany({
+      where: { id: { in: candidateIds }, status: "AVAILABLE" },
+      data: {
+        status: "SOLD",
+        claimedByAgentId: claim.claimedByAgentId ?? null,
+        customerName: claim.customerName ?? null,
+        customerPhone: claim.customerPhone ?? null,
+        claimedAt: new Date(),
+      },
+    });
+
+    if (result.count === quantity) {
+      return candidates; // won the race for all requested rows
+    }
+
+    // Lost the race - loop and try again
+  }
+
+  return null;
+}

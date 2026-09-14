@@ -4,10 +4,18 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting database seed...");
+  // Guard: Skip seed in production
+  if (process.env.NODE_ENV === "production" || process.env.ENVIRONMENT === "production") {
+    console.log("⚠️  Seed skipped in production. Use change-password.js for password changes.");
+    return;
+  }
 
-  // ─── 1. Admin User ────────────────────────────────────────────────────────
-  const adminHash = await bcrypt.hash("adminpassword", 10);
+  console.log("🌱 Starting database seed...");
+  console.log("⚠️  NOTE: Passwords are temporary dev-only. Change immediately in production!\n");
+
+  // Admin User
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || (Math.random().toString(36).slice(-12));
+  const adminHash = await bcrypt.hash(adminPassword, 10);
   const admin = await prisma.user.upsert({
     where: { username: "admin" },
     update: {},
@@ -20,9 +28,11 @@ async function main() {
     },
   });
   console.log(`✅ Admin created: ${admin.username}`);
+  console.log(`   Dev password: ${adminPassword}`);
 
-  // ─── 2. Agent User ────────────────────────────────────────────────────────
-  const agentHash = await bcrypt.hash("agentpassword", 10);
+  // Agent User
+  const agentPassword = process.env.SEED_AGENT_PASSWORD || (Math.random().toString(36).slice(-12));
+  const agentHash = await bcrypt.hash(agentPassword, 10);
   const agent = await prisma.user.upsert({
     where: { username: "agent01" },
     update: {},
@@ -35,8 +45,9 @@ async function main() {
     },
   });
   console.log(`✅ Agent created: ${agent.username}`);
+  console.log(`   Dev password: ${agentPassword}`);
 
-  // ─── 3. Product ───────────────────────────────────────────────────────────
+  // Product
   const product = await prisma.product.upsert({
     where: { id: "product-premium-01" },
     update: {},
@@ -44,14 +55,13 @@ async function main() {
       id: "product-premium-01",
       name: "Link Redeem Premium",
       price: 350000,
-      description:
-        "Akses premium eksklusif berisi link redeem yang siap digunakan. Berlaku selamanya.",
+      description: "Akses premium eksklusif berisi link redeem yang siap digunakan. Berlaku selamanya.",
       isActive: true,
     },
   });
   console.log(`✅ Product created: ${product.name}`);
 
-  // ─── 4. Redeem Stocks ─────────────────────────────────────────────────────
+  // Redeem Stocks
   const stockLinks = [
     "https://example.com/redeem/ABCD-1234-EFGH",
     "https://example.com/redeem/IJKL-5678-MNOP",
@@ -74,7 +84,7 @@ async function main() {
   }
   console.log(`✅ ${stockLinks.length} stock links created`);
 
-  // ─── 5. Voucher ───────────────────────────────────────────────────────────
+  // Voucher
   await prisma.voucher.upsert({
     where: { code: "HEMAT100K" },
     update: {},
@@ -84,18 +94,13 @@ async function main() {
       quota: 10,
       usedCount: 0,
       isActive: true,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 hari
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
   });
-  console.log(`✅ Voucher created: HEMAT100K (Rp100.000 off, quota 10)`);
+  console.log(`✅ Voucher created`);
 
-  console.log("\n🎉 Seed completed successfully!");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("Admin    → username: admin      | password: adminpassword");
-  console.log("Agent    → username: agent01    | password: agentpassword");
-  console.log("Voucher  → HEMAT100K (Rp100.000 off)");
-  console.log("Stok     → 5 link redeem tersedia");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("\n🎉 Seed completed!");
+  console.log("⚠️  For production: use change-password.js to set real passwords.");
 }
 
 main()
