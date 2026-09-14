@@ -2,22 +2,21 @@ import { GoogleGenAI } from "@google/genai";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
-const GEMINI_MODEL = "gemini-3.6-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const MAX_OUTPUT_TOKENS = 1024;
 
-// Lazy initialize to avoid errors at build time
-let geminiInstance: GoogleGenAI | null = null;
+// Cache instances by API key
+const clientCache = new Map<string, GoogleGenAI>();
 
-export function getGeminiClient(): GoogleGenAI {
-  if (!geminiInstance) {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not set");
-    }
-    geminiInstance = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-    });
+export function getGeminiClient(customApiKey?: string): GoogleGenAI {
+  const key = customApiKey || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is not set");
   }
-  return geminiInstance;
+  if (!clientCache.has(key)) {
+    clientCache.set(key, new GoogleGenAI({ apiKey: key }));
+  }
+  return clientCache.get(key)!;
 }
 
 // Keep export for backward compatibility
@@ -36,7 +35,7 @@ export interface ChatMessage {
  * Build a fresh system prompt containing live catalog, stock, and voucher
  * data so the assistant always answers with up-to-date information.
  */
-export async function buildSystemPrompt(): Promise<string> {
+export async function buildSystemPrompt(audience: "customer" | "agent" = "agent"): Promise<string> {
   const [products, activeVouchers] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true },
@@ -63,7 +62,7 @@ export async function buildSystemPrompt(): Promise<string> {
             p._count.stocks > 0
               ? `stok tersedia: ${p._count.stocks}`
               : "stok: HABIS";
-          return `- ${p.name} — ${formatRupiah(p.price)} (${stockInfo})${
+          return `- ${p.name} - ${formatRupiah(p.price)} (${stockInfo})${
             p.description ? `. ${p.description}` : ""
           }`;
         })
@@ -84,7 +83,36 @@ export async function buildSystemPrompt(): Promise<string> {
         .join("\n")
     : "Tidak ada voucher promo yang aktif saat ini.";
 
-  return `Anda adalah "VendingLink Assistant", asisten AI yang membantu agen penjualan di platform VendingLink — sistem penjualan link redeem digital (lisensi/kode redeem) dengan pembayaran online melalui Midtrans (QRIS, transfer bank/VA, e-wallet, kartu kredit, dan metode lain yang tersedia).
+  if (audience === "customer") {
+    return `Anda adalah "VendingLink Assistant", asisten ramah untuk pembeli/customer di toko online VendingLink (platform pembelian link/kode redeem digital).
+
+Tugas Anda:
+1. Membantu calon pembeli memilih produk yang tersedia, mengecek harga, dan mengetahui ketersediaan stok.
+2. Menjelaskan cara checkout langsung di website dan pembayaran otomatis lewat Midtrans (QRIS GoPay/ShopeePay/BCA, transfer bank VA, e-wallet, kartu kredit, dsb).
+3. Memberikan informasi voucher promo/diskon yang dapat digunakan di halaman checkout jika ada.
+4. Menjawab pertanyaan seputar status dan cara menerima link redeem setelah pembayaran sukses.
+
+DATA PRODUK AKTIF:
+${productLines}
+
+VOUCHER PROMO AKTIF:
+${voucherLines}
+
+CARA PEMBELIAN DI WEBSITE:
+1. Pembeli memilih produk yang diinginkan dari daftar katalog di halaman utama.
+2. Klik tombol "Beli Sekarang", isi nama dan email untuk pengiriman konfirmasi.
+3. Masukkan kode voucher diskon jika memilikinya, lalu klik tombol pembayaran.
+4. Selesaikan pembayaran melalui pop-up Midtrans (QRIS, VA Bank, dll).
+5. Setelah pembayaran berhasil diverifikasi secara instan, link/kode redeem akan langsung tampil di layar dan siap digunakan!
+
+ATURAN:
+- Selalu gunakan bahasa Indonesia yang ramah, sopan, antusias, dan jelas.
+- Jawab secara ringkas to-the-point agar mudah dibaca di widget chat kecil.
+- Selalu jadikan data produk & promo di atas sebagai acuan akurat. Jangan mengarang harga atau voucher yang tidak terdaftar.
+- Jangan pernah memberikan link redeem rahasia internal secara langsung.`;
+  }
+
+  return `Anda adalah "VendingLink Assistant", asisten AI yang membantu agen penjualan di platform VendingLink - sistem penjualan link redeem digital (lisensi/kode redeem) dengan pembayaran online melalui Midtrans (QRIS, transfer bank/VA, e-wallet, kartu kredit, dan metode lain yang tersedia).
 
 Tugas Anda adalah menjawab pertanyaan agen seputar:
 1. Daftar produk yang tersedia beserta harga dan status stok.
@@ -98,7 +126,7 @@ ${productLines}
 VOUCHER PROMO AKTIF SAAT INI:
 ${voucherLines}
 
-CARA CHECKOUT & PEMBAYARAN (jelaskan jika ditanya):
+CARA CHECKOUT & PEMBAYARAN:
 1. Agen membuka menu Katalog Produk lalu memilih produk yang ingin dibeli.
 2. Agen mengisi nama pembeli (opsional) dan bisa menerapkan kode voucher promo jika ada.
 3. Setelah klik "Lanjut ke Pembayaran", sistem akan menampilkan pilihan metode pembayaran (QRIS, transfer bank/VA, e-wallet, kartu kredit, dan lainnya) yang harus dibayar dalam waktu 24 jam.
@@ -110,7 +138,7 @@ ATURAN JAWABAN:
 - Gunakan data produk dan voucher di atas sebagai sumber kebenaran, jangan mengarang harga, stok, atau kode voucher yang tidak ada di data.
 - Jika stok produk 0/habis, sampaikan dengan jelas bahwa produk sedang habis.
 - Jika ditanya hal di luar topik VendingLink (produk, stok, checkout, pembayaran, voucher), arahkan dengan sopan bahwa Anda hanya bisa membantu seputar VendingLink.
-- Jangan pernah menampilkan URL redeem asli, data pelanggan, atau informasi rahasia lain — cukup jelaskan proses dan statusnya.`;
+- Jangan pernah menampilkan URL redeem asli, data pelanggan, atau informasi rahasia lain - cukup jelaskan proses dan statusnya.`;
 }
 
 /**
@@ -120,9 +148,11 @@ ATURAN JAWABAN:
  */
 export async function askChatbot(
   history: ChatMessage[],
-  systemPrompt: string
+  systemPrompt: string,
+  apiKey?: string
 ): Promise<string> {
-  const response = await gemini.models.generateContent({
+  const client = getGeminiClient(apiKey);
+  const response = await client.models.generateContent({
     model: GEMINI_MODEL,
     contents: history.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",

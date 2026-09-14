@@ -4,8 +4,14 @@ import { sanitizeString } from "@/lib/utils";
 import { askChatbot, buildSystemPrompt } from "@/lib/gemini";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
+import { createRateLimiter } from "@/lib/rateLimit";
+import { prisma } from "@/lib/prisma";
+import { decryptAPIKey } from "@/lib/encryption";
 
 const log = createLogger({ module: "chat" });
+
+// 15 requests per minute per user/IP
+const chatRateLimiter = createRateLimiter(15, 60 * 1000);
 
 const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -16,14 +22,44 @@ const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).min(1).max(30),
 });
 
+async function resolveGeminiKey(): Promise<string | null> {
+  try {
+    const config = await prisma.aIConfiguration.findFirst();
+    if (config?.geminiApiKey) {
+      return decryptAPIKey(config.geminiApiKey);
+    }
+  } catch (err) {
+    log.error("Failed to read AIConfiguration from database", { error: String(err) });
+  }
+  return process.env.GEMINI_API_KEY || null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Client identifier for rate limiting: user id if logged in, else client IP
+    const clientIp =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "anonymous";
+    const limiterKey = session?.user?.id ? `user:${session.user.id}` : `ip:${clientIp}`;
+
+    const limitResult = chatRateLimiter.check(limiterKey);
+    if (!limitResult.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak permintaan chat. Silakan tunggu sebentar." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil((limitResult.resetAt - Date.now()) / 1000).toString(),
+          },
+        }
+      );
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey = await resolveGeminiKey();
+    if (!apiKey) {
       return NextResponse.json(
         { error: "Fitur chat belum dikonfigurasi. Hubungi admin." },
         { status: 503 }
@@ -53,8 +89,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const systemPrompt = await buildSystemPrompt();
-    const reply = await askChatbot(sanitizedMessages, systemPrompt);
+    const isCustomer = !session?.user?.id || session.user.role === "CUSTOMER";
+    const systemPrompt = await buildSystemPrompt(isCustomer ? "customer" : "agent");
+    const reply = await askChatbot(sanitizedMessages, systemPrompt, apiKey);
 
     return NextResponse.json({ reply });
   } catch (error) {
@@ -65,4 +102,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
