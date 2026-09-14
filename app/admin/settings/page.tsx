@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
+import AIConfigForm from "@/components/admin/AIConfigForm";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
@@ -46,6 +47,13 @@ export default async function AdminSettingsPage() {
               <p className="text-slate-100 font-medium">Administrator</p>
             </div>
           </div>
+        </div>
+
+        {/* AI Configuration Card */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-6">
+          <h2 className="text-xl font-semibold text-white mb-1">Konfigurasi AI</h2>
+          <p className="text-sm text-slate-400 mb-6">Kelola API keys untuk Google Gemini & Anthropic Claude</p>
+          <AIConfigForm />
         </div>
       </div>
     </div>
