@@ -10,6 +10,9 @@ export const metadata = {
   title: "Checkout",
 };
 
+// Prevent static generation - this page needs fresh data on each request
+export const dynamic = "force-dynamic";
+
 interface CheckoutPageProps {
   params: { productId: string };
 }
