@@ -36,7 +36,7 @@ jobs:
       - name: Run unit and integration tests
         run: npm run test:run
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
