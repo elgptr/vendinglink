@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { sanitizeString } from "@/lib/utils";
 import { checkAdminRateLimit } from "@/lib/adminRateLimit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "admin-products" });
 
 const productSchema = z.object({
   name: z.string().min(1).max(100),
@@ -60,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(products);
   } catch (error) {
-    console.error("Products GET error:", error);
+    log.error("Products GET error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -102,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    console.error("Products POST error:", error);
+    log.error("Products POST error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -148,7 +151,8 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(product);
   } catch (error) {
-    console.error("Products PATCH error:", error);
+    log.error("Products PATCH error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

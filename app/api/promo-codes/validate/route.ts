@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sanitizeString, formatRupiah } from "@/lib/utils";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "promo-codes-validate" });
 
 // Public — no auth required, since customer checkout itself is unauthenticated.
 const validateSchema = z.object({
@@ -94,7 +97,8 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Promo code validate error:", error);
+    log.error("Promo code validate error", { error: String(error) });
     return NextResponse.json({ error: "Terjadi kesalahan server" }, { status: 500 });
   }
 }
+

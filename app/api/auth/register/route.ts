@@ -6,6 +6,9 @@ import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "auth-register" });
 
 // Shared rate limiter (5 registration attempts / min / IP).
 const registerLimiter = createRateLimiter(5, 60 * 1000);
@@ -98,7 +101,8 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Register POST error:", error);
+    log.error("Register POST error", { error: String(error) });
     return NextResponse.json({ error: "Terjadi kesalahan server" }, { status: 500 });
   }
 }
+

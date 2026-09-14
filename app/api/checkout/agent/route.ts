@@ -7,6 +7,9 @@ import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "checkout-agent" });
 
 // Rate limiter for agent checkout (20 attempts / min / per user).
 const checkoutLimiter = createRateLimiter(20, 60 * 1000);
@@ -175,10 +178,11 @@ export async function POST(request: NextRequest) {
       throw txError;
     }
   } catch (error) {
-    console.error("Agent checkout error:", error);
+    log.error("Agent checkout error", { error: String(error) });
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }
     );
   }
 }
+
