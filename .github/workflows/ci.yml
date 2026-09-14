@@ -1,4 +1,4 @@
-name: CI — Build & Lint
+name: CI — Build, Lint & Test
 
 on:
   push:
@@ -7,9 +7,10 @@ on:
     branches: [main, staging, dev]
 
 jobs:
-  build-and-lint:
-    name: Build & Lint
+  build-lint-test:
+    name: Build, Lint & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -32,3 +33,65 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: Run unit and integration tests
+        run: npm run test:run
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+
+      # ============================================================
+      # Artifact Upload Configuration
+      # Retention: 30 days (configurable)
+      # Reports are EXCLUDED from git (see .gitignore)
+      # ============================================================
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_number }}
+          path: playwright-report/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload test results JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_number }}
+          path: test-results/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload failure artifacts (screenshots & videos)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures-${{ github.run_number }}
+          path: |
+            screenshots/
+            videos/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Comment PR with artifact link
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ E2E tests failed in run #${{ github.run_number }}\n\n📊 **Artifacts Available:**\n- [Playwright Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n- Retention: 30 days\n\n📝 Check the GitHub Actions tab for detailed reports.`
+            })
+
+

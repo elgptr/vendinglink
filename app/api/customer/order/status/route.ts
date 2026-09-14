@@ -22,7 +22,7 @@ const transactionSelect = {
   // Only exposed in the response if PAID (see safeRedeemUrl below)
   redeemUrl: true,
   product: {
-    select: { name: true, guideImageUrl: true },
+    select: { name: true, guideImageUrl: true, type: true, guideText: true },
   },
 } as const;
 
@@ -91,10 +91,12 @@ export async function GET(request: NextRequest) {
       discountAmount: transaction.discountAmount,
       customerName: transaction.customerName,
       productName: transaction.product.name,
+      productType: transaction.product.type,
       createdAt: transaction.createdAt,
       paidAt: transaction.paidAt,
       redeemUrl: isPaid ? transaction.redeemUrl : null,
       guideImageUrl: isPaid ? transaction.product.guideImageUrl : null,
+      guideText: isPaid ? transaction.product.guideText : null,
     });
   } catch (error) {
     console.error("Customer order status error:", error);

@@ -1,8 +1,12 @@
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "admin-stock" });
+
 import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseBulkLinks, isValidUrl } from "@/lib/utils";
+import { parseBulkLinks, parseBulkCodes, isValidUrl } from "@/lib/utils";
 import { z } from "zod";
 
 const bulkUploadSchema = z.object({
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Stock GET error:", error);
+    log.error("Stock GET error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -101,25 +105,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse and validate links
-    const links = parseBulkLinks(linksText);
+    // Parse and validate links or codes based on product type
+    let entries: string[] = [];
+    if (product.type === "KODE") {
+      entries = parseBulkCodes(linksText);
+    } else {
+      entries = parseBulkLinks(linksText);
+    }
 
-    if (links.length === 0) {
+    if (entries.length === 0) {
       return NextResponse.json(
-        { error: "Tidak ada URL valid yang ditemukan" },
+        { error: "Tidak ada input valid yang ditemukan" },
         { status: 400 }
       );
     }
 
-    // Check for duplicate links already in DB
+    // Check for duplicate links/codes already in DB
     const existingLinks = await prisma.redeemStock.findMany({
-      where: { redeemUrl: { in: links } },
+      where: { redeemUrl: { in: entries }, productId }, // Only check duplicate codes within same product
       select: { redeemUrl: true },
     });
 
     const existingUrlSet = new Set(existingLinks.map((s) => s.redeemUrl));
-    const newLinks = links.filter((l) => !existingUrlSet.has(l));
-    const skippedCount = links.length - newLinks.length;
+    const newLinks = entries.filter((l) => !existingUrlSet.has(l));
+    const skippedCount = entries.length - newLinks.length;
 
     if (newLinks.length === 0) {
       return NextResponse.json(
@@ -143,7 +152,8 @@ export async function POST(request: NextRequest) {
       skipped: skippedCount,
     });
   } catch (error) {
-    console.error("Stock POST error:", error);
+    log.error("Stock POST error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

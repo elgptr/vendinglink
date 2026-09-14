@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { cache } from "@/lib/cache";
 import { ShoppingBag, Package } from "lucide-react";
 import CustomerProductCard from "@/components/customer/CustomerProductCard";
+
+// Stock count changes every time a purchase happens — never prerender this
+// page statically at build time, always fetch fresh data per request.
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Katalog Produk",
@@ -10,26 +15,30 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 async function getProducts() {
-  const products = await prisma.product.findMany({
-    where: { isActive: true },
-    include: {
+  return cache.getOrSet("catalog-products", async () => {
+      const products = await prisma.product.findMany({
+      where: { isActive: true },
+      include: {
       _count: {
-        select: {
-          stocks: { where: { status: "AVAILABLE" } },
-        },
+      select: {
+      stocks: { where: { status: "AVAILABLE" } },
       },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  // Strip any sensitive data — only return what's needed for the public page
-  return products.map((p) => ({
-    id: p.id,
-    name: p.name,
-    price: p.price,
-    description: p.description,
-    stockCount: p._count.stocks,
-  }));
+      },
+      },
+      orderBy: { updatedAt: "desc" },
+      });
+      
+      // Strip any sensitive data — only return what's needed for the public page
+      return products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      originalPrice: p.originalPrice,
+      showOriginalPrice: p.showOriginalPrice,
+      description: p.description,
+      stockCount: p._count.stocks,
+      }));
+  }, 10);
 }
 
 export default async function CustomerCatalogPage() {

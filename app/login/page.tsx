@@ -2,14 +2,17 @@
 
 import { useState, FormEvent, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Zap, Lock, User } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Eye, EyeOff, Zap, Lock, User, ShieldAlert } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import toast from "@/components/ui/Toast";
 
 function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isUnapproved = searchParams.get("error") === "unapproved";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -40,7 +43,7 @@ function LoginContent() {
         router.refresh();
       }
     } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+      setError("Terjadi kesalahan. Silakan coba lagi.");
       toast.error("Terjadi kesalahan sistem.");
     } finally {
       setLoading(false);
@@ -52,7 +55,7 @@ function LoginContent() {
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md animate-slide-up">
@@ -64,6 +67,17 @@ function LoginContent() {
           <h1 className="text-3xl font-bold text-white mb-2">VendingLink</h1>
           <p className="text-slate-400">Masuk ke akun Anda untuk melanjutkan</p>
         </div>
+
+        {/* Unapproved agent banner */}
+        {isUnapproved && (
+          <div className="flex items-start gap-3 p-4 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 animate-fade-in">
+            <ShieldAlert size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-semibold text-amber-400 mb-0.5">Akun Belum Disetujui</p>
+              <p>Akun agen Anda masih menunggu persetujuan dari Admin. Silakan hubungi admin untuk proses approval.</p>
+            </div>
+          </div>
+        )}
 
         {/* Login Card */}
         <div className="bg-surface-card border border-surface-border rounded-2xl p-8 shadow-2xl">
@@ -121,25 +135,14 @@ function LoginContent() {
             </Button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 pt-5 border-t border-surface-border">
-            <p className="text-xs text-slate-500 text-center mb-3">Demo Credentials</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => { setUsername("admin"); setPassword("adminpassword"); }}
-                className="text-xs px-3 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-purple-400 hover:bg-purple-500/20 transition-colors"
-              >
-                👑 Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => { setUsername("agent01"); setPassword("agentpassword"); }}
-                className="text-xs px-3 py-2 bg-brand-500/10 border border-brand-500/20 rounded-lg text-brand-400 hover:bg-brand-500/20 transition-colors"
-              >
-                🛒 Agent01
-              </button>
-            </div>
+          {/* Register link */}
+          <div className="mt-4 text-center">
+            <p className="text-xs text-slate-400">
+              Ingin jadi agen reseller?{" "}
+              <Link href="/register" className="text-brand-400 hover:underline font-medium">
+                Daftar di sini
+              </Link>
+            </p>
           </div>
         </div>
 

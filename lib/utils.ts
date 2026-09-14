@@ -135,3 +135,15 @@ export function parseBulkLinks(text: string): string[] {
     .filter((line) => line.length > 0 && isValidUrl(line));
 }
 
+/**
+ * Parse bulk codes/values from textarea (1 line = 1 code).
+ * Does NOT validate URL format — accepts any non-empty string.
+ * Used for product type "KODE" where stock entries are literal codes, not URLs.
+ */
+export function parseBulkCodes(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+

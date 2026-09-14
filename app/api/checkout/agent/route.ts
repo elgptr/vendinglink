@@ -2,12 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderId } from "@/lib/utils";
-import { claimAvailableStock } from "@/lib/stock";
+import { claimAvailableStockBatch } from "@/lib/stock";
+import { createRateLimiter } from "@/lib/rateLimit";
+import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
+import { validatePayloadSize } from "@/lib/inputValidation";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "checkout-agent" });
+
+// Rate limiter for agent checkout (20 attempts / min / per user).
+const checkoutLimiter = createRateLimiter(20, 60 * 1000);
 
 const agentCheckoutSchema = z.object({
   productId: z.string().min(1),
   voucherId: z.string().optional(),
+  quantity: z.number().min(1).max(10).optional().default(1),
 });
 
 export async function POST(request: NextRequest) {
@@ -34,6 +44,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Security guards (rate limit, CSRF, payload size) ────────────────────
+    if (!checkoutLimiter.check(session.user.id).allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan. Silakan coba lagi nanti." },
+        { status: 429 }
+      );
+    }
+
+    const { cookieToken, submittedToken } = extractCsrfTokens(
+      request.headers.get("cookie"),
+      request.headers.get("x-csrf-token")
+    );
+    if (!verifyCsrfRequest(cookieToken, submittedToken)) {
+      return NextResponse.json({ error: "CSRF token tidak valid" }, { status: 403 });
+    }
+
+    const contentLength = request.headers.get("content-length");
+    const sizeCheck = validatePayloadSize(contentLength ? Number(contentLength) : null);
+    if (!sizeCheck.allowed) {
+      return NextResponse.json({ error: sizeCheck.reason }, { status: 413 });
+    }
+
     const body = await request.json();
     const parsed = agentCheckoutSchema.safeParse(body);
     if (!parsed.success) {
@@ -43,7 +75,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productId, voucherId } = parsed.data;
+    const { productId, voucherId, quantity } = parsed.data;
 
     // ─── Verify product exists and is active ──────────────────────────────
     const product = await prisma.product.findFirst({
@@ -74,22 +106,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const originalPrice = product.price;
-    const finalAmount = Math.max(0, originalPrice - discountAmount);
+    const originalPriceTotal = product.price * quantity;
+    const finalAmount = Math.max(0, originalPriceTotal - discountAmount);
     const orderId = generateOrderId();
 
     // ─── Database Transaction ──────────────────────────────────────────────
     try {
       const result = await prisma.$transaction(async (tx) => {
-        // 1. Atomically claim an available stock unit (compare-and-swap,
-        //    safe under concurrent checkouts — see lib/stock.ts).
-        const claimedStock = await claimAvailableStock(tx, productId, {
+        // 1. Atomically claim available stock units in batch
+        const claimedStocks = await claimAvailableStockBatch(tx, productId, quantity, {
           claimedByAgentId: session.user.id,
         });
 
-        if (!claimedStock) {
+        if (!claimedStocks || claimedStocks.length < quantity) {
           throw new Error("NO_STOCK");
         }
+
+        const redeemUrls = claimedStocks.map(s => s.redeemUrl).join(',');
 
         // 2. Create the transaction as PAID
         const transaction = await tx.transaction.create({
@@ -100,13 +133,13 @@ export async function POST(request: NextRequest) {
             voucherId: resolvedVoucherId,
             customerName: session.user.name || "Agent",
             paymentType: "AGENT_CREDIT",
-            originalPrice,
+            originalPrice: originalPriceTotal,
             discountAmount,
             finalAmount,
             status: "PAID",
             stockStatus: "FULFILLED",
             isSettled: false,
-            redeemUrl: claimedStock.redeemUrl,
+            redeemUrl: redeemUrls,
             paidAt: new Date(),
           },
         });
@@ -125,16 +158,16 @@ export async function POST(request: NextRequest) {
           data: { outstandingDebt: { increment: finalAmount } },
         });
 
-        return { transaction, claimedStock };
+        return { transaction, claimedStocks };
       });
 
       return NextResponse.json({
         orderId: result.transaction.orderId,
         amount: finalAmount,
-        originalPrice,
+        originalPrice: originalPriceTotal,
         discountAmount,
         productName: product.name,
-        redeemUrl: result.claimedStock.redeemUrl,
+        redeemUrls: result.claimedStocks.map(s => s.redeemUrl),
         guideImageUrl: product.guideImageUrl,
       });
     } catch (txError) {
@@ -147,10 +180,11 @@ export async function POST(request: NextRequest) {
       throw txError;
     }
   } catch (error) {
-    console.error("Agent checkout error:", error);
+    log.error("Agent checkout error", { error: String(error) });
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }
     );
   }
 }
+

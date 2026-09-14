@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { exportToCsv } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "admin-reports" });
+
+export const dynamic = "force-dynamic";
 
 export const dynamic = "force-dynamic";
 
@@ -130,7 +135,8 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Reports GET error:", error);
+    log.error("Reports GET error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
