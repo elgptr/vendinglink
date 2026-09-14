@@ -4,6 +4,12 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // Guard: Skip seed in production
+  if (process.env.NODE_ENV === "production" || process.env.ENVIRONMENT === "production") {
+    console.log("⚠️  Seed skipped in production. Use change-password.js for password changes.");
+    return;
+  }
+
   console.log("🌱 Starting database seed...");
   console.log("⚠️  NOTE: Passwords are temporary dev-only. Change immediately in production!\n");
 
