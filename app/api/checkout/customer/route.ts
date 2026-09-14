@@ -7,6 +7,9 @@ import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "checkout-customer" });
 
 // Rate limiter for public customer checkout (20 attempts / min / IP).
 const checkoutLimiter = createRateLimiter(20, 60 * 1000);
@@ -229,7 +232,7 @@ export async function POST(request: NextRequest) {
 
       snapToken = snapResponse.token;
     } catch (midtransError) {
-      console.error("Midtrans charge error:", midtransError);
+      log.error("Midtrans charge error", { error: String(midtransError) });
 
       const httpStatus = (midtransError as { httpStatusCode?: string }).httpStatusCode;
       if (httpStatus === "402") {
@@ -283,10 +286,11 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Customer checkout error:", error);
+    log.error("Customer checkout error", { error: String(error) });
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }
     );
   }
 }
+
