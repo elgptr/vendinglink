@@ -8,8 +8,6 @@ const log = createLogger({ module: "admin-reports" });
 
 export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
-
 async function requireAdmin() {
   const session = await auth();
   if (!session || session.user.role !== "ADMIN") return null;
