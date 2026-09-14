@@ -32,24 +32,26 @@ export default function SuccessScreen({
   const [copied, setCopied] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const isKode = productType === "KODE";
+  
+  const urls = redeemUrl.split(',').map(u => u.trim());
+  const isMultiple = urls.length > 1;
 
-  const handleCopy = async () => {
+  const handleCopy = async (text: string, index?: number) => {
     try {
-      await navigator.clipboard.writeText(redeemUrl);
-      setCopied(true);
+      await navigator.clipboard.writeText(text);
+      if (index === undefined) setCopied(true);
       toast.success(isKode ? "Kode berhasil disalin ke clipboard!" : "Link berhasil disalin ke clipboard!");
-      setTimeout(() => setCopied(false), 3000);
+      if (index === undefined) setTimeout(() => setCopied(false), 3000);
     } catch {
-      // Fallback for older browsers
       const textArea = document.createElement("textarea");
-      textArea.value = redeemUrl;
+      textArea.value = text;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand("copy");
       document.body.removeChild(textArea);
-      setCopied(true);
+      if (index === undefined) setCopied(true);
       toast.success(isKode ? "Kode berhasil disalin!" : "Link berhasil disalin!");
-      setTimeout(() => setCopied(false), 3000);
+      if (index === undefined) setTimeout(() => setCopied(false), 3000);
     }
   };
 
@@ -101,15 +103,38 @@ export default function SuccessScreen({
           <ExternalLink size={14} />
           {isKode ? "Kode Redeem Anda" : "Link Redeem Anda"}
         </p>
-
-        <div className="bg-surface rounded-xl p-4 mb-4 border border-surface-border overflow-hidden">
-          <p
-            id="redeem-url-text"
-            className="text-sm text-brand-300 font-mono break-all leading-relaxed"
-          >
-            {redeemUrl}
-          </p>
-        </div>
+        
+        {isMultiple ? (
+          <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-1">
+            {urls.map((url, idx) => (
+              <div key={idx} className="bg-surface rounded-xl p-3 border border-surface-border">
+                <p className="text-xs text-slate-400 mb-2">Item {idx + 1}</p>
+                <div className="flex gap-2">
+                  <p className="text-sm text-brand-300 font-mono break-all line-clamp-1 flex-1">
+                    {url}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleCopy(url, idx)}
+                    className="flex-shrink-0"
+                  >
+                    Salin
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-surface rounded-xl p-4 mb-4 border border-surface-border overflow-hidden">
+            <p
+              id="redeem-url-text"
+              className="text-sm text-brand-300 font-mono break-all leading-relaxed"
+            >
+              {redeemUrl}
+            </p>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <Button
@@ -117,13 +142,13 @@ export default function SuccessScreen({
             variant={copied ? "success" : "primary"}
             size="md"
             className="flex-1"
-            onClick={handleCopy}
+            onClick={() => handleCopy(isMultiple ? urls.join('\n') : redeemUrl)}
             icon={copied ? <Check size={16} /> : <Copy size={16} />}
           >
-            {copied ? "Tersalin!" : (isKode ? "Salin Kode" : "Salin Link")}
+            {copied ? "Tersalin!" : (isKode ? (isMultiple ? "Salin Semua Kode" : "Salin Kode") : (isMultiple ? "Salin Semua Link" : "Salin Link"))}
           </Button>
 
-          {!isKode && (
+          {!isKode && !isMultiple && (
             <a
               href={redeemUrl}
               target="_blank"
