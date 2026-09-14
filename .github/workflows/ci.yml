@@ -1,4 +1,4 @@
-name: CI — Build, Lint & Test
+name: CI - Build, Lint & Test
 
 on:
   push:
@@ -10,6 +10,21 @@ jobs:
   build-lint-test:
     name: Build, Lint & Test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -27,16 +42,26 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Push Database Schema
+        run: npx prisma db push
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
+
       - name: Lint code
         run: npm run lint
 
       - name: Build project
         run: npm run build
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Run unit and integration tests
         run: npm run test:run
         env:
           DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -45,6 +70,8 @@ jobs:
         run: npm run test:e2e
         env:
           BASE_URL: http://localhost:3000
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Upload test results
         if: always()
@@ -53,4 +80,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
-
