@@ -1,4 +1,4 @@
-name: CI — Build, Lint & Test
+name: CI - Build, Lint & Test
 
 on:
   push:
@@ -11,6 +11,21 @@ jobs:
     name: Build, Lint & Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -28,16 +43,26 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Push Database Schema
+        run: npx prisma db push
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
+
       - name: Lint code
         run: npm run lint
 
       - name: Build project
         run: npm run build
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Run unit and integration tests
         run: npm run test:run
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -46,6 +71,8 @@ jobs:
         run: npm run test:e2e
         env:
           BASE_URL: http://localhost:3000
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       # ============================================================
       # Artifact Upload Configuration
@@ -93,5 +120,4 @@ jobs:
               repo: context.repo.repo,
               body: `❌ E2E tests failed in run #${{ github.run_number }}\n\n📊 **Artifacts Available:**\n- [Playwright Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n- Retention: 30 days\n\n📝 Check the GitHub Actions tab for detailed reports.`
             })
-
 
