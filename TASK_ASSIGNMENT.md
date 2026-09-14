@@ -276,114 +276,143 @@ Phase 5 (Revenue Features)
 
 ---
 
-### Phase 4: Database Performance & Scaling Foundation (v0.3.5 to v0.4.0)
+### ~~Phase 4 & 5~~ → Merged into: Final Sprint (Parallel)
 
-**Timeline:** 1 minggu
-**Dependency:** Phase 2 OK complete
-**Parallel with:** Phase 3 (independent files - Phase 3 is observability, Phase 4 is DB indexes)
-
-#### Assignment
-
-| Developer | Role | Deliverables | Files |
-|-----------|------|--------------|-------|
-| **Jiwo** | Lead (DB Perf) | Add composite indexes to schema + generate migration + test | prisma/schema.prisma (**owned by Jiwo for this phase; coordinate with Iqbal who owns schema from Track C**), prisma/migrations/xxx/ (auto-generated), query optimization audit |
-| **Elang** | Caching Lead | Create caching utility + integrate product catalog caching | lib/cache.ts (NEW), app/agent/catalog/page.tsx, app/customer/page.tsx (integrate caching) |
-| **Iqbal** | QA Lead (optional) | E2E tests for caching invalidation (if time permits) | e2e/performance-*.spec.ts (OPTIONAL) |
-
-#### Deliverables Checklist
-
-- [ ] 4+ composite indexes added to Prisma schema (Transaction, Stock, User queries optimized)
-- [ ] Migration generated and tested on staging/local DB
-- [ ] Product catalog caching with auto-invalidation on update
-- [ ] Query optimization audit: all queries have proper select directives
-- [ ] Connection pooling documented (PgBouncer config for Neon)
-- [ ] All Phase 1 + Phase 2 + Phase 3 tests still passing
-
-#### SPECIAL NOTES
-
-- **prisma/schema.prisma ownership transition:** Track C (Iqbal) owns schema. Phase 4 (Jiwo) needs to edit it for indexes. **Prerequisite:** Track C PR must merge before Phase 4 schema edits. Jiwo and Iqbal coordinate: Jiwo makes index changes, both review diff carefully to avoid breaking Track C fields/relations.
-- **No breaking migrations:** Jiwo must ensure npx prisma migrate is backward compatible with deployed schema.
-
-#### Protected Files (Phase 4 only)
-
-- package.json - no new deps (use existing Prisma utilities)
-
-
-
-
----
-
-### Phase 5: Revenue-Expanding Feature Foundation (v0.4.0 to v0.5.0)
+> **Restructured 2026-09-14:** Phase 4 (DB Perf) dan Phase 5 (Revenue Features) digabung menjadi 1 sprint paralel. Setiap developer punya domain file 100% independen — tidak ada yang menunggu, tidak ada merge conflict.
 
 **Timeline:** 2 minggu
-**Dependency:** Phase 3 OK complete (observability needed to safely monitor new flows)
-**Parallel with:** Nothing (final phase)
+**Dependency:** Phase 3 ✅ merged to main
+**Model:** Fully parallel — siapa selesai duluan, merge duluan.
 
-#### Assignment
-
-| Developer | Role | Deliverables | Files |
-|-----------|------|--------------|-------|
-| **Elang** | Lead (Multi-Qty) | Multi-quantity checkout: qty selector in form + batch stock claiming + success screen updates | components/agent/CheckoutForm.tsx (extend for qty selector), app/api/checkout/agent/route.ts (extend; **was protected, now Elang edits**), components/agent/SuccessScreen.tsx (display multiple links), app/agent/order/[orderId]/page.tsx (extend) |
-| **Jiwo** | Lead (Notifications + Lookup) | WhatsApp integration + customer order lookup page + lookup API | lib/whatsapp.ts (NEW), app/customer/orders/page.tsx (NEW), app/api/customer/orders/route.ts (NEW) |
-| **Iqbal** | Lead (Upload + E2E) | Image upload infrastructure (file storage utility + admin upload endpoint) + image upload widget in inventory + >= 3 Playwright E2E specs | lib/storage.ts (NEW), app/api/admin/upload/route.ts (NEW), app/admin/inventory/page.tsx (extend with upload widget), e2e/revenue-*.spec.ts (3+ new specs) |
-
-#### Deliverables Checklist
-
-- [ ] Multi-quantity checkout working (max 10 qty) for agent + customer
-- [ ] WhatsApp notification sent after successful payment (mock or live based on env)
-- [ ] Customer order lookup page live at /customer/orders, works with phone-based search
-- [ ] Image upload working for product guide images (file stored, URL saved to DB)
-- [ ] >= 3 Playwright E2E specs covering new features (all passing)
-- [ ] Multi-qty backward compatible with single-qty orders
-- [ ] All Phase 1 + 2 + 3 + 4 tests still passing
-
-#### SPECIAL NOTES
-
-- **app/api/checkout/agent/route.ts unprotected:** Phase 5 removes protection (was read-only for Track A). Elang now owns edits for multi-qty feature. Coordinate with @dev-elang.
-- **app/admin/inventory/page.tsx final touch:** Track C created form, Phase 3 added badge, Phase 5 adds upload widget. **Sequential only - Phase 3 merge first, then Phase 5 edits.**
-- **Iqbal E2E demand (3+ specs):** This is heaviest Playwright work. Recommend: Start E2E design early (Week 1 of Phase 5), implement Weeks 1-2 in parallel with other devs.
-
-
-
+```
+main (Phase 3 merged)
+  ├── feat/dev-elang/sprint-final  ──▶ merge kapan saja
+  ├── feat/dev-jiwo/sprint-final   ──▶ merge kapan saja
+  └── feat/dev-iqbal/sprint-final  ──▶ merge kapan saja
+```
 
 ---
 
-## COLLABORATION RULES - Updated for Track + Phase Model
+#### Elang: "Checkout & Caching"
+**Branch:** `feat/dev-elang/sprint-final`
+
+| Deliverable | Files |
+|-------------|-------|
+| Caching utility | `lib/cache.ts` (NEW) |
+| Product catalog caching | `app/agent/catalog/page.tsx`, `app/customer/page.tsx` |
+| Multi-qty checkout | `components/agent/CheckoutForm.tsx`, `app/api/checkout/agent/route.ts` |
+| Multi-link success screen | `components/agent/SuccessScreen.tsx` |
+| Order detail update | `app/agent/order/[orderId]/page.tsx` |
+| Batch stock claiming | `lib/stock.ts` |
+| Unit tests | `__tests__/lib/cache.test.ts` (NEW) |
+
+**Do NOT touch:** prisma/schema.prisma, app/admin/inventory/*, e2e/*, app/customer/orders/*
+
+---
+
+#### Jiwo: "Database & Notifications"
+**Branch:** `feat/dev-jiwo/sprint-final`
+
+| Deliverable | Files |
+|-------------|-------|
+| Composite DB indexes | `prisma/schema.prisma` (@@index additions) |
+| Migration | `prisma/migrations/*` (auto-generated) |
+| Logger integration | `app/api/**/route.ts` (replace `console.*` with logger — **except** `app/api/checkout/agent/route.ts` which Elang owns) |
+| WhatsApp integration | `lib/whatsapp.ts` (NEW) |
+| Customer order lookup page | `app/customer/orders/page.tsx` (NEW) |
+| Customer order lookup API | `app/api/customer/orders/route.ts` (NEW) |
+| Integration tests | `__tests__/api/customer-orders.test.ts` (NEW) |
+
+**Do NOT touch:** lib/cache.ts, lib/stock.ts, components/agent/*, lib/storage.ts, app/admin/inventory/*, e2e/*
+
+---
+
+#### Iqbal: "Upload, Badge & E2E"
+**Branch:** `feat/dev-iqbal/sprint-final`
+
+| Deliverable | Files |
+|-------------|-------|
+| Low-stock badge | `app/admin/inventory/page.tsx` (badge) |
+| File storage utility | `lib/storage.ts` (NEW) |
+| Admin upload endpoint | `app/api/admin/upload/route.ts` (NEW) |
+| Upload widget in inventory | `app/admin/inventory/page.tsx` (upload widget) |
+| E2E tests (all) | `e2e/observability-*.spec.ts`, `e2e/revenue-*.spec.ts`, `e2e/performance-*.spec.ts` |
+
+**Do NOT touch:** lib/cache.ts, lib/stock.ts, components/agent/*, prisma/schema.prisma, app/api/checkout/*, app/customer/orders/*
+
+---
+
+#### File Ownership Matrix
+
+| File/Area | Elang | Jiwo | Iqbal |
+|-----------|:-----:|:----:|:-----:|
+| `lib/cache.ts` | **OWN** | - | - |
+| `lib/stock.ts` | **OWN** | - | - |
+| `lib/whatsapp.ts` | - | **OWN** | - |
+| `lib/storage.ts` | - | - | **OWN** |
+| `prisma/schema.prisma` | - | **OWN** | - |
+| `components/agent/*` | **OWN** | - | - |
+| `app/api/checkout/agent/route.ts` | **OWN** | - | - |
+| `app/agent/catalog/page.tsx` | **OWN** | - | - |
+| `app/agent/order/[orderId]/page.tsx` | **OWN** | - | - |
+| `app/customer/page.tsx` | **OWN** | - | - |
+| `app/customer/orders/*` | - | **OWN** | - |
+| `app/api/customer/orders/*` | - | **OWN** | - |
+| `app/api/**/route.ts` (console replace) | - | **OWN** | - |
+| `app/admin/inventory/page.tsx` | - | - | **OWN** |
+| `app/api/admin/upload/*` | - | - | **OWN** |
+| `e2e/*` | - | - | **OWN** |
+
+**Zero file overlap.** Setiap file dimiliki 1 developer saja.
+
+#### Deliverables Checklist (Final Sprint)
+
+- [ ] Product catalog caching with auto-invalidation on update (Elang)
+- [ ] Multi-quantity checkout working max 10 qty (Elang)
+- [ ] Multi-qty backward compatible with single-qty orders (Elang)
+- [ ] 4+ composite indexes added to Prisma schema (Jiwo)
+- [ ] Migration generated and tested (Jiwo)
+- [ ] 15+ route files use logger instead of console (Jiwo)
+- [ ] WhatsApp notification after payment (Jiwo)
+- [ ] Customer order lookup page at /customer/orders (Jiwo)
+- [ ] Low-stock badge visible in admin inventory (Iqbal)
+- [ ] Image upload working for product guide images (Iqbal)
+- [ ] >= 5 Playwright E2E specs covering all new features (Iqbal)
+- [ ] All Phase 1 + 2 + 3 tests still passing
+
+#### Special Notes
+
+- **`app/api/checkout/agent/route.ts`:** Elang owns this file. Jiwo should NOT replace console.* here — Elang will handle logger integration in his own files.
+- **`app/admin/inventory/page.tsx`:** Iqbal adds both low-stock badge AND upload widget in one branch. No sequential dependency.
+- **`prisma/schema.prisma`:** Only Jiwo edits. Index additions must be backward compatible.
+
+---
+
+## COLLABORATION RULES - Updated for Final Sprint
 
 ### Model Clarity
 
 **Legacy (Track A/B/C):**
-- OK **Parallel:** All 3 tracks can run simultaneously from main (zero file overlap by design)
-- OK **No waiting:** Track A does not need to wait for Track B or C to complete
+- ✅ **Parallel:** All 3 tracks can run simultaneously from main (zero file overlap by design)
+- ✅ **No waiting:** Track A does not need to wait for Track B or C to complete
 
-**New (Initiative 1 - Phases 1-5):**
-- RED **Sequential blocks:** Phase N+1 cannot start until Phase N is merged to main
-- WARNING **Partial parallel:** Phase 3 and Phase 4 can run simultaneously (after Phase 2 is done)
-- OK **Within a phase:** All 3 developers work on their phase assignments in parallel (different files)
+**Completed (Phases 1-3):**
+- ✅ Phase 1 (Testing) — merged
+- ✅ Phase 2 (Security) — merged
+- ✅ Phase 3 (Observability) — merged/merging
 
-### Branch Naming Convention - Updated
+**Final Sprint (was Phase 4+5):**
+- ✅ **Fully parallel:** All 3 developers work simultaneously, zero file overlap
+- ✅ **Independent merge:** Siapa selesai duluan, merge duluan. Tidak perlu urutan.
+- ✅ **No protected files:** Each developer owns their files exclusively
+
+### Branch Naming Convention
 
 ```
-# Track work (legacy, if any new features added)
-feat/dev-elang/track-a-feature-name
-feat/dev-jiwo/track-b-feature-name
-feat/dev-iqbal/track-c-feature-name
-
-# Phase work (roadmap initiatives)
-feat/dev-elang/phase-1-unit-tests
-feat/dev-jiwo/phase-1-integration-tests
-feat/dev-iqbal/phase-1-e2e-playwright
-feat/dev-jiwo/phase-2-middleware-security
-feat/dev-elang/phase-3-observability
-feat/dev-jiwo/phase-4-db-performance
-feat/dev-elang/phase-5-multi-qty-checkout
+feat/dev-elang/sprint-final
+feat/dev-jiwo/sprint-final
+feat/dev-iqbal/sprint-final
 ```
-
-**Rule:** Include phase number in branch name for clarity in PR list.
-
-### Protected Files Per Phase - Updated
-
-
 
 ---
 
@@ -392,21 +421,11 @@ feat/dev-elang/phase-5-multi-qty-checkout
 | Version | Date | Changes |
 |---------|------|---------|
 | v2.1 | 2026-09-07 | Track paralel dengan tim: Elang (Track A), Jiwo (Track B), Iqbal (Track C) |
-| v3.0 | 2026-09-11 | **Major update:** Initiative 1 Roadmap phases 1-5 added; dual-model (Track + Phase); per-phase assignments; special notes; updated collaboration rules; protected files made dynamic per phase |
+| v3.0 | 2026-09-11 | Initiative 1 Roadmap phases 1-5 added; dual-model (Track + Phase) |
+| v4.0 | 2026-09-13 | Reframed to ROADMAP v2.0: 3 business initiatives, Phase 1 & 2 merged |
+| v5.0 | 2026-09-14 | **Phase 4+5 merged into single parallel sprint.** Zero file overlap, independent merge order. All 3 developers work fully parallel. |
 
 ---
 
-**Last Updated:** 2026-09-13 | **Version:** 4.0 | **Model:** Track A/B/C (legacy, merged) + Initiative 1-3 Roadmap v2.0 (3 initiatives sequential) | **Baseline:** Phase 1 & 2 merged to `main`
-
-| Version | Date | Changes |
-|---------|------|---------|
-| v4.0 | 2026-09-13 | **Reframed to ROADMAP v2.0:** Initiative model reorganized around 3 business initiatives (Reliability/Observability, Safety remainder, Growth). Phase 1 & 2 marked as merged foundation. Dynamic file owners per work item; all Playwright E2E consolidated under @dev-iqbal |
-
-| Phase | Protected (Do Not Edit) |
-|-------|------------------------|
-| **Phase 1** | prisma/schema.prisma, middleware.ts, all production route logic (test coverage only) |
-| **Phase 2** | prisma/schema.prisma, package.json (no new general deps) |
-| **Phase 3** | prisma/schema.prisma, Track B owned files (app/admin/agents/*, app/api/admin/agents/*) |
-| **Phase 4** | package.json, Track A + C owned files (except schema) |
-| **Phase 5** | None (all assignments own their files for edits) |
+**Last Updated:** 2026-09-14 | **Version:** 5.0 | **Model:** Track A/B/C (legacy, merged) + Phases 1-3 (merged) + Final Sprint (parallel) | **Baseline:** Phase 1, 2 & 3 merged to `main`
 
