@@ -27,11 +27,7 @@ export default async function AdminSettingsPage() {
             </p>
           </div>
 
-          <ChangePasswordForm
-            onSuccess={() => {
-              // Optional: Show toast or redirect
-            }}
-          />
+          <ChangePasswordForm />
         </div>
 
         {/* Account Info Card */}
