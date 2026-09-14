@@ -1,3 +1,7 @@
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "admin-stock" });
+
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Stock GET error:", error);
+    log.error("Stock GET error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -147,7 +151,8 @@ export async function POST(request: NextRequest) {
       skipped: skippedCount,
     });
   } catch (error) {
-    console.error("Stock POST error:", error);
+    log.error("Stock POST error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

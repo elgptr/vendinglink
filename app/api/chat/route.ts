@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { sanitizeString } from "@/lib/utils";
 import { askChatbot, buildSystemPrompt } from "@/lib/gemini";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "chat" });
 
 const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -55,10 +58,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ reply });
   } catch (error) {
-    console.error("Chat API error:", error);
+    log.error("Chat API error", { error: String(error) });
     return NextResponse.json(
       { error: "Terjadi kesalahan saat menghubungi asisten AI" },
       { status: 500 }
     );
   }
 }
+

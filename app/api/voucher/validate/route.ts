@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sanitizeString } from "@/lib/utils";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "voucher-validate" });
 
 const validateSchema = z.object({
   code: z.string().min(1).max(50),
@@ -71,7 +74,8 @@ export async function POST(request: NextRequest) {
       }).format(voucher.discountAmount)}`,
     });
   } catch (error) {
-    console.error("Voucher validate error:", error);
+    log.error("Voucher validate error", { error: String(error) });
     return NextResponse.json({ error: "Terjadi kesalahan server" }, { status: 500 });
   }
 }
+

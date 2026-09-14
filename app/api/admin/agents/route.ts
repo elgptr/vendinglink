@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sanitizeString } from "@/lib/utils";
 import { checkAdminRateLimit } from "@/lib/adminRateLimit";
+import { createLogger } from "@/lib/logger";
 import { z } from "zod";
+
+const log = createLogger({ module: "admin-agents" });
 
 const createSchema = z.object({
   username: z
@@ -59,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(agents);
   } catch (error) {
-    console.error("Agents GET error:", error);
+    log.error("Agents GET error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(agent, { status: 201 });
   } catch (error) {
-    console.error("Agents POST error:", error);
+    log.error("Agents POST error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -207,7 +210,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(agent);
   } catch (error) {
-    console.error("Agents PATCH error:", error);
+    log.error("Agents PATCH error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
