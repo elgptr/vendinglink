@@ -27,6 +27,7 @@ const navItems = [
   { href: "/admin/vouchers", icon: Ticket, label: "Voucher" },
   { href: "/admin/agents", icon: Users, label: "Manajemen Agen" },
   { href: "/admin/reports", icon: BarChart3, label: "Laporan Penjualan" },
+  { href: "/admin/settings", icon: Shield, label: "Pengaturan" },
 ];
 
 export default function AdminSidebar({ username }: AdminSidebarProps) {
