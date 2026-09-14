@@ -101,3 +101,7 @@ temp/
 *.backup
 *~
 
+
+# Admin scripts / credentials
+change-password.js
+scripts/change-password.js
