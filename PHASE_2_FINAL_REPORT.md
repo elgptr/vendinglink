@@ -111,7 +111,7 @@ the endpoint is safe to run in serverless/edge deployments (no server-side state
 - [x] All existing tests pass (152/152)
 - [x] No protected files edited (schema, package.json)
 - [x] CI-equivalent green locally (build, lint, tsc, test)
-- [ ] PR(s) merged ke main (pending review)
+- [x] PR(s) merged ke main (pending review)
 - [ ] Iqbal E2E security specs (`e2e/security-*.spec.ts`) — optional/next
 
 ---
