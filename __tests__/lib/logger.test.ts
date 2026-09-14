@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createLogger } from "@/lib/logger";
-import type { Logger } from "@/lib/logger";
 
 describe("createLogger", () => {
   let consoleSpy: {
@@ -19,6 +18,7 @@ describe("createLogger", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("outputs structured JSON to console.log for info level", () => {
@@ -26,7 +26,7 @@ describe("createLogger", () => {
     log.info("hello");
 
     expect(consoleSpy.log).toHaveBeenCalledOnce();
-    const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
+    const output = JSON.parse(consoleSpy.log.mock.calls[0][0] as string);
     expect(output).toMatchObject({
       level: "info",
       message: "hello",
@@ -40,7 +40,7 @@ describe("createLogger", () => {
     log.error("fail");
 
     expect(consoleSpy.error).toHaveBeenCalledOnce();
-    const output = JSON.parse(consoleSpy.error.mock.calls[0][0]);
+    const output = JSON.parse(consoleSpy.error.mock.calls[0][0] as string);
     expect(output.level).toBe("error");
     expect(output.message).toBe("fail");
   });
@@ -50,7 +50,7 @@ describe("createLogger", () => {
     log.warn("caution");
 
     expect(consoleSpy.warn).toHaveBeenCalledOnce();
-    const output = JSON.parse(consoleSpy.warn.mock.calls[0][0]);
+    const output = JSON.parse(consoleSpy.warn.mock.calls[0][0] as string);
     expect(output.level).toBe("warn");
   });
 
@@ -58,7 +58,7 @@ describe("createLogger", () => {
     const log = createLogger({ module: "checkout" });
     log.info("order created", { orderId: "abc123", amount: 50000 });
 
-    const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
+    const output = JSON.parse(consoleSpy.log.mock.calls[0][0] as string);
     expect(output.context).toEqual({
       module: "checkout",
       orderId: "abc123",
@@ -70,7 +70,7 @@ describe("createLogger", () => {
     const log = createLogger({ module: "api" }, "req-xyz");
     log.info("request received");
 
-    const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
+    const output = JSON.parse(consoleSpy.log.mock.calls[0][0] as string);
     expect(output.requestId).toBe("req-xyz");
   });
 
@@ -78,7 +78,7 @@ describe("createLogger", () => {
     const log = createLogger();
     log.info("bare message");
 
-    const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
+    const output = JSON.parse(consoleSpy.log.mock.calls[0][0] as string);
     expect(output.context).toBeUndefined();
   });
 
@@ -87,7 +87,7 @@ describe("createLogger", () => {
     const child = parent.child({ step: "payment" });
     child.info("processing");
 
-    const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
+    const output = JSON.parse(consoleSpy.log.mock.calls[0][0] as string);
     expect(output.context).toEqual({
       module: "checkout",
       step: "payment",
@@ -95,26 +95,20 @@ describe("createLogger", () => {
   });
 
   it("suppresses debug logs in production", () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
 
     const log = createLogger();
     log.debug("should not appear");
 
     expect(consoleSpy.log).not.toHaveBeenCalled();
-
-    process.env.NODE_ENV = originalEnv;
   });
 
   it("emits debug logs in development", () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
 
     const log = createLogger();
     log.debug("should appear");
 
     expect(consoleSpy.log).toHaveBeenCalledOnce();
-
-    process.env.NODE_ENV = originalEnv;
   });
 });
