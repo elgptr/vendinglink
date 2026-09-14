@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sanitizeString } from "@/lib/utils";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "admin-vouchers" });
 
 const createSchema = z.object({
   code: z.string().min(3).max(30).toUpperCase(),
@@ -39,7 +42,7 @@ export async function GET() {
 
     return NextResponse.json(vouchers);
   } catch (error) {
-    console.error("Vouchers GET error:", error);
+    log.error("Vouchers GET error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(voucher, { status: 201 });
   } catch (error) {
-    console.error("Vouchers POST error:", error);
+    log.error("Vouchers POST error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -121,7 +124,8 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(voucher);
   } catch (error) {
-    console.error("Vouchers PATCH error:", error);
+    log.error("Vouchers PATCH error", { error: String(error) });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
