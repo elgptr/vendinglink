@@ -6,6 +6,9 @@ export const metadata = {
   title: "Katalog Produk",
 };
 
+// Prevent static generation - this page needs fresh data on each request
+export const dynamic = "force-dynamic";
+
 async function getProducts() {
   const products = await prisma.product.findMany({
     where: { isActive: true },

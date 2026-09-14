@@ -5,9 +5,27 @@ import { formatRupiah, formatDate } from "@/lib/utils";
 const GEMINI_MODEL = "gemini-3.6-flash";
 const MAX_OUTPUT_TOKENS = 1024;
 
-export const gemini = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+// Lazy initialize to avoid errors at build time
+let geminiInstance: GoogleGenAI | null = null;
+
+export function getGeminiClient(): GoogleGenAI {
+  if (!geminiInstance) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not set");
+    }
+    geminiInstance = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
+  }
+  return geminiInstance;
+}
+
+// Keep export for backward compatibility
+export const gemini = {
+  get models() {
+    return getGeminiClient().models;
+  },
+};
 
 export interface ChatMessage {
   role: "user" | "assistant";
