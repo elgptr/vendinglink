@@ -97,7 +97,7 @@ describe("sendPaymentNotification (mock mode)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env = { ...originalEnv };
-    process.env.WHATSVA_MODE = "mock";
+    process.env.SAUNGWA_MODE = "mock";
   });
 
   afterEach(() => {
@@ -158,8 +158,9 @@ describe("sendPaymentNotification (live mode)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env = { ...originalEnv };
-    process.env.WHATSVA_MODE = "live";
-    process.env.WHATSVA_DEVICE_TOKEN = "test-token";
+    process.env.SAUNGWA_MODE = "live";
+    process.env.SAUNGWA_APPKEY = "test-appkey";
+    process.env.SAUNGWA_AUTHKEY = "test-authkey";
   });
 
   afterEach(() => {
@@ -168,10 +169,13 @@ describe("sendPaymentNotification (live mode)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("calls WhatsVA API with correct payload", async () => {
+  it("calls Saungwa API with correct FormData payload", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, message_id: "msg-123" }),
+      json: async () => ({
+        message_status: "Success",
+        data: { from: "6281", to: "6282254203272", status_code: 200 },
+      }),
     });
     vi.stubGlobal("fetch", mockFetch);
 
@@ -184,20 +188,22 @@ describe("sendPaymentNotification (live mode)", () => {
     });
 
     expect(mockFetch).toHaveBeenCalledOnce();
-    expect(mockFetch).toHaveBeenCalledWith(
-      "https://whatsva.com/api/sendMessageText",
-      expect.objectContaining({
-        method: "POST",
-        body: expect.stringContaining("6282254203272"),
-      })
-    );
+    const [url, options] = mockFetch.mock.calls[0];
+    expect(url).toBe("https://app.saungwa.com/api/create-message");
+    expect(options.method).toBe("POST");
+
+    const body = options.body as FormData;
+    expect(body.get("appkey")).toBe("test-appkey");
+    expect(body.get("authkey")).toBe("test-authkey");
+    expect(body.get("to")).toBe("6282254203272");
+    expect(body.get("message")).toContain("Pembayaran Berhasil!");
     expect(result.sent).toBe(true);
-    expect(result.messageId).toBe("msg-123");
     expect(result.mode).toBe("live");
   });
 
-  it("returns error when API token is missing", async () => {
-    delete process.env.WHATSVA_DEVICE_TOKEN;
+  it("returns error when API keys are missing", async () => {
+    delete process.env.SAUNGWA_APPKEY;
+    delete process.env.SAUNGWA_AUTHKEY;
     const result = await sendPaymentNotification({
       customerPhone: "6282254203272",
       orderId: "VM-LIVE-002",
@@ -205,7 +211,7 @@ describe("sendPaymentNotification (live mode)", () => {
       finalAmount: 50000,
     });
     expect(result.sent).toBe(false);
-    expect(result.error).toContain("WHATSVA_DEVICE_TOKEN");
+    expect(result.error).toContain("SAUNGWA_APPKEY");
   });
 
   it("returns error when fetch fails (network)", async () => {

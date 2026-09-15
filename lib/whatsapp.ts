@@ -1,8 +1,8 @@
 /**
- * WhatsApp Notification Service (WhatsVA Integration)
+ * WhatsApp Notification Service (Saungwa Integration)
  * Sends transaction notifications to customers after payment.
  *
- * Uses WhatsVA API: https://whatsva.com/api/sendMessageText
+ * Uses Saungwa API: https://app.saungwa.com/api/create-message
  *
  * Usage:
  *   import { sendPaymentNotification } from "@/lib/whatsapp";
@@ -19,14 +19,14 @@ import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "whatsapp" });
 
-const WHATSVA_API_URL = "https://whatsva.com/api/sendMessageText";
+const SAUNGWA_API_URL = "https://app.saungwa.com/api/create-message";
 
 /**
  * Read WhatsApp mode from env at call time so tests can toggle it.
  * Returns "live" when explicitly set to "live", otherwise "mock".
  */
 function getMode(): "live" | "mock" {
-  return process.env.WHATSVA_MODE === "live" ? "live" : "mock";
+  return process.env.SAUNGWA_MODE === "live" ? "live" : "mock";
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export interface WhatsAppSendResult {
 // ─── Phone Validation ─────────────────────────────────────────────────────────
 
 /**
- * Normalize Indonesian phone number to WhatsVA JID format.
+ * Normalize Indonesian phone number to Saungwa's expected format.
  * Input:  "082254203272", "+6282254203272", "6282254203272"
  * Output: "6282254203272" (always starts with 62, no + prefix)
  */
@@ -111,47 +111,51 @@ export function buildPaymentMessage(data: WhatsAppPaymentData): string {
 // ─── API Sender ───────────────────────────────────────────────────────────────
 
 /**
- * Send a text message via WhatsVA API.
+ * Send a text message via Saungwa API.
  * Internal function — called by sendPaymentNotification.
  */
-async function sendViaWhatsVA(
-  jid: string,
+async function sendViaSaungwa(
+  to: string,
   message: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const apiKey = process.env.WHATSVA_DEVICE_TOKEN;
+  const appKey = process.env.SAUNGWA_APPKEY;
+  const authKey = process.env.SAUNGWA_AUTHKEY;
 
-  if (!apiKey) {
+  if (!appKey || !authKey) {
     return {
       success: false,
-      error: "WHATSVA_DEVICE_TOKEN environment variable is not set",
+      error:
+        "SAUNGWA_APPKEY and/or SAUNGWA_AUTHKEY environment variable is not set",
     };
   }
 
   try {
-    const response = await fetch(WHATSVA_API_URL, {
+    const formData = new FormData();
+    formData.append("appkey", appKey);
+    formData.append("authkey", authKey);
+    formData.append("to", to);
+    formData.append("message", message);
+
+    const response = await fetch(SAUNGWA_API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message,
-        jid,
-        apikey: apiKey,
-      }),
+      body: formData,
     });
 
     const result = await response.json();
 
-    if (response.ok && result.success !== false) {
+    const isSuccess =
+      result?.message_status === "Success" || result?.data?.status_code === 200;
+
+    if (response.ok && isSuccess) {
       return {
         success: true,
-        messageId: result.data?.message_id || result.message_id || result.id,
+        messageId: result?.data?.message_id || result?.message_id || undefined,
       };
     }
 
     return {
       success: false,
-      error: result.message || result.error || `HTTP ${response.status}`,
+      error: result?.message || result?.error || `HTTP ${response.status}`,
     };
   } catch (error) {
     return {
@@ -166,7 +170,7 @@ async function sendViaWhatsVA(
  * Send a payment notification to the customer via WhatsApp.
  *
  * - In "mock" mode: logs the message without sending (for development).
- * - In "live" mode: calls WhatsVA API and returns the result.
+ * - In "live" mode: calls Saungwa API and returns the result.
  * - Never throws — all errors are caught and returned in the result.
  */
 export async function sendPaymentNotification(
@@ -205,13 +209,13 @@ export async function sendPaymentNotification(
     return { sent: true, mode: "mock" };
   }
 
-  // ── Live mode: call WhatsVA API ──────────────────────────────────────
+  // ── Live mode: call Saungwa API ───────────────────────────────────────
   log.info("WhatsApp: sending payment notification", {
     orderId: data.orderId,
     to: normalizedPhone,
   });
 
-  const result = await sendViaWhatsVA(normalizedPhone, message);
+  const result = await sendViaSaungwa(normalizedPhone, message);
 
   if (result.success) {
     log.info("WhatsApp: notification sent", {
