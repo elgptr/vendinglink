@@ -31,6 +31,13 @@ export type AdminRateLimitResult =
 export function checkAdminRateLimit(
   request: NextRequest
 ): AdminRateLimitResult {
+  // Skip rate limiting for GET (read) requests — admin dashboards make many
+  // concurrent read requests per page load.  Only enforce strict limits on
+  // mutations (POST / PATCH / DELETE) where abuse protection matters.
+  if (request.method === "GET") {
+    return { allowed: true };
+  }
+
   const ip = getClientIp(request);
   const result = adminLimiter.check(ip);
 

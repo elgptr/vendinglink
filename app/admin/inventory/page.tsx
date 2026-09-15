@@ -77,21 +77,43 @@ export default function InventoryPage() {
 
   const fetchProducts = async () => {
     setLoadingProducts(true);
-    const res = await fetch("/api/admin/products");
-    const data = await res.json();
-    setProducts(data);
-    setLoadingProducts(false);
+    try {
+      const res = await fetch("/api/admin/products");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Failed to fetch products:", e);
+      toast.error("Gagal memuat produk. Coba lagi.");
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
   };
 
   const fetchStocks = async (productId?: string) => {
     setLoadingStocks(true);
-    const url = productId
-      ? `/api/admin/stock?productId=${productId}&limit=100`
-      : `/api/admin/stock?limit=100`;
-    const res = await fetch(url);
-    const data = await res.json();
-    setStocks(data.stocks || []);
-    setLoadingStocks(false);
+    try {
+      const url = productId
+        ? `/api/admin/stock?productId=${productId}&limit=100`
+        : `/api/admin/stock?limit=100`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setStocks(Array.isArray(data.stocks) ? data.stocks : []);
+    } catch (e) {
+      console.error("Failed to fetch stocks:", e);
+      toast.error("Gagal memuat stok. Coba lagi.");
+      setStocks([]);
+    } finally {
+      setLoadingStocks(false);
+    }
   };
 
   useEffect(() => {
