@@ -22,6 +22,8 @@ Before deploying to production, verify:
 - [ ] `MIDTRANS_SERVER_KEY` kept private (backend only)
 - [ ] No API keys or passwords hardcoded in code
 - [ ] Database connection uses encrypted connection (SSL/TLS)
+- [ ] Dependency audit clean: `npm audit` reports **0 vulnerabilities**
+- [ ] Admin rate limit active (mutations only) — see `lib/adminRateLimit.ts`
 
 ### 1.3 Environment Variables
 - [ ] `NODE_ENV=production` set
