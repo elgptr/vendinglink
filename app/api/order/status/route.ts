@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getMidtransStatus } from "@/lib/midtrans";
 import { applyMidtransStatusUpdate } from "@/lib/transactionStatus";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "order-status" });
 
 export const dynamic = "force-dynamic";
 const transactionSelect = {
@@ -82,9 +85,12 @@ export async function GET(request: NextRequest) {
         // Midtrans returns 404 while the customer hasn't chosen/completed a
         // payment method yet — that's expected for a fresh PENDING order,
         // so just fall through and report the current (still-PENDING) status.
-        console.warn(
-          `[OrderStatus] Midtrans status check failed for ${orderId}:`,
-          statusError instanceof Error ? statusError.message : statusError
+        log.warn(
+          "Midtrans status check failed",
+          {
+            orderId,
+            error: statusError instanceof Error ? statusError.message : String(statusError),
+          }
         );
       }
     }
@@ -113,7 +119,9 @@ export async function GET(request: NextRequest) {
       redeemUrl: safeRedeemUrl,
     });
   } catch (error) {
-    console.error("Order status error:", error);
+    log.error("Order status retrieval failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }

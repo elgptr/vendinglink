@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMidtransStatus } from "@/lib/midtrans";
 import { applyMidtransStatusUpdate } from "@/lib/transactionStatus";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "customer-order-status" });
 
 // Public order status polling — no auth required. Only reachable with the
 // unguessable orderId (VM-<timestamp>-<random>), and restricted to
@@ -66,9 +69,12 @@ export async function GET(request: NextRequest) {
           });
         }
       } catch (statusError) {
-        console.warn(
-          `[CustomerOrderStatus] Midtrans status check failed for ${orderId}:`,
-          statusError instanceof Error ? statusError.message : statusError
+        log.warn(
+          "Midtrans status check failed",
+          {
+            orderId,
+            error: statusError instanceof Error ? statusError.message : String(statusError),
+          }
         );
       }
     }
@@ -99,7 +105,9 @@ export async function GET(request: NextRequest) {
       guideText: isPaid ? transaction.product.guideText : null,
     });
   } catch (error) {
-    console.error("Customer order status error:", error);
+    log.error("Customer order status retrieval failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }

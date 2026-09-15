@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { sanitizeString } from "@/lib/utils";
 import { generateProductDescription } from "@/lib/anthropic";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "generate-description" });
 
 const generateSchema = z.object({
   name: z.string().min(1).max(100),
@@ -42,7 +45,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ description });
   } catch (error) {
-    console.error("Generate description error:", error);
+    log.error("Description generation failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Gagal menghasilkan deskripsi. Coba lagi." },
       { status: 500 }
