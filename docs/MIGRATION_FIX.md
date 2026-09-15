@@ -19,7 +19,7 @@ Every time the application was deployed to Vercel, the database would be lost or
 ### 2. Create `vercel.json` with Build Configuration
 ```json
 {
-  "buildCommand": "npm run build && npx prisma migrate deploy --skip-generate",
+  "buildCommand": "npm run build && npx prisma migrate deploy ",
   "installCommand": "npm install --legacy-peer-deps",
   "outputDirectory": ".next",
   "env": {
@@ -35,7 +35,7 @@ Key: `buildCommand` includes `prisma migrate deploy` which runs **after** Next.j
 - Application starts with correct schema
 
 ### 3. Update Build Scripts in `package.json`
-- Added `build:prod` script: `prisma generate && next build && npx prisma migrate deploy --skip-generate`
+- Added `build:prod` script: `prisma generate && next build && npx prisma migrate deploy `
 - Default `build` script remains unchanged (for local development)
 - Vercel uses `build:prod` via `vercel.json`
 
@@ -74,7 +74,7 @@ Modified:
 
 1. **Install:** `npm install --legacy-peer-deps`
 2. **Build:** `npm run build` (generates Prisma, builds Next.js)
-3. **Migrate:** `npx prisma migrate deploy --skip-generate` (applies pending migrations)
+3. **Migrate:** `npx prisma migrate deploy ` (applies pending migrations)
 4. **Start:** Application runs with migrated database schema
 
 If migrations are already applied, step 3 is a no-op (idempotent).

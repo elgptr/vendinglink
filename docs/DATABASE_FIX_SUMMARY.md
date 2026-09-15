@@ -17,7 +17,7 @@ Database lost/reset every time app deployed to Vercel.
 ### 2. Create `vercel.json` 
 ```json
 {
-  "buildCommand": "npm run build && npx prisma migrate deploy --skip-generate",
+  "buildCommand": "npm run build && npx prisma migrate deploy ",
   "installCommand": "npm install --legacy-peer-deps",
   "outputDirectory": ".next",
   "env": { "NODE_ENV": "production", "ENVIRONMENT": "production" }
@@ -59,7 +59,7 @@ Prisma automatically routes app queries to DATABASE_URL and migrations to DIRECT
 
 1. **Install:** `npm install --legacy-peer-deps`
 2. **Build:** `npm run build` (generates Prisma, builds Next.js)
-3. **Migrate:** `npx prisma migrate deploy --skip-generate` ← **THE FIX**
+3. **Migrate:** `npx prisma migrate deploy ` ← **THE FIX**
 4. **Start:** App runs with migrated schema
 
 If migrations already applied: step 3 is idempotent (no-op).

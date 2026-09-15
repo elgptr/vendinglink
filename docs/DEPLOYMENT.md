@@ -40,7 +40,7 @@ Before deploying to production, verify:
    The repository includes a `vercel.json` file that automatically sets:
    ```json
    {
-     "buildCommand": "npm run build && npx prisma migrate deploy --skip-generate",
+     "buildCommand": "npm run build && npx prisma migrate deploy ",
      "installCommand": "npm install --legacy-peer-deps",
      "outputDirectory": ".next",
      "env": { "NODE_ENV": "production", "ENVIRONMENT": "production" }
