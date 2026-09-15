@@ -1,0 +1,8 @@
+playwright.config.ts
+vitest.config.ts
+e2e/**
+__tests__/**
+node_modules/**
+.next/**
+dist/**
+build/**
