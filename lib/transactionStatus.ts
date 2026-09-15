@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { claimAvailableStock } from "@/lib/stock";
 import { generatePromoCode } from "@/lib/utils";
+import { sendPaymentNotification, type WhatsAppPaymentData } from "@/lib/whatsapp";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "transaction-status" });
 
 type ApplyResult =
   | { updated: true; transaction: Awaited<ReturnType<typeof prisma.transaction.update>> }
@@ -9,6 +13,51 @@ type ApplyResult =
   | { updated: false; reason: "NOT_YET_SETTLED" };
 
 const PROMO_CODE_EXPIRY_DAYS = 30;
+/**
+ * Safely send WhatsApp payment notification after transaction is settled.
+ * Non-blocking: failures are logged but never thrown.
+ */
+export async function notifyPaymentSuccess(
+  transaction: {
+    orderId: string;
+    customerPhone: string | null;
+    productId: string;
+    finalAmount: number;
+    redeemUrl: string | null;
+    stockStatus: string;
+    promoCodeId: string | null;
+  }
+): Promise<void> {
+  try {
+    if (!transaction.customerPhone) return;
+
+    const [product, promoCode] = await Promise.all([
+      prisma.product.findUnique({ where: { id: transaction.productId }, select: { name: true } }),
+      transaction.promoCodeId
+        ? prisma.promoCode.findUnique({ where: { id: transaction.promoCodeId }, select: { code: true } })
+        : null,
+    ]);
+
+    const data: WhatsAppPaymentData = {
+      customerPhone: transaction.customerPhone,
+      orderId: transaction.orderId,
+      productName: product?.name ?? "Produk",
+      finalAmount: transaction.finalAmount,
+      redeemUrl: transaction.redeemUrl ?? undefined,
+      promoCode: promoCode?.code ?? undefined,
+    };
+
+    await sendPaymentNotification(data);
+  } catch (error) {
+    // Non-critical: log and continue — payment already succeeded
+    log.error("WhatsApp notification failed (non-critical)", {
+      orderId: transaction.orderId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+
 
 /**
  * Apply a Midtrans transaction_status/fraud_status update to our local
@@ -158,6 +207,9 @@ export async function applyMidtransStatusUpdate(
 
     return updatedTransaction;
   });
+
+  // ─── Send WhatsApp notification (non-blocking, non-critical) ────────
+  void notifyPaymentSuccess(result);
 
   return { updated: true, transaction: result };
 }
