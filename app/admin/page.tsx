@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchHealth();
-    const interval = setInterval(fetchHealth, 30000);
+    const interval = setInterval(fetchHealth, 300000); // 5 minutes
     return () => clearInterval(interval);
   }, []);
 
