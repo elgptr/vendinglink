@@ -28,7 +28,9 @@ dist/
 *.db-journal
 *.db-shm
 *.db-wal
-prisma/migrations/
+# ⚠️ DO NOT ignore prisma/migrations/ — migrations are version-controlled
+# They're needed for `prisma migrate deploy` in production (Vercel, Railway, etc.)
+# prisma/migrations/ is TRACKED — keep all migration files in git
 
 # ============================================================
 # TypeScript

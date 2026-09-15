@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build && npx prisma migrate deploy --skip-generate",
+  "installCommand": "npm install --legacy-peer-deps",
+  "outputDirectory": ".next",
+  "env": {
+    "NODE_ENV": "production",
+    "ENVIRONMENT": "production"
+  }
+}
