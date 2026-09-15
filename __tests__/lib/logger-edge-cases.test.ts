@@ -85,11 +85,11 @@ describe("createLogger — Edge Cases", () => {
 
       expect(consoleSpy.log).toHaveBeenCalledTimes(100);
 
-      const allCalls = consoleSpy.log.mock.calls.map((call) =>
+      const allCalls = consoleSpy.log.mock.calls.map((call: unknown[]) =>
         JSON.parse(call[0] as string)
       );
-      allCalls.forEach((call, idx) => {
-        expect(call.context.index).toBe(idx);
+      allCalls.forEach((call: { context?: { index?: number } }, idx: number) => {
+        expect(call.context?.index).toBe(idx);
       });
     });
 
