@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       select: transactionSelect,
     });
 
-    if (!transaction || transaction.paymentType !== "MIDTRANS") {
+    if (!transaction || (transaction.paymentType !== "MIDTRANS" && transaction.paymentType !== "DOKU")) {
       return NextResponse.json(
         { error: "Transaksi tidak ditemukan" },
         { status: 404 }
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // ─── Fallback reconciliation ─────────────────────────────────────────
     // Mirrors /api/order/status: actively check Midtrans's GET Status API
     // while PENDING, in case the webhook notification never arrives.
-    if (transaction.status === "PENDING") {
+    if (transaction.status === "PENDING" && transaction.paymentType === "MIDTRANS") {
       try {
         const midtransStatus = await getMidtransStatus(orderId);
         const result = await applyMidtransStatusUpdate(

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (!transaction || transaction.paymentType !== "MIDTRANS") {
+    if (!transaction || (transaction.paymentType !== "MIDTRANS" && transaction.paymentType !== "DOKU")) {
       return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
     }
 
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       snapToken: transaction.snapToken || "",
+      paymentType: transaction.paymentType,
     });
   } catch (error) {
     console.error("Customer snap token endpoint error:", error);

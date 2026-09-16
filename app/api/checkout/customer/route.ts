@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSnapTransaction } from "@/lib/midtrans";
+import { createDokuCheckout } from "@/lib/doku";
+import { getActivePaymentGateway } from "@/lib/paymentConfig";
 import { generateOrderId, sanitizeString } from "@/lib/utils";
 import { claimAvailableStock } from "@/lib/stock";
 import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
 import { z } from "zod";
-import { createLogger } from "@/lib/logger";
-
-const log = createLogger({ module: "checkout-customer" });
 
 // Rate limiter for public customer checkout (20 attempts / min / IP).
 const checkoutLimiter = createRateLimiter(20, 60 * 1000);
@@ -219,40 +218,60 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Create Midtrans Snap transaction ──────────────────────────────────
+    const activeGateway = getActivePaymentGateway();
     let snapToken: string | undefined;
 
-    try {
-      const snapResponse = await createSnapTransaction({
-        orderId,
-        amount: finalAmount,
-        customerName: sanitizedCustomerName,
-        customerPhone: sanitizedCustomerPhone,
-        productName: product.name,
-      });
-
-      snapToken = snapResponse.token;
-    } catch (midtransError) {
-      log.error("Midtrans charge error", { error: String(midtransError) });
-
-      const httpStatus = (midtransError as { httpStatusCode?: string }).httpStatusCode;
-      if (httpStatus === "402") {
+    if (activeGateway === "DOKU") {
+      try {
+        const dokuResponse = await createDokuCheckout({
+          orderId,
+          amount: finalAmount,
+          productName: product.name,
+          customerName: sanitizedCustomerName,
+          customerPhone: sanitizedCustomerPhone,
+        });
+        snapToken = dokuResponse.paymentUrl;
+      } catch (dokuError) {
+        console.error("DOKU charge error:", dokuError);
         return NextResponse.json(
-          { error: "Metode pembayaran belum diaktifkan di akun Midtrans." },
+          { error: (dokuError instanceof Error ? dokuError.message : "Gagal membuat sesi pembayaran DOKU.") },
           { status: 502 }
         );
       }
-      if (httpStatus === "401") {
-        return NextResponse.json(
-          { error: "Konfigurasi Midtrans tidak valid. Periksa SERVER_KEY di .env." },
-          { status: 502 }
-        );
-      }
+    } else {
+      try {
+        const snapResponse = await createSnapTransaction({
+          orderId,
+          amount: finalAmount,
+          customerName: sanitizedCustomerName,
+          customerPhone: sanitizedCustomerPhone,
+          productName: product.name,
+        });
 
-      if (process.env.NODE_ENV !== "development") {
-        return NextResponse.json(
-          { error: "Gagal membuat transaksi pembayaran." },
-          { status: 500 }
-        );
+        snapToken = snapResponse.token;
+      } catch (midtransError) {
+        console.error("Midtrans charge error:", midtransError);
+
+        const httpStatus = (midtransError as { httpStatusCode?: string }).httpStatusCode;
+        if (httpStatus === "402") {
+          return NextResponse.json(
+            { error: "Metode pembayaran belum diaktifkan di akun Midtrans." },
+            { status: 502 }
+          );
+        }
+        if (httpStatus === "401") {
+          return NextResponse.json(
+            { error: "Konfigurasi Midtrans tidak valid. Periksa SERVER_KEY di .env." },
+            { status: 502 }
+          );
+        }
+
+        if (process.env.NODE_ENV !== "development") {
+          return NextResponse.json(
+            { error: "Gagal membuat transaksi pembayaran." },
+            { status: 500 }
+          );
+        }
       }
     }
 
@@ -266,7 +285,7 @@ export async function POST(request: NextRequest) {
         promoCodeId: resolvedPromoCodeId,
         customerName: sanitizedCustomerName,
         customerPhone: sanitizedCustomerPhone,
-        paymentType: "MIDTRANS",
+        paymentType: activeGateway === "DOKU" ? "DOKU" : "MIDTRANS",
         originalPrice,
         discountAmount,
         finalAmount,
@@ -286,11 +305,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    log.error("Customer checkout error", { error: String(error) });
+    console.error("Customer checkout error:", error);
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }
     );
   }
 }
-

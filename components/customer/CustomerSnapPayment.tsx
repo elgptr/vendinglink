@@ -27,6 +27,7 @@ declare global {
         }
       ) => void;
     };
+    loadJokulCheckout?: (paymentUrl: string) => void;
   }
 }
 
@@ -36,6 +37,7 @@ interface CustomerSnapPaymentProps {
   amount: number;
   productName: string;
   isProduction: boolean;
+  paymentType?: string;
   onPaymentEvent?: () => void;
 }
 
@@ -45,17 +47,37 @@ export default function CustomerSnapPayment({
   amount,
   productName,
   isProduction,
+  paymentType = "MIDTRANS",
   onPaymentEvent,
 }: CustomerSnapPaymentProps) {
   const [scriptReady, setScriptReady] = useState(false);
   const autoOpenedRef = useRef(false);
 
-  const snapSrc = isProduction
-    ? "https://app.midtrans.com/snap/snap.js"
-    : "https://app.sandbox.midtrans.com/snap/snap.js";
+  const isDoku = paymentType === "DOKU" || snapToken.startsWith("http");
 
-  const openSnap = () => {
-    if (!snapToken || !window.snap) return;
+  const scriptSrc = isDoku
+    ? (isProduction
+        ? "https://jokul.doku.com/jokul-checkout-js/v1/jokul-checkout-1.0.0.js"
+        : "https://sandbox.doku.com/jokul-checkout-js/v1/jokul-checkout-1.0.0.js")
+    : (isProduction
+        ? "https://app.midtrans.com/snap/snap.js"
+        : "https://app.sandbox.midtrans.com/snap/snap.js");
+
+  const openPayment = () => {
+    if (!snapToken) return;
+
+    if (isDoku) {
+      if (typeof window.loadJokulCheckout === "function") {
+        // DOKU Checkout Popup Modal
+        window.loadJokulCheckout(snapToken);
+      } else {
+        // Fallback redirect if script not ready
+        window.location.href = snapToken;
+      }
+      return;
+    }
+
+    if (!window.snap) return;
     window.snap.pay(snapToken, {
       onSuccess: () => {
         toast.success("Pembayaran berhasil! Menyiapkan link redeem...");
@@ -79,7 +101,7 @@ export default function CustomerSnapPayment({
   useEffect(() => {
     if (scriptReady && snapToken && !autoOpenedRef.current) {
       autoOpenedRef.current = true;
-      openSnap();
+      openPayment();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptReady, snapToken]);
@@ -87,8 +109,8 @@ export default function CustomerSnapPayment({
   return (
     <div className="max-w-md mx-auto animate-slide-up">
       <Script
-        src={snapSrc}
-        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        src={scriptSrc}
+        data-client-key={!isDoku ? process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY : undefined}
         strategy="afterInteractive"
         onLoad={() => setScriptReady(true)}
       />
@@ -124,11 +146,11 @@ export default function CustomerSnapPayment({
           id="customer-open-snap-btn"
           size="lg"
           className="w-full"
-          disabled={!scriptReady || !snapToken}
-          onClick={openSnap}
+          disabled={isDoku ? !snapToken : (!scriptReady || !snapToken)}
+          onClick={openPayment}
           icon={<CreditCard size={18} />}
         >
-          Pilih Metode Pembayaran
+          {isDoku ? "Buka Pembayaran DOKU" : "Pilih Metode Pembayaran"}
         </Button>
 
         <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500">
@@ -137,7 +159,7 @@ export default function CustomerSnapPayment({
         </div>
         <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-600">
           <ShieldCheck size={12} />
-          Transaksi diproses aman melalui Midtrans
+          Transaksi diproses aman melalui {isDoku ? "DOKU Payment" : "Midtrans"}
         </div>
       </Card>
 
