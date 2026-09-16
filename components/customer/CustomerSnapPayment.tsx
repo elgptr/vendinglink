@@ -10,7 +10,9 @@ import {
   ExternalLink,
   Clock,
   AlertTriangle,
+  X,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { formatRupiah } from "@/lib/utils";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -61,6 +63,7 @@ export default function CustomerSnapPayment({
   onPaymentEvent,
 }: CustomerSnapPaymentProps) {
   const [scriptReady, setScriptReady] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const autoOpenedRef = useRef(false);
 
   const isKasera = paymentType === "KASERA";
@@ -103,8 +106,8 @@ export default function CustomerSnapPayment({
     if (!snapToken) return;
 
     if (isKasera) {
-      // For Kasera, open the hosted checkout page in a new window/tab
-      window.open(snapToken, "_blank", "noopener,noreferrer");
+      // For Kasera, open the modal overlay containing the QRIS
+      setIsModalOpen(true);
       return;
     }
 
@@ -169,65 +172,9 @@ export default function CustomerSnapPayment({
       </div>
 
       {isKasera ? (
-        /* ─── KASERA QRIS VIEW ───────────────────────────────────────── */
-        <Card className="p-6 text-center" glow>
-          {/* Expiry Warning Alert & Countdown */}
-          <div
-            className={`mb-5 p-3.5 rounded-xl border flex items-center justify-between text-left ${
-              timeLeft <= 180
-                ? "bg-red-500/15 border-red-500/40 text-red-300"
-                : "bg-amber-500/10 border-amber-500/30 text-amber-300"
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              {timeLeft <= 180 ? (
-                <AlertTriangle size={18} className="text-red-400 shrink-0" />
-              ) : (
-                <Clock size={18} className="text-amber-400 shrink-0" />
-              )}
-              <div className="text-xs">
-                <span className="font-semibold block">
-                  {timeLeft > 0
-                    ? "Batas Pembayaran: 15 Menit"
-                    : "Waktu Pembayaran Habis"}
-                </span>
-                <span className="text-[11px] opacity-85">
-                  {timeLeft > 0
-                    ? "Selesaikan scan sebelum QRIS kedaluwarsa"
-                    : "Silakan ulangi checkout dari katalog"}
-                </span>
-              </div>
-            </div>
-            <div
-              className={`font-mono font-bold text-base px-2.5 py-1 rounded-lg ${
-                timeLeft <= 180
-                  ? "bg-red-500/20 text-red-300"
-                  : "bg-amber-500/20 text-amber-300"
-              }`}
-            >
-              {formattedTime}
-            </div>
-          </div>
-
-          {/* QR Code Container */}
-          {qrString ? (
-            <div className="mb-5 flex flex-col items-center">
-              <div className="p-3 bg-white rounded-2xl shadow-lg inline-block border-4 border-slate-700/50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(
-                    qrString
-                  )}`}
-                  alt="QRIS Kasera Pay"
-                  className="w-56 h-56 rounded-lg"
-                />
-              </div>
-              <p className="text-xs text-slate-400 mt-2.5 flex items-center gap-1.5">
-                <QrCode size={14} className="text-orange-400" />
-                Scan via GoPay, OVO, DANA, BCA, Mandiri, dsb.
-              </p>
-            </div>
-          ) : (
+        /* ─── KASERA MAIN VIEW ───────────────────────────────────────── */
+        <>
+          <Card className="p-6 text-center" glow>
             <div className="mb-5 flex flex-col items-center gap-3">
               <div className="w-20 h-20 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
                 <QrCode size={32} className="text-orange-400" />
@@ -236,39 +183,116 @@ export default function CustomerSnapPayment({
                 Scan QRIS langsung dengan aplikasi e-wallet atau mobile banking Anda.
               </p>
             </div>
-          )}
 
-          {/* Amount Box */}
-          <div className="mb-5 p-4 bg-surface rounded-xl border border-surface-border">
-            <p className="text-sm text-slate-400 mb-1">Total Pembayaran</p>
-            <p className="text-3xl font-bold text-orange-400">
-              {formatRupiah(amount)}
-            </p>
-          </div>
+            <div className="mb-5 p-4 bg-surface rounded-xl border border-surface-border">
+              <p className="text-sm text-slate-400 mb-1">Total Pembayaran</p>
+              <p className="text-3xl font-bold text-orange-400">
+                {formatRupiah(amount)}
+              </p>
+            </div>
 
-          {/* Action Buttons */}
-          {snapToken && (
             <Button
               id="customer-open-kasera-btn"
               size="lg"
               className="w-full bg-orange-500 hover:bg-orange-600 text-white"
               disabled={timeLeft <= 0}
               onClick={openPayment}
-              icon={<ExternalLink size={18} />}
+              icon={<QrCode size={18} />}
             >
-              Buka Halaman Pembayaran Kasera
+              Buka Pembayaran QRIS
             </Button>
-          )}
 
-          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500">
-            <RefreshCw size={12} className="animate-spin" />
-            Memeriksa status pembayaran otomatis...
-          </div>
-          <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-600">
-            <ShieldCheck size={12} />
-            Transaksi diproses aman melalui Kasera Pay (QRIS Direct)
-          </div>
-        </Card>
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500">
+              <RefreshCw size={12} className="animate-spin" />
+              Memeriksa status pembayaran otomatis...
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-600">
+              <ShieldCheck size={12} />
+              Transaksi diproses aman melalui Kasera Pay
+            </div>
+          </Card>
+
+          {/* KASERA MODAL POPUP */}
+          {isModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4">
+              <div className="bg-surface border border-surface-border rounded-2xl w-full max-w-sm overflow-hidden flex flex-col animate-scale-up shadow-2xl relative">
+                
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-4 border-b border-surface-border bg-surface-light">
+                  <div className="font-semibold text-white">Pembayaran QRIS</div>
+                  <button 
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-border transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-6 text-center bg-white">
+                  {/* Expiry Warning */}
+                  <div
+                    className={`mb-5 p-3 rounded-lg border flex items-center justify-between text-left ${
+                      timeLeft <= 180
+                        ? "bg-red-50 border-red-200 text-red-600"
+                        : "bg-orange-50 border-orange-200 text-orange-600"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {timeLeft <= 180 ? (
+                        <AlertTriangle size={16} className="shrink-0" />
+                      ) : (
+                        <Clock size={16} className="shrink-0" />
+                      )}
+                      <div className="text-xs font-medium">
+                        {timeLeft > 0 ? "Batas Waktu" : "Waktu Habis"}
+                      </div>
+                    </div>
+                    <div className="font-mono font-bold text-sm">
+                      {formattedTime}
+                    </div>
+                  </div>
+
+                  {/* QR Code Canvas */}
+                  <div className="mb-4 flex flex-col items-center">
+                    {qrString ? (
+                      <div className="p-3 bg-white rounded-xl inline-block border-2 border-slate-100 shadow-sm">
+                        <QRCodeSVG 
+                          value={qrString} 
+                          size={200}
+                          level="M"
+                          includeMargin={false}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-[200px] h-[200px] bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-sm p-4 text-center border-2 border-slate-200 border-dashed">
+                        QRIS tidak tersedia. Silakan gunakan link web Kasera di bawah ini.
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="text-slate-800 font-bold text-3xl mb-1">
+                    {formatRupiah(amount)}
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed mb-6">
+                    Buka aplikasi e-wallet (GoPay, OVO, DANA) atau mobile banking Anda, lalu scan QRIS di atas.
+                  </p>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-slate-600 border-slate-300 hover:bg-slate-50"
+                    disabled={!snapToken}
+                    onClick={() => window.open(snapToken, "_blank", "noopener,noreferrer")}
+                    icon={<ExternalLink size={14} />}
+                  >
+                    Buka di Web Kasera
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         /* ─── MIDTRANS & DOKU VIEW ─────────────────────────────────────── */
         <Card className="p-6 text-center" glow>
