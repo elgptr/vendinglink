@@ -1,7 +1,8 @@
-import { auth } from "@/lib/auth";
+﻿import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
 import AIConfigForm from "@/components/admin/AIConfigForm";
+import PaymentGatewaySettingsCard from "@/components/admin/PaymentGatewaySettingsCard";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
@@ -11,13 +12,18 @@ export default async function AdminSettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+      <div>
         <h1 className="text-3xl font-bold text-white mb-2">Pengaturan Admin</h1>
-        <p className="text-slate-400">Kelola pengaturan akun admin Anda</p>
+        <p className="text-slate-400">
+          Kelola payment gateway, konfigurasi AI, dan keamanan akun Anda
+        </p>
       </div>
 
       <div className="grid gap-6">
+        {/* Payment Gateway Card */}
+        <PaymentGatewaySettingsCard />
+
         {/* Change Password Card */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-6">
           <div className="mb-6">
@@ -26,7 +32,6 @@ export default async function AdminSettingsPage() {
               Perbarui password Anda untuk menjaga keamanan akun
             </p>
           </div>
-
           <ChangePasswordForm />
         </div>
 
