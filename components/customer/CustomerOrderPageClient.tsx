@@ -29,6 +29,7 @@ interface OrderData {
 
 interface SnapTokenData {
   snapToken: string;
+  paymentType?: string;
 }
 
 export default function CustomerOrderPageClient({
@@ -145,6 +146,7 @@ export default function CustomerOrderPageClient({
     <CustomerSnapPayment
       orderId={orderId}
       snapToken={snapData?.snapToken || ""}
+      paymentType={snapData?.paymentType || "MIDTRANS"}
       amount={initialAmount}
       productName={productName}
       isProduction={process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true"}
