@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon } from "lucide-react";
+import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon, Eye, EyeOff, Copy, Check } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input, { Textarea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
@@ -71,6 +71,49 @@ export default function InventoryPage() {
   const [editGuideText, setEditGuideText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
+
+  // Revealed stock links map: stockId -> fullUrl
+  const [revealedStocks, setRevealedStocks] = useState<Record<string, string>>({});
+  const [revealingId, setRevealingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const toggleRevealStock = async (stock: Stock) => {
+    if (revealedStocks[stock.id]) {
+      setRevealedStocks((prev) => {
+        const next = { ...prev };
+        delete next[stock.id];
+        return next;
+      });
+      return;
+    }
+
+    if (stock.status === "SOLD") {
+      setRevealedStocks((prev) => ({ ...prev, [stock.id]: stock.redeemUrl }));
+      return;
+    }
+
+    setRevealingId(stock.id);
+    try {
+      const res = await fetch(`/api/admin/stock/${stock.id}/reveal`);
+      const data = await res.json();
+      if (res.ok && data.redeemUrl) {
+        setRevealedStocks((prev) => ({ ...prev, [stock.id]: data.redeemUrl }));
+      } else {
+        toast.error(data.error || "Gagal memuat link full");
+      }
+    } catch {
+      toast.error("Gagal memuat link full");
+    } finally {
+      setRevealingId(null);
+    }
+  };
+
+  const copyToClipboard = (textToCopy: string, id: string) => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedId(id);
+    toast.success("Link berhasil disalin");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // Filter
   const [filterProductId, setFilterProductId] = useState("");
@@ -388,8 +431,34 @@ export default function InventoryPage() {
                   {stocks.map((stock) => (
                     <tr key={stock.id}>
                       <td className="font-medium text-slate-200">{stock.productName}</td>
-                      <td className="font-mono text-xs text-slate-400 max-w-[200px] truncate">
-                        {stock.redeemUrl}
+                      <td>
+                        <div className="flex items-center gap-2 max-w-[320px]">
+                          <span
+                            onClick={() => toggleRevealStock(stock)}
+                            className="font-mono text-xs text-slate-300 hover:text-brand-300 cursor-pointer truncate transition-colors"
+                            title={revealedStocks[stock.id] ? "Klik untuk menyembunyikan link" : "Klik untuk melihat link full"}
+                          >
+                            {revealingId === stock.id ? "Memuat..." : (revealedStocks[stock.id] || stock.redeemUrl)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleRevealStock(stock)}
+                            className="text-slate-400 hover:text-brand-300 p-1 rounded hover:bg-surface-border/40 transition-colors flex-shrink-0"
+                            title={revealedStocks[stock.id] ? "Sembunyikan link" : "Lihat link full"}
+                          >
+                            {revealedStocks[stock.id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                          {revealedStocks[stock.id] && (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(revealedStocks[stock.id], stock.id)}
+                              className="text-slate-400 hover:text-emerald-400 p-1 rounded hover:bg-surface-border/40 transition-colors flex-shrink-0"
+                              title="Salin link"
+                            >
+                              {copiedId === stock.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <Badge variant={stock.status === "AVAILABLE" ? "success" : "neutral"}>
