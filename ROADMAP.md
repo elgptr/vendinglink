@@ -34,7 +34,7 @@ value it delivers.
   - Role-based routing (ADMIN `/admin/*`, AGENT `/agent/*`, CUSTOMER)
   - Unapproved-agent gate (blocks unregistered agents from transacting)
 - **Data layer:** PostgreSQL + Prisma; client used directly in routes.
-- **Payments:** Midtrans Snap API; webhook at `app/api/midtrans/webhook`.
+- **Payments:** Dual Gateway Architecture (Midtrans Snap & DOKU Checkout); webhooks at `app/api/midtrans/webhook` and `app/api/doku/webhook`; toggleable via Admin Settings (`/admin/settings`).
 - **AI:** Anthropic SDK + Google GenAI for chat, descriptions, insights.
 - **Tests:** Vitest (unit + integration) + Playwright (E2E) populated.
 
