@@ -38,6 +38,8 @@ const PUBLIC_ROUTES = [
   "/register",
   "/api/auth/register",
   "/api/midtrans/webhook",
+  "/api/doku/webhook",
+  "/api/kasera/webhook",
   "/customer",
   "/api/customer",
   "/api/checkout/customer",

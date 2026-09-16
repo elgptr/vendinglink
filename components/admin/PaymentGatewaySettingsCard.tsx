@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
-import { CreditCard, CheckCircle2, ArrowRightLeft, RefreshCw } from "lucide-react";
+import { CreditCard, CheckCircle2, ArrowRightLeft, RefreshCw, QrCode } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -9,9 +9,10 @@ import Spinner from "@/components/ui/Spinner";
 import toast from "@/components/ui/Toast";
 
 interface SettingsData {
-  gateway: "MIDTRANS" | "DOKU";
+  gateway: "MIDTRANS" | "DOKU" | "KASERA";
   hasMidtrans: boolean;
   hasDoku: boolean;
+  hasKasera: boolean;
 }
 
 export default function PaymentGatewaySettingsCard() {
@@ -40,7 +41,7 @@ export default function PaymentGatewaySettingsCard() {
     fetchSettings();
   }, []);
 
-  const handleToggleGateway = async (targetGateway: "MIDTRANS" | "DOKU") => {
+  const handleToggleGateway = async (targetGateway: "MIDTRANS" | "DOKU" | "KASERA") => {
     if (data?.gateway === targetGateway) return;
     setUpdating(true);
 
@@ -96,7 +97,7 @@ export default function PaymentGatewaySettingsCard() {
         </Badge>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Option 1: Midtrans */}
         <div
           onClick={() => !updating && handleToggleGateway("MIDTRANS")}
@@ -145,6 +146,35 @@ export default function PaymentGatewaySettingsCard() {
             <span className="text-slate-500">Kredensial .env</span>
             <span className={data?.hasDoku ? "text-emerald-400" : "text-amber-400"}>
               {data?.hasDoku ? "Terhubung" : "Belum Lengkap"}
+            </span>
+          </div>
+        </div>
+
+        {/* Option 3: Kasera Pay (QRIS) */}
+        <div
+          onClick={() => !updating && handleToggleGateway("KASERA")}
+          className={`cursor-pointer rounded-2xl border p-5 transition-all relative ${
+            data?.gateway === "KASERA"
+              ? "bg-orange-500/10 border-orange-500/50 shadow-glow"
+              : "bg-surface-card border-surface-border hover:border-slate-600 opacity-70"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <QrCode size={18} className="text-orange-400" />
+              <span className="font-bold text-base text-white">Kasera Pay</span>
+            </div>
+            {data?.gateway === "KASERA" && (
+              <CheckCircle2 size={18} className="text-orange-400" />
+            )}
+          </div>
+          <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+            Integrasi Direct QRIS Kasera Pay berkecepatan tinggi dengan verifikasi otomatis & expiry 15 menit.
+          </p>
+          <div className="flex items-center justify-between text-xs pt-3 border-t border-surface-border/50">
+            <span className="text-slate-500">Kredensial .env</span>
+            <span className={data?.hasKasera ? "text-emerald-400" : "text-amber-400"}>
+              {data?.hasKasera ? "Terhubung" : "Belum Lengkap"}
             </span>
           </div>
         </div>

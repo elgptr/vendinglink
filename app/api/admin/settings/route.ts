@@ -1,10 +1,10 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getActivePaymentGateway, setActivePaymentGateway } from "@/lib/paymentConfig";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  gateway: z.enum(["MIDTRANS", "DOKU"]),
+  gateway: z.enum(["MIDTRANS", "DOKU", "KASERA"]),
 });
 
 export async function GET() {
@@ -19,6 +19,7 @@ export async function GET() {
       gateway,
       hasMidtrans: !!process.env.MIDTRANS_SERVER_KEY,
       hasDoku: !!process.env.DOKU_CLIENT_ID && !!process.env.DOKU_SECRET_KEY,
+      hasKasera: !!process.env.KASERA_API_KEY && !!process.env.KASERA_WEBHOOK_SECRET,
     });
   } catch (error) {
     console.error("Get settings error:", error);

@@ -21,10 +21,16 @@ export async function GET(request: NextRequest) {
         paymentType: true,
         status: true,
         snapToken: true,
+        qrString: true,
       },
     });
 
-    if (!transaction || (transaction.paymentType !== "MIDTRANS" && transaction.paymentType !== "DOKU")) {
+    if (
+      !transaction ||
+      (transaction.paymentType !== "MIDTRANS" &&
+        transaction.paymentType !== "DOKU" &&
+        transaction.paymentType !== "KASERA")
+    ) {
       return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
     }
 
@@ -35,6 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       snapToken: transaction.snapToken || "",
+      qrString: transaction.qrString || null,
       paymentType: transaction.paymentType,
     });
   } catch (error) {
