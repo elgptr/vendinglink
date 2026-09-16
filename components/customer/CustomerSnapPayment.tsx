@@ -27,6 +27,7 @@ declare global {
         }
       ) => void;
     };
+    loadJokulCheckout?: (paymentUrl: string) => void;
   }
 }
 
@@ -52,18 +53,27 @@ export default function CustomerSnapPayment({
   const [scriptReady, setScriptReady] = useState(false);
   const autoOpenedRef = useRef(false);
 
-  const snapSrc = isProduction
-    ? "https://app.midtrans.com/snap/snap.js"
-    : "https://app.sandbox.midtrans.com/snap/snap.js";
-
   const isDoku = paymentType === "DOKU" || snapToken.startsWith("http");
 
-  const openSnap = () => {
+  const scriptSrc = isDoku
+    ? (isProduction
+        ? "https://jokul.doku.com/jokul-checkout-js/v1/jokul-checkout-1.0.0.js"
+        : "https://sandbox.doku.com/jokul-checkout-js/v1/jokul-checkout-1.0.0.js")
+    : (isProduction
+        ? "https://app.midtrans.com/snap/snap.js"
+        : "https://app.sandbox.midtrans.com/snap/snap.js");
+
+  const openPayment = () => {
     if (!snapToken) return;
 
     if (isDoku) {
-      // DOKU Checkout URL redirect
-      window.location.href = snapToken;
+      if (typeof window.loadJokulCheckout === "function") {
+        // DOKU Checkout Popup Modal
+        window.loadJokulCheckout(snapToken);
+      } else {
+        // Fallback redirect if script not ready
+        window.location.href = snapToken;
+      }
       return;
     }
 
@@ -89,25 +99,18 @@ export default function CustomerSnapPayment({
   };
 
   useEffect(() => {
-    if (isDoku && snapToken && !autoOpenedRef.current) {
+    if (scriptReady && snapToken && !autoOpenedRef.current) {
       autoOpenedRef.current = true;
-      // Otomatis buka checkout DOKU
-      window.location.href = snapToken;
-      return;
-    }
-
-    if (!isDoku && scriptReady && snapToken && !autoOpenedRef.current) {
-      autoOpenedRef.current = true;
-      openSnap();
+      openPayment();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scriptReady, snapToken, isDoku]);
+  }, [scriptReady, snapToken]);
 
   return (
     <div className="max-w-md mx-auto animate-slide-up">
       <Script
-        src={snapSrc}
-        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        src={scriptSrc}
+        data-client-key={!isDoku ? process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY : undefined}
         strategy="afterInteractive"
         onLoad={() => setScriptReady(true)}
       />
@@ -144,7 +147,7 @@ export default function CustomerSnapPayment({
           size="lg"
           className="w-full"
           disabled={isDoku ? !snapToken : (!scriptReady || !snapToken)}
-          onClick={openSnap}
+          onClick={openPayment}
           icon={<CreditCard size={18} />}
         >
           {isDoku ? "Buka Pembayaran DOKU" : "Pilih Metode Pembayaran"}
