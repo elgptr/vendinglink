@@ -51,6 +51,14 @@ export function generateDokuSignature(params: {
  * Signature is computed over:
  * "Client-Id:" + clientId + "\nRequest-Id:" + requestId + "\nRequest-Timestamp:" + timestamp + "\nRequest-Target:" + requestTarget + "\nDigest:" + digest
  */
+/**
+ * Sanitize strings to adhere strictly to DOKU's regex:
+ * allowed: a-z A-Z 0-9 . - / + , = _ : ' @ % ( ) and space
+ */
+export function sanitizeDokuString(str: string): string {
+  return str.replace(/[^a-zA-Z0-9.\-\/+,\=_:'@%() ]/g, " ").trim();
+}
+
 export function verifyDokuNotificationSignature(params: {
   clientId: string;
   requestId: string;
@@ -105,15 +113,20 @@ export async function createDokuCheckout(params: {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://toko.txsiber.online";
   const callbackUrl = params.callbackUrl || `${appUrl}/customer/order/${params.orderId}`;
 
+  const cleanProductName = sanitizeDokuString(params.productName).substring(0, 50) || "Produk Digital";
+  const cleanCustomerName = sanitizeDokuString(params.customerName || "Customer").substring(0, 50) || "Customer";
+  const cleanInvoiceNumber = sanitizeDokuString(params.orderId);
+  const cleanPhone = (params.customerPhone || "08123456789").replace(/[^0-9+]/g, "").substring(0, 16);
+
   const payload = {
     order: {
-      invoice_number: params.orderId,
+      invoice_number: cleanInvoiceNumber,
       amount: params.amount,
       callback_url: callbackUrl,
       auto_redirect: true,
       line_items: [
         {
-          name: params.productName.substring(0, 50),
+          name: cleanProductName,
           price: params.amount,
           quantity: 1,
         },
@@ -123,10 +136,10 @@ export async function createDokuCheckout(params: {
       payment_due_date: 1440, // 24 hours
     },
     customer: {
-      id: params.orderId,
-      name: (params.customerName || "Customer").substring(0, 50),
+      id: cleanInvoiceNumber,
+      name: cleanCustomerName,
       email: params.customerEmail || "customer@txsiber.online",
-      phone: params.customerPhone || "08123456789",
+      phone: cleanPhone || "08123456789",
     },
   };
 
