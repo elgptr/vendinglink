@@ -18,7 +18,7 @@ export default async function CustomerOrderPage({ params }: OrderPageProps) {
   });
 
   // Not found, or belongs to the agent credit flow — never expose those here
-  if (!transaction || transaction.paymentType !== "MIDTRANS") notFound();
+  if (!transaction || (transaction.paymentType !== "MIDTRANS" && transaction.paymentType !== "DOKU")) notFound();
 
   return (
     <div className="py-4">
