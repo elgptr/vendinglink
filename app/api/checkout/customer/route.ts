@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSnapTransaction } from "@/lib/midtrans";
 import { createDokuCheckout } from "@/lib/doku";
+import { createKaseraQrisPayment } from "@/lib/kasera";
 import { getActivePaymentGateway } from "@/lib/paymentConfig";
 import { generateOrderId, sanitizeString } from "@/lib/utils";
 import { claimAvailableStock } from "@/lib/stock";
@@ -217,11 +218,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Create Midtrans Snap transaction ──────────────────────────────────
+    // ─── Create payment transaction via active gateway ───────────────────
     const activeGateway = getActivePaymentGateway();
     let snapToken: string | undefined;
+    let qrString: string | undefined;
+    let qrCodeUrl: string | undefined;
 
-    if (activeGateway === "DOKU") {
+    if (activeGateway === "KASERA") {
+      try {
+        const kaseraResponse = await createKaseraQrisPayment({
+          orderId,
+          amount: finalAmount,
+          productName: product.name,
+          customerName: sanitizedCustomerName,
+          customerPhone: sanitizedCustomerPhone,
+        });
+        snapToken = kaseraResponse.checkoutUrl;
+        qrString = kaseraResponse.qrString;
+        qrCodeUrl = kaseraResponse.id;
+      } catch (kaseraError) {
+        console.error("Kasera charge error:", kaseraError);
+        return NextResponse.json(
+          {
+            error:
+              kaseraError instanceof Error
+                ? kaseraError.message
+                : "Gagal membuat sesi pembayaran Kasera QRIS.",
+          },
+          { status: 502 }
+        );
+      }
+    } else if (activeGateway === "DOKU") {
       try {
         const dokuResponse = await createDokuCheckout({
           orderId,
@@ -285,12 +312,14 @@ export async function POST(request: NextRequest) {
         promoCodeId: resolvedPromoCodeId,
         customerName: sanitizedCustomerName,
         customerPhone: sanitizedCustomerPhone,
-        paymentType: activeGateway === "DOKU" ? "DOKU" : "MIDTRANS",
+        paymentType: activeGateway,
         originalPrice,
         discountAmount,
         finalAmount,
         status: "PENDING",
         snapToken,
+        qrString,
+        qrCodeUrl,
       },
     });
 
@@ -302,6 +331,8 @@ export async function POST(request: NextRequest) {
       productName: product.name,
       customerName: sanitizedCustomerName,
       snapToken: transaction.snapToken,
+      qrString: transaction.qrString,
+      paymentType: transaction.paymentType,
     });
 
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMidtransStatus } from "@/lib/midtrans";
+import { getKaseraPaymentStatus } from "@/lib/kasera";
 import { applyMidtransStatusUpdate } from "@/lib/transactionStatus";
 import { createLogger } from "@/lib/logger";
 
@@ -8,7 +9,7 @@ const log = createLogger({ module: "customer-order-status" });
 
 // Public order status polling — no auth required. Only reachable with the
 // unguessable orderId (VM-<timestamp>-<random>), and restricted to
-// paymentType === "MIDTRANS" (agentId null) transactions so an agent's
+// public customer payment gateways (agentId null) so an agent's
 // credit-based order can never be looked up through this endpoint.
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ const transactionSelect = {
   customerName: true,
   createdAt: true,
   paidAt: true,
+  qrCodeUrl: true,
   // Only exposed in the response if PAID (see safeRedeemUrl below)
   redeemUrl: true,
   product: {
@@ -43,7 +45,12 @@ export async function GET(request: NextRequest) {
       select: transactionSelect,
     });
 
-    if (!transaction || (transaction.paymentType !== "MIDTRANS" && transaction.paymentType !== "DOKU")) {
+    if (
+      !transaction ||
+      (transaction.paymentType !== "MIDTRANS" &&
+        transaction.paymentType !== "DOKU" &&
+        transaction.paymentType !== "KASERA")
+    ) {
       return NextResponse.json(
         { error: "Transaksi tidak ditemukan" },
         { status: 404 }
@@ -51,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ─── Fallback reconciliation ─────────────────────────────────────────
-    // Mirrors /api/order/status: actively check Midtrans's GET Status API
+    // Mirrors /api/order/status: actively check gateway Status API
     // while PENDING, in case the webhook notification never arrives.
     if (transaction.status === "PENDING" && transaction.paymentType === "MIDTRANS") {
       try {
@@ -71,6 +78,38 @@ export async function GET(request: NextRequest) {
       } catch (statusError) {
         log.warn(
           "Midtrans status check failed",
+          {
+            orderId,
+            error: statusError instanceof Error ? statusError.message : String(statusError),
+          }
+        );
+      }
+    } else if (
+      transaction.status === "PENDING" &&
+      transaction.paymentType === "KASERA" &&
+      transaction.qrCodeUrl
+    ) {
+      try {
+        const kaseraStatus = await getKaseraPaymentStatus(transaction.qrCodeUrl);
+        let internalStatus: string | null = null;
+        if (kaseraStatus.status === "succeeded") {
+          internalStatus = "settlement";
+        } else if (kaseraStatus.status === "expired" || kaseraStatus.status === "failed") {
+          internalStatus = "expire";
+        }
+
+        if (internalStatus) {
+          const result = await applyMidtransStatusUpdate(orderId, internalStatus);
+          if (result.updated) {
+            transaction = await prisma.transaction.findUnique({
+              where: { orderId },
+              select: transactionSelect,
+            });
+          }
+        }
+      } catch (statusError) {
+        log.warn(
+          "Kasera status check failed",
           {
             orderId,
             error: statusError instanceof Error ? statusError.message : String(statusError),
