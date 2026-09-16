@@ -280,7 +280,7 @@ export default function CustomerSnapPayment({
 
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="ghost"
                     className="w-full text-slate-600 border-slate-300 hover:bg-slate-50"
                     disabled={!snapToken}
                     onClick={() => window.open(snapToken, "_blank", "noopener,noreferrer")}
