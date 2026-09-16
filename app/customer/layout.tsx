@@ -17,7 +17,7 @@ export default function CustomerLayout({
             </div>
             <div>
               <p className="font-bold text-white text-sm leading-tight">VendingLink</p>
-              <p className="text-xs text-brand-400 leading-tight">Toko Digital</p>
+              <p className="text-xs text-brand-400 leading-tight">by TXSiber</p>
             </div>
           </Link>
 
