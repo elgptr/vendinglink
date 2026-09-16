@@ -1,8 +1,8 @@
-﻿import fs from "fs";
+import fs from "fs";
 import path from "path";
 import os from "os";
 
-export type PaymentGatewayType = "MIDTRANS" | "DOKU";
+export type PaymentGatewayType = "MIDTRANS" | "DOKU" | "KASERA";
 
 // In Vercel serverless environment, the current working directory is read-only.
 // Writing to process.cwd() throws EROFS (Read-only file system).
@@ -23,7 +23,11 @@ export function getActivePaymentGateway(): PaymentGatewayType {
     if (fs.existsSync(TMP_FILE_PATH)) {
       const content = fs.readFileSync(TMP_FILE_PATH, "utf-8");
       const parsed = JSON.parse(content);
-      if (parsed.gateway === "DOKU" || parsed.gateway === "MIDTRANS") {
+      if (
+        parsed.gateway === "DOKU" ||
+        parsed.gateway === "MIDTRANS" ||
+        parsed.gateway === "KASERA"
+      ) {
         inMemoryGateway = parsed.gateway;
         return parsed.gateway;
       }
@@ -37,7 +41,11 @@ export function getActivePaymentGateway(): PaymentGatewayType {
     if (fs.existsSync(CWD_FILE_PATH)) {
       const content = fs.readFileSync(CWD_FILE_PATH, "utf-8");
       const parsed = JSON.parse(content);
-      if (parsed.gateway === "DOKU" || parsed.gateway === "MIDTRANS") {
+      if (
+        parsed.gateway === "DOKU" ||
+        parsed.gateway === "MIDTRANS" ||
+        parsed.gateway === "KASERA"
+      ) {
         inMemoryGateway = parsed.gateway;
         return parsed.gateway;
       }
@@ -47,9 +55,14 @@ export function getActivePaymentGateway(): PaymentGatewayType {
   }
 
   // 3. Check environment variable
-  if (process.env.PAYMENT_GATEWAY?.toUpperCase() === "DOKU") {
+  const envGateway = process.env.PAYMENT_GATEWAY?.toUpperCase();
+  if (envGateway === "DOKU") {
     inMemoryGateway = "DOKU";
     return "DOKU";
+  }
+  if (envGateway === "KASERA") {
+    inMemoryGateway = "KASERA";
+    return "KASERA";
   }
 
   inMemoryGateway = "MIDTRANS";

@@ -34,7 +34,7 @@ value it delivers.
   - Role-based routing (ADMIN `/admin/*`, AGENT `/agent/*`, CUSTOMER)
   - Unapproved-agent gate (blocks unregistered agents from transacting)
 - **Data layer:** PostgreSQL + Prisma; client used directly in routes.
-- **Payments:** Dual Gateway Architecture (Midtrans Snap & DOKU Checkout); webhooks at `app/api/midtrans/webhook` and `app/api/doku/webhook`; toggleable via Admin Settings (`/admin/settings`).
+- **Payments:** Triple Gateway Architecture (Midtrans Snap, DOKU Checkout, and Kasera Pay QRIS Direct); webhooks at `app/api/midtrans/webhook`, `app/api/doku/webhook`, and `app/api/kasera/webhook`; toggleable via Admin Settings (`/admin/settings`).
 - **AI:** Anthropic SDK + Google GenAI for chat, descriptions, insights.
 - **Tests:** Vitest (unit + integration) + Playwright (E2E) populated.
 
