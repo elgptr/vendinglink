@@ -6,10 +6,13 @@ import { generateOrderId } from "@/lib/utils";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log("SaungWA Webhook Payload:", JSON.stringify(body, null, 2));
+
     const from = body?.from;
     const message = body?.message;
 
     if (!from || !message || typeof message !== "string") {
+      console.log("SaungWA Webhook Error: Invalid payload. 'from' or 'message' is missing or not a string.");
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
