@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { sanitizeString } from "@/lib/utils";
-import { generateProductDescription } from "@/lib/anthropic";
+import { generateProductDescription } from "@/lib/gemini";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "generate-description" });
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
         { error: "Fitur Generate Deskripsi belum dikonfigurasi. Hubungi admin." },
         { status: 503 }
