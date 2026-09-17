@@ -20,7 +20,7 @@ const securityHeaders = [
       "default-src 'self'; " +
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.sandbox.midtrans.com https://app.midtrans.com; " +
       "style-src 'self' 'unsafe-inline' https://app.sandbox.midtrans.com https://app.midtrans.com; " +
-      "img-src 'self' data: blob:; " +
+      "img-src 'self' data: blob: https://pasteimg.com; " +
       "font-src 'self' data:; " +
       "connect-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com; " +
       "frame-src https://app.sandbox.midtrans.com https://app.midtrans.com; " +
