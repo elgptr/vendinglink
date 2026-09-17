@@ -95,7 +95,7 @@ export function buildPaymentMessage(data: WhatsAppPaymentData): string {
     lines.push("*Link Redeem:*");
     lines.push(data.redeemUrl);
     lines.push("");
-    lines.push("Gunakan link di atas untuk menukarkan voucher Anda.");
+    lines.push("Gunakan link di atas untuk menukarkan voucher Anda. Khusus Code Redeem Claude Token ikuti Panduan MWAPI di link: https://s.id/5OuKq");
   } else if (data.promoCode) {
     lines.push("");
     lines.push("Stok sedang habis. Sebagai kompensasi:");

@@ -47,7 +47,8 @@ test.describe("E2E: Customer Checkout Flow", () => {
     await page.click("#customer-proceed-payment-btn");
 
     // Happy path completes by redirecting to the order page.
-    await expect(page).toHaveURL(/\/customer\/order\//);
+    // 10s timeout accommodates real payment gateway API calls in production/staging.
+    await expect(page).toHaveURL(/\/customer\/order\//, { timeout: 10000 });
     await expect(page.locator("body")).toBeVisible();
   });
 });
