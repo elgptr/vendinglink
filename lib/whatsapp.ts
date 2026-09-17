@@ -233,3 +233,99 @@ export async function sendPaymentNotification(
   });
   return { sent: false, error: result.error, mode: "live" };
 }
+
+// ─── WA Selling Channel Message Builders & Senders ──────────────────────────
+
+export function buildCatalogAndTemplateMessage(products: { id: string; name: string; price: number }[]): string {
+  const lines: string[] = [];
+  lines.push("Halo! Berikut adalah katalog produk kami hari ini:");
+  lines.push("");
+
+  products.forEach((p) => {
+    lines.push(`- ${p.name} - Rp ${p.price.toLocaleString("id-ID")}`);
+  });
+
+  lines.push("");
+  lines.push("Untuk melakukan pemesanan, silakan *Copy (Salin)* form di bawah ini, isi datanya, dan balas pesan ini:");
+  lines.push("");
+  lines.push("*--- FORM PEMESANAN ---*");
+  lines.push("Nama Pemesan : ");
+  lines.push("Nama Produk : ");
+  lines.push("Jumlah : 1");
+  lines.push("Kode Promo (opsional) : ");
+  lines.push("Pembayaran : QRIS");
+  lines.push("*------------------------*");
+
+  return lines.join("\n");
+}
+
+export async function sendEmptyStockMessage(phone: string): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid phone format", mode };
+
+  const message = "Mohon maaf, saat ini semua stok toko online kami sedang kosong. Silakan cek secara berkala.";
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendEmptyStockMessage", { to: normalizedPhone });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+export async function sendCatalogAndTemplateMessage(
+  phone: string,
+  products: { id: string; name: string; price: number }[]
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid phone format", mode };
+
+  const message = buildCatalogAndTemplateMessage(products);
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendCatalogAndTemplateMessage", { to: normalizedPhone });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+export async function sendInvalidOrderFormatMessage(phone: string): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid phone format", mode };
+
+  const message = "Mohon maaf, format pemesanan Anda tidak sesuai atau tidak lengkap. Silakan copy dan isi form pemesanan dengan benar.";
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendInvalidOrderFormatMessage", { to: normalizedPhone });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+export async function sendOrderCheckoutLink(
+  phone: string,
+  orderId: string,
+  checkoutUrl: string
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid phone format", mode };
+
+  const message = `Pesanan Anda (*${orderId}*) telah kami terima.\n\nSilakan selesaikan pembayaran melalui link berikut:\n${checkoutUrl}\n\nTerima kasih!`;
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendOrderCheckoutLink", { to: normalizedPhone, orderId });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
