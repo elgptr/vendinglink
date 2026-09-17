@@ -169,3 +169,32 @@ export async function askChatbot(
     "Maaf, saya belum bisa memberikan jawaban saat ini. Coba lagi ya."
   );
 }
+
+
+/**
+ * Generate a persuasive, Indonesian-language product description
+ * from a product name and price using Gemini.
+ */
+export async function generateProductDescription(
+  name: string,
+  price: number
+): Promise<string> {
+  const systemPrompt = "Anda adalah copywriter marketing untuk platform penjualan link redeem digital VendingLink (produk digital seperti lisensi, akun premium, kode redeem, dll yang dibeli agen lalu dijual ke pelanggan).\n\nTugas Anda: buatkan SATU deskripsi produk yang menarik dan persuasif dalam Bahasa Indonesia berdasarkan nama produk dan harga yang diberikan.\n\nATURAN KETAT:\n- Maksimal 200 karakter termasuk spasi dan tanda baca.\n- Bahasa persuasif dan menarik minat beli, tapi tetap jujur (jangan mengarang fitur yang tidak disebutkan di nama produk).\n- Jangan gunakan tanda kutip di awal/akhir kalimat.\n- Balas HANYA dengan teks deskripsi produk itu sendiri, tanpa judul, tanpa penjelasan tambahan, tanpa markdown.";
+
+  const response = await gemini.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: "Nama Produk: " + name + "\nHarga: " + formatRupiah(price) }],
+      },
+    ],
+    config: {
+      systemInstruction: systemPrompt,
+      maxOutputTokens: 150,
+    },
+  });
+
+  const description = response.text?.trim() || "";
+  return description.slice(0, 200);
+}
