@@ -6,18 +6,10 @@ import { encryptAPIKey, decryptAPIKey } from "@/lib/encryption";
 import { z } from "zod";
 
 const updateConfigSchema = z.object({
-  geminiApiKey: z.string().optional(),
-  anthropicApiKey: z.string().optional(),
-  
-  // Custom chat provider
-  customChatBaseUrl: z.string().url().optional().or(z.literal("")),
-  customChatApiKey: z.string().optional(),
-  customChatModel: z.string().optional(),
-  
-  // Custom description provider
-  customDescriptionBaseUrl: z.string().url().optional().or(z.literal("")),
-  customDescriptionApiKey: z.string().optional(),
-  customDescriptionModel: z.string().optional(),
+  baseUrl: z.string().url().optional().or(z.literal("")),
+  apiKey: z.string().optional(),
+  chatModel: z.string().optional(),
+  descriptionModel: z.string().optional(),
 });
 
 async function requireAdmin() {
@@ -42,14 +34,10 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      hasGeminiKey: !!config.geminiApiKey,
-      hasAnthropicKey: !!config.anthropicApiKey,
-      hasCustomChatKey: !!config.customChatApiKey,
-      hasCustomDescriptionKey: !!config.customDescriptionApiKey,
-      customChatBaseUrl: config.customChatBaseUrl || "",
-      customChatModel: config.customChatModel || "",
-      customDescriptionBaseUrl: config.customDescriptionBaseUrl || "",
-      customDescriptionModel: config.customDescriptionModel || "",
+      hasApiKey: !!config.apiKey,
+      baseUrl: config.baseUrl || "",
+      chatModel: config.chatModel || "",
+      descriptionModel: config.descriptionModel || "",
       lastUpdatedBy: config.updatedBy,
       lastUpdatedAt: config.updatedAt,
     });
@@ -81,22 +69,12 @@ export async function POST(request: NextRequest) {
     if (!config) {
       config = await prisma.aIConfiguration.create({
         data: {
-          geminiApiKey: parsed.data.geminiApiKey
-            ? encryptAPIKey(parsed.data.geminiApiKey)
+          baseUrl: parsed.data.baseUrl || null,
+          apiKey: parsed.data.apiKey
+            ? encryptAPIKey(parsed.data.apiKey)
             : null,
-          anthropicApiKey: parsed.data.anthropicApiKey
-            ? encryptAPIKey(parsed.data.anthropicApiKey)
-            : null,
-          customChatBaseUrl: parsed.data.customChatBaseUrl || null,
-          customChatApiKey: parsed.data.customChatApiKey
-            ? encryptAPIKey(parsed.data.customChatApiKey)
-            : null,
-          customChatModel: parsed.data.customChatModel || null,
-          customDescriptionBaseUrl: parsed.data.customDescriptionBaseUrl || null,
-          customDescriptionApiKey: parsed.data.customDescriptionApiKey
-            ? encryptAPIKey(parsed.data.customDescriptionApiKey)
-            : null,
-          customDescriptionModel: parsed.data.customDescriptionModel || null,
+          chatModel: parsed.data.chatModel || null,
+          descriptionModel: parsed.data.descriptionModel || null,
           updatedBy: session.user.name || "unknown",
         },
       });
@@ -104,30 +82,18 @@ export async function POST(request: NextRequest) {
       config = await prisma.aIConfiguration.update({
         where: { id: config.id },
         data: {
-          geminiApiKey: parsed.data.geminiApiKey
-            ? encryptAPIKey(parsed.data.geminiApiKey)
-            : config.geminiApiKey,
-          anthropicApiKey: parsed.data.anthropicApiKey
-            ? encryptAPIKey(parsed.data.anthropicApiKey)
-            : config.anthropicApiKey,
-          customChatBaseUrl: parsed.data.customChatBaseUrl !== undefined
-            ? (parsed.data.customChatBaseUrl || null)
-            : config.customChatBaseUrl,
-          customChatApiKey: parsed.data.customChatApiKey
-            ? encryptAPIKey(parsed.data.customChatApiKey)
-            : config.customChatApiKey,
-          customChatModel: parsed.data.customChatModel !== undefined
-            ? (parsed.data.customChatModel || null)
-            : config.customChatModel,
-          customDescriptionBaseUrl: parsed.data.customDescriptionBaseUrl !== undefined
-            ? (parsed.data.customDescriptionBaseUrl || null)
-            : config.customDescriptionBaseUrl,
-          customDescriptionApiKey: parsed.data.customDescriptionApiKey
-            ? encryptAPIKey(parsed.data.customDescriptionApiKey)
-            : config.customDescriptionApiKey,
-          customDescriptionModel: parsed.data.customDescriptionModel !== undefined
-            ? (parsed.data.customDescriptionModel || null)
-            : config.customDescriptionModel,
+          baseUrl: parsed.data.baseUrl !== undefined
+            ? (parsed.data.baseUrl || null)
+            : config.baseUrl,
+          apiKey: parsed.data.apiKey
+            ? encryptAPIKey(parsed.data.apiKey)
+            : config.apiKey,
+          chatModel: parsed.data.chatModel !== undefined
+            ? (parsed.data.chatModel || null)
+            : config.chatModel,
+          descriptionModel: parsed.data.descriptionModel !== undefined
+            ? (parsed.data.descriptionModel || null)
+            : config.descriptionModel,
           updatedBy: session.user.name || "unknown",
         },
       });
@@ -136,10 +102,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         message: "Konfigurasi AI berhasil diperbarui",
-        hasGeminiKey: !!config.geminiApiKey,
-        hasAnthropicKey: !!config.anthropicApiKey,
-        hasCustomChatKey: !!config.customChatApiKey,
-        hasCustomDescriptionKey: !!config.customDescriptionApiKey,
+        hasApiKey: !!config.apiKey,
       },
       { status: 200 }
     );
