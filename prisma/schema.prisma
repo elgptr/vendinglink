@@ -134,6 +134,16 @@ model AIConfiguration {
   id                  String    @id @default(cuid())
   geminiApiKey        String?   // Encrypted
   anthropicApiKey     String?   // Encrypted
+  
+  // Custom AI provider config (OpenRouter, 9Router, etc)
+  customChatBaseUrl        String?   // Base URL for chat (e.g., https://openrouter.ai/api/v1)
+  customChatApiKey         String?   // Encrypted API key for chat
+  customChatModel          String?   // Model name (e.g., anthropic/claude-3.5-sonnet)
+  
+  customDescriptionBaseUrl String?   // Base URL for product description generation
+  customDescriptionApiKey  String?   // Encrypted API key
+  customDescriptionModel   String?   // Model name
+  
   updatedAt           DateTime  @updatedAt
   updatedBy           String?   // Admin username who last updated
   createdAt           DateTime  @default(now())
