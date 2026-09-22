@@ -6,8 +6,18 @@ import { encryptAPIKey, decryptAPIKey } from "@/lib/encryption";
 import { z } from "zod";
 
 const updateConfigSchema = z.object({
-  geminiApiKey: z.string().optional().nullable(),
-  anthropicApiKey: z.string().optional().nullable(),
+  geminiApiKey: z.string().optional(),
+  anthropicApiKey: z.string().optional(),
+  
+  // Custom chat provider
+  customChatBaseUrl: z.string().url().optional().or(z.literal("")),
+  customChatApiKey: z.string().optional(),
+  customChatModel: z.string().optional(),
+  
+  // Custom description provider
+  customDescriptionBaseUrl: z.string().url().optional().or(z.literal("")),
+  customDescriptionApiKey: z.string().optional(),
+  customDescriptionModel: z.string().optional(),
 });
 
 async function requireAdmin() {
@@ -34,6 +44,12 @@ export async function GET() {
     return NextResponse.json({
       hasGeminiKey: !!config.geminiApiKey,
       hasAnthropicKey: !!config.anthropicApiKey,
+      hasCustomChatKey: !!config.customChatApiKey,
+      hasCustomDescriptionKey: !!config.customDescriptionApiKey,
+      customChatBaseUrl: config.customChatBaseUrl || "",
+      customChatModel: config.customChatModel || "",
+      customDescriptionBaseUrl: config.customDescriptionBaseUrl || "",
+      customDescriptionModel: config.customDescriptionModel || "",
       lastUpdatedBy: config.updatedBy,
       lastUpdatedAt: config.updatedAt,
     });
@@ -71,6 +87,16 @@ export async function POST(request: NextRequest) {
           anthropicApiKey: parsed.data.anthropicApiKey
             ? encryptAPIKey(parsed.data.anthropicApiKey)
             : null,
+          customChatBaseUrl: parsed.data.customChatBaseUrl || null,
+          customChatApiKey: parsed.data.customChatApiKey
+            ? encryptAPIKey(parsed.data.customChatApiKey)
+            : null,
+          customChatModel: parsed.data.customChatModel || null,
+          customDescriptionBaseUrl: parsed.data.customDescriptionBaseUrl || null,
+          customDescriptionApiKey: parsed.data.customDescriptionApiKey
+            ? encryptAPIKey(parsed.data.customDescriptionApiKey)
+            : null,
+          customDescriptionModel: parsed.data.customDescriptionModel || null,
           updatedBy: session.user.name || "unknown",
         },
       });
@@ -84,6 +110,24 @@ export async function POST(request: NextRequest) {
           anthropicApiKey: parsed.data.anthropicApiKey
             ? encryptAPIKey(parsed.data.anthropicApiKey)
             : config.anthropicApiKey,
+          customChatBaseUrl: parsed.data.customChatBaseUrl !== undefined
+            ? (parsed.data.customChatBaseUrl || null)
+            : config.customChatBaseUrl,
+          customChatApiKey: parsed.data.customChatApiKey
+            ? encryptAPIKey(parsed.data.customChatApiKey)
+            : config.customChatApiKey,
+          customChatModel: parsed.data.customChatModel !== undefined
+            ? (parsed.data.customChatModel || null)
+            : config.customChatModel,
+          customDescriptionBaseUrl: parsed.data.customDescriptionBaseUrl !== undefined
+            ? (parsed.data.customDescriptionBaseUrl || null)
+            : config.customDescriptionBaseUrl,
+          customDescriptionApiKey: parsed.data.customDescriptionApiKey
+            ? encryptAPIKey(parsed.data.customDescriptionApiKey)
+            : config.customDescriptionApiKey,
+          customDescriptionModel: parsed.data.customDescriptionModel !== undefined
+            ? (parsed.data.customDescriptionModel || null)
+            : config.customDescriptionModel,
           updatedBy: session.user.name || "unknown",
         },
       });
@@ -94,6 +138,8 @@ export async function POST(request: NextRequest) {
         message: "Konfigurasi AI berhasil diperbarui",
         hasGeminiKey: !!config.geminiApiKey,
         hasAnthropicKey: !!config.anthropicApiKey,
+        hasCustomChatKey: !!config.customChatApiKey,
+        hasCustomDescriptionKey: !!config.customDescriptionApiKey,
       },
       { status: 200 }
     );
