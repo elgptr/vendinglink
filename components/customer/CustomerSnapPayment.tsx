@@ -214,7 +214,7 @@ export default function CustomerSnapPayment({
 
           {/* KASERA MODAL POPUP */}
           {isModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
               <div className="bg-surface border border-surface-border rounded-2xl w-full max-w-sm overflow-hidden flex flex-col animate-scale-up shadow-2xl relative">
                 
                 {/* Modal Header */}
