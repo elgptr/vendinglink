@@ -100,8 +100,12 @@ export async function GET(request: NextRequest) {
       const csv = exportToCsv(csvData, "laporan-penjualan");
       const filename = `laporan-penjualan-${new Date().toISOString().slice(0, 10)}.csv`;
 
-      // Upload to Google Drive asynchronously if configured
-      uploadCsvToDrive(filename, csv).catch(e => log.error("Failed to upload to GDrive in background", { error: String(e) }));
+      // Upload to Google Drive (must be awaited on Vercel so the process doesn't die)
+      try {
+        await uploadCsvToDrive(filename, csv);
+      } catch (e) {
+        log.error("Failed to upload to GDrive", { error: String(e) });
+      }
 
       return new NextResponse(csv, {
         headers: {
