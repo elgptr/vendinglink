@@ -164,3 +164,15 @@ model PromoCode {
 
   @@map("promo_codes")
 }
+
+model GoogleDriveConfig {
+  id              String    @id @default(cuid())
+  clientEmail     String?
+  privateKey      String?   // Encrypted
+  folderId        String?
+  isActive        Boolean   @default(false)
+  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime  @default(now())
+
+  @@map("google_drive_configs")
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Ticket, Plus, ToggleLeft, ToggleRight, Edit3 } from "lucide-react";
+import { Ticket, Plus, ToggleLeft, ToggleRight, Edit3, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
@@ -98,6 +98,22 @@ export default function VouchersPage() {
       toast.error("Gagal mengubah status voucher");
     }
     setToggling(null);
+  };
+
+  const handleDelete = async (voucher: Voucher) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus voucher ${voucher.code}?`)) return;
+
+    const res = await fetch(`/api/admin/vouchers?id=${voucher.id}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      toast.success("Voucher berhasil dihapus");
+      fetchVouchers();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Gagal menghapus voucher");
+    }
   };
 
   const handleEditClick = (voucher: Voucher) => {
@@ -256,6 +272,14 @@ export default function VouchersPage() {
                               <ToggleLeft size={20} />
                             )}
                             {v.isActive ? "Nonaktifkan" : "Aktifkan"}
+                          </button>
+                          <button
+                            id={`delete-voucher-${v.id}`}
+                            onClick={() => handleDelete(v)}
+                            className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                            Hapus
                           </button>
                         </div>
                       </td>

@@ -3,9 +3,13 @@ export const dynamic = "force-dynamic";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 
+import { prisma } from "@/lib/prisma";
+import { decryptAPIKey } from "@/lib/encryption";
+
 const testSchema = z.object({
-  provider: z.enum(["gemini", "anthropic"]),
-  apiKey: z.string().min(1),
+  baseUrl: z.string().url(),
+  apiKey: z.string().optional(),
+  model: z.string().min(1),
 });
 
 async function requireAdmin() {
@@ -14,38 +18,28 @@ async function requireAdmin() {
   return session;
 }
 
-async function testGeminiConnection(apiKey: string): Promise<boolean> {
+async function testConnection(baseUrl: string, apiKey: string, model: string): Promise<boolean> {
   try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const gemini = new GoogleGenAI({ apiKey });
-    
-    // Simple test: count tokens
-    const response = await gemini.models.countTokens({
-      model: "gemini-3.6-flash",
-      contents: [{ parts: [{ text: "Test" }] }],
-    });
-    
-    return !!response;
-  } catch (error) {
-    console.error("Gemini test error:", error);
-    return false;
-  }
-}
+    const endpoint = baseUrl.endsWith("/chat/completions")
+      ? baseUrl
+      : baseUrl.replace(/\/$/, "") + "/chat/completions";
 
-async function testAnthropicConnection(apiKey: string): Promise<boolean> {
-  try {
-    const Anthropic = await import("@anthropic-ai/sdk").then(m => m.default);
-    const anthropic = new Anthropic({ apiKey });
-    
-    // Simple test: count tokens
-    const response = await anthropic.messages.countTokens({
-      model: "claude-haiku-4-5-20251001",
-      messages: [{ role: "user", content: "Test" }],
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: "Test" }],
+        max_tokens: 10,
+      }),
     });
     
-    return !!response;
+    return res.ok;
   } catch (error) {
-    console.error("Anthropic test error:", error);
+    console.error("Test error:", error);
     return false;
   }
 }
@@ -67,20 +61,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { provider, apiKey } = parsed.data;
-    let isValid = false;
-
-    if (provider === "gemini") {
-      isValid = await testGeminiConnection(apiKey);
-    } else if (provider === "anthropic") {
-      isValid = await testAnthropicConnection(apiKey);
+    let { baseUrl, apiKey, model } = parsed.data;
+    
+    if (!apiKey || apiKey === "existing") {
+      const config = await prisma.aIConfiguration.findFirst();
+      if (config?.apiKey) {
+        apiKey = decryptAPIKey(config.apiKey);
+      } else {
+        apiKey = process.env.OPENAI_API_KEY || "";
+      }
     }
+
+    if (!apiKey) {
+      return NextResponse.json({ error: "API Key is required" }, { status: 400 });
+    }
+
+    const isValid = await testConnection(baseUrl, apiKey, model);
 
     return NextResponse.json({
       valid: isValid,
       message: isValid
-        ? `${provider} API key is valid`
-        : `${provider} API key is invalid or connection failed`,
+        ? `API key is valid`
+        : `API key is invalid or connection failed`,
     });
   } catch (error) {
     console.error("Test connection error:", error);

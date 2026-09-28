@@ -74,42 +74,49 @@ export async function applyMidtransStatusUpdate(
   transactionStatus: string,
   fraudStatus?: string
 ): Promise<ApplyResult> {
-  const transaction = await prisma.transaction.findUnique({
-    where: { orderId },
-  });
-
-  if (!transaction) {
-    return { updated: false, reason: "NOT_FOUND" };
-  }
-
-  // ─── Idempotency: already settled (paid or cancelled), nothing to do ───
-  if (transaction.status === "PAID" || transaction.status === "CANCELLED") {
-    return { updated: false, reason: "ALREADY_PROCESSED" };
-  }
-
-  const isPaymentSuccess =
-    transactionStatus === "settlement" ||
-    (transactionStatus === "capture" && fraudStatus === "accept");
-
-  const isExpired =
-    transactionStatus === "cancel" ||
-    transactionStatus === "deny" ||
-    transactionStatus === "expire";
-
-  if (isExpired) {
-    const updated = await prisma.transaction.update({
-      where: { orderId },
-      data: { status: "EXPIRED" },
-    });
-    return { updated: true, transaction: updated };
-  }
-
-  if (!isPaymentSuccess) {
-    return { updated: false, reason: "NOT_YET_SETTLED" };
-  }
-
-  // ─── Anti race-condition: atomic stock claim ────────────────────────────
+  // We use a single interactive transaction to ensure the idempotency check
+  // and the stock claim/update happen atomically, preventing race conditions
+  // if webhook and polling fire simultaneously.
   const result = await prisma.$transaction(async (tx) => {
+    const transaction = await tx.transaction.findUnique({
+      where: { orderId },
+    });
+
+    if (!transaction) {
+      return { updated: false, reason: "NOT_FOUND" as const };
+    }
+
+    // ─── Idempotency: already settled (paid or cancelled), nothing to do ───
+    if (
+      transaction.status === "PAID" ||
+      transaction.status === "CANCELLED" ||
+      transaction.status === "EXPIRED"
+    ) {
+      return { updated: false, reason: "ALREADY_PROCESSED" as const };
+    }
+
+    const isPaymentSuccess =
+      transactionStatus === "settlement" ||
+      (transactionStatus === "capture" && fraudStatus === "accept");
+
+    const isExpired =
+      transactionStatus === "cancel" ||
+      transactionStatus === "deny" ||
+      transactionStatus === "expire";
+
+    if (isExpired) {
+      const updated = await tx.transaction.update({
+        where: { orderId },
+        data: { status: "EXPIRED" },
+      });
+      return { updated: true, transaction: updated };
+    }
+
+    if (!isPaymentSuccess) {
+      return { updated: false, reason: "NOT_YET_SETTLED" as const };
+    }
+
+    // ─── Anti race-condition: atomic stock claim ────────────────────────────
     const stock = await claimAvailableStock(tx, transaction.productId, {
       claimedByAgentId: transaction.agentId,
       customerName: transaction.customerName,
@@ -117,25 +124,8 @@ export async function applyMidtransStatusUpdate(
     });
 
     // ─── Out-of-stock at settlement time ──────────────────────────────
-    // Money has already been captured by Midtrans (this is the payment
-    // success branch), but a concurrent buyer claimed the last unit
-    // between checkout and settlement. Customers can't be "un-charged"
-    // here automatically, so compensate with a full-value promo code
-    // they can redeem on their next order once stock is replenished.
-    //
-    // Note: this function is only ever reached via the Midtrans webhook
-    // or its polling fallback, both of which only fire for orders that
-    // were actually sent to Midtrans — i.e. paymentType is always
-    // "MIDTRANS" in practice today. The AGENT_CREDIT branch below is kept
-    // as a defensive safety net (agent checkout's own race-condition
-    // handling already lives in app/api/checkout/agent/route.ts, where a
-    // failed stock claim rolls back the whole DB transaction before any
-    // debt is ever recorded).
     if (!stock) {
       if (transaction.paymentType === "AGENT_CREDIT") {
-        // Agents pay on credit (no real money moved yet) — simplest and
-        // safest resolution is to cancel the order outright and never
-        // record the debt in the first place.
         const cancelled = await tx.transaction.update({
           where: { orderId },
           data: {
@@ -151,11 +141,10 @@ export async function applyMidtransStatusUpdate(
           });
         }
 
-        return cancelled;
+        return { updated: true, transaction: cancelled };
       }
 
-      // MIDTRANS (customer) — real money was captured, so issue a
-      // full-refund-value promo code instead of silently failing.
+      // MIDTRANS (customer)
       const promoCode = await tx.promoCode.create({
         data: {
           code: generatePromoCode(),
@@ -177,7 +166,7 @@ export async function applyMidtransStatusUpdate(
         },
       });
 
-      return updatedTransaction;
+      return { updated: true, transaction: updatedTransaction };
     }
 
     // ─── Happy path: stock available, fulfil normally ──────────────────
@@ -205,13 +194,15 @@ export async function applyMidtransStatusUpdate(
       });
     }
 
-    return updatedTransaction;
+    return { updated: true, transaction: updatedTransaction };
   });
 
   // ─── Send WhatsApp notification (non-blocking, non-critical) ────────
-  void notifyPaymentSuccess(result);
+  if (result.updated) {
+    void notifyPaymentSuccess(result.transaction);
+  }
 
-  return { updated: true, transaction: result };
+  return result;
 }
 
 

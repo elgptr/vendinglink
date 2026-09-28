@@ -157,3 +157,44 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await requireAdmin();
+    if (!session) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Stock ID is required" }, { status: 400 });
+    }
+
+    const stock = await prisma.redeemStock.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!stock) {
+      return NextResponse.json({ error: "Stock not found" }, { status: 404 });
+    }
+
+    if (stock.status !== "AVAILABLE") {
+      return NextResponse.json(
+        { error: "Tidak dapat menghapus stok yang sudah terjual atau sedang diproses" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.redeemStock.delete({
+      where: { id },
+    });
+
+    log.info("Stock deleted manually", { id });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    log.error("Stock DELETE error", { error: String(error) });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}

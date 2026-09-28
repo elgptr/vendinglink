@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { sanitizeString } from "@/lib/utils";
-import { generateProductDescription } from "@/lib/gemini";
+import { generateProductDescription, getAIConfig } from "@/lib/ai";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "generate-description" });
@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const config = await getAIConfig();
+    if (!config.apiKey) {
       return NextResponse.json(
         { error: "Fitur Generate Deskripsi belum dikonfigurasi. Hubungi admin." },
         { status: 503 }
