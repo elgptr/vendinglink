@@ -62,10 +62,10 @@ export default function AIConfigForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          baseUrl: baseUrl || null,
-          apiKey: apiKey || null,
-          chatModel: chatModel || null,
-          descriptionModel: descriptionModel || null,
+          baseUrl: baseUrl ? baseUrl.trim() : null,
+          apiKey: apiKey ? apiKey.trim() : null,
+          chatModel: chatModel ? chatModel.trim() : null,
+          descriptionModel: descriptionModel ? descriptionModel.trim() : null,
         }),
       });
       const data = await res.json();
