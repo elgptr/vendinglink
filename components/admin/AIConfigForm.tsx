@@ -70,7 +70,10 @@ export default function AIConfigForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMessage({ type: "error", text: data.error || "Gagal menyimpan" });
+        const errorText = typeof data.error === "string" 
+          ? data.error 
+          : "Input tidak valid. Pastikan format URL benar (menggunakan http:// atau https://).";
+        setMessage({ type: "error", text: errorText });
       } else {
         setMessage({ type: "success", text: data.message });
         setApiKey(""); // Clear input setelah save

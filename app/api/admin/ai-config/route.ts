@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.flatten() },
+        { error: "Input tidak valid. Pastikan format URL benar (menggunakan http:// atau https://)." },
         { status: 400 }
       );
     }
