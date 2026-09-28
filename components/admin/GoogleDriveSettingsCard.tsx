@@ -101,7 +101,7 @@ export default function GoogleDriveSettingsCard() {
               className={`w-10 h-5 rounded-full p-0.5 transition-colors ${
                 data?.isActive ? "bg-brand-500" : "bg-slate-700"
               }`}
-              onClick={() => setData((prev) => prev ? { ...prev, isActive: !prev.isActive } : null)}
+              onClick={() => setData((prev) => prev ? { ...prev, isActive: !prev.isActive } : { clientEmail: "", privateKey: "", folderId: "", isActive: true })}
             >
               <div
                 className={`w-4 h-4 bg-white rounded-full transition-transform ${
@@ -122,7 +122,7 @@ export default function GoogleDriveSettingsCard() {
           <input
             type="email"
             value={data?.clientEmail || ""}
-            onChange={(e) => setData((prev) => prev ? { ...prev, clientEmail: e.target.value } : null)}
+            onChange={(e) => setData((prev) => prev ? { ...prev, clientEmail: e.target.value } : { clientEmail: e.target.value, privateKey: "", folderId: "", isActive: false })}
             placeholder="example@project-id.iam.gserviceaccount.com"
             className="w-full px-4 py-2 bg-surface-dark border border-surface-border rounded-lg text-white focus:outline-none focus:border-brand-500"
           />
@@ -134,7 +134,7 @@ export default function GoogleDriveSettingsCard() {
           </label>
           <textarea
             value={data?.privateKey || ""}
-            onChange={(e) => setData((prev) => prev ? { ...prev, privateKey: e.target.value } : null)}
+            onChange={(e) => setData((prev) => prev ? { ...prev, privateKey: e.target.value } : { clientEmail: "", privateKey: e.target.value, folderId: "", isActive: false })}
             placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
             rows={4}
             className="w-full px-4 py-2 bg-surface-dark border border-surface-border rounded-lg text-white focus:outline-none focus:border-brand-500 font-mono text-xs"
@@ -148,7 +148,7 @@ export default function GoogleDriveSettingsCard() {
           <input
             type="text"
             value={data?.folderId || ""}
-            onChange={(e) => setData((prev) => prev ? { ...prev, folderId: e.target.value } : null)}
+            onChange={(e) => setData((prev) => prev ? { ...prev, folderId: e.target.value } : { clientEmail: "", privateKey: "", folderId: e.target.value, isActive: false })}
             placeholder="1A2b3C4d5E6f7G8h9I0j..."
             className="w-full px-4 py-2 bg-surface-dark border border-surface-border rounded-lg text-white focus:outline-none focus:border-brand-500 font-mono"
           />
