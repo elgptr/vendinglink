@@ -139,6 +139,23 @@ export default function ReportsPage() {
     setExporting(false);
   };
 
+  const handleCleanup = async () => {
+    if (!confirm("⚠️ PERINGATAN: Apakah Anda yakin ingin menghapus semua stok yang sudah terjual dan riwayat transaksi (PAID/CANCELLED/EXPIRED)? Pastikan Anda sudah mengunduh Laporan Penjualan (CSV) atau memindahkannya ke Google Drive sebelum melakukan aksi ini karena data tidak dapat dikembalikan!")) return;
+    
+    try {
+      const res = await fetch("/api/admin/cleanup", { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Berhasil menghapus ${data.deletedStocks} stok dan ${data.deletedTransactions} transaksi.`);
+        fetchData();
+      } else {
+        toast.error(data.error || "Gagal melakukan cleanup");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan server");
+    }
+  };
+
   const handleAiInsight = async () => {
     setInsightOpen(true);
     setInsightText("");
@@ -188,6 +205,14 @@ export default function ReportsPage() {
             onClick={handleAiInsight}
           >
             AI Insight
+          </Button>
+          <Button
+            id="cleanup-btn"
+            variant="danger"
+            icon={<Trash2 size={16} />}
+            onClick={handleCleanup}
+          >
+            Bersihkan Data
           </Button>
           <Button
             id="export-csv-btn"
