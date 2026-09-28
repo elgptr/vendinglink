@@ -32,6 +32,8 @@ const config: Config = {
           hover: "#334155",
           border: "#334155",
           "border-light": "#475569",
+          dark: "#000000",
+          input: "#000000",
         },
       },
       animation: {
