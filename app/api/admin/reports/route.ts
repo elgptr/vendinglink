@@ -103,8 +103,12 @@ export async function GET(request: NextRequest) {
       // Upload to Google Drive (must be awaited on Vercel so the process doesn't die)
       try {
         await uploadCsvToDrive(filename, csv);
-      } catch (e) {
+      } catch (e: any) {
         log.error("Failed to upload to GDrive", { error: String(e) });
+        return NextResponse.json(
+          { error: `Google Drive Upload Failed: ${e.message || String(e)}` },
+          { status: 500 }
+        );
       }
 
       return new NextResponse(csv, {

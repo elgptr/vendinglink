@@ -121,7 +121,14 @@ export default function ReportsPage() {
     setExporting(true);
     try {
       const res = await fetch(buildUrl(true));
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        let errMessage = "Export failed";
+        try {
+          const errData = await res.json();
+          if (errData.error) errMessage = errData.error;
+        } catch (_) {}
+        throw new Error(errMessage);
+      }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -133,8 +140,8 @@ export default function ReportsPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success("CSV berhasil diunduh!");
-    } catch {
-      toast.error("Gagal mengekspor CSV");
+    } catch (error: any) {
+      toast.error(error.message || "Gagal mengekspor CSV");
     }
     setExporting(false);
   };
