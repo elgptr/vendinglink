@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const agentId = searchParams.get("agentId");
     const exportCsv = searchParams.get("export") === "csv";
+    const exportDrive = searchParams.get("export") === "drive";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
 
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
     // ─── Paginated transactions ────────────────────────────────────────────
     const skip = (page - 1) * limit;
 
-    if (exportCsv) {
+    if (exportCsv || exportDrive) {
       // Fetch ALL transactions for export (no pagination)
       const allTransactions = await prisma.transaction.findMany({
         where,
@@ -100,15 +101,26 @@ export async function GET(request: NextRequest) {
       const csv = exportToCsv(csvData, "laporan-penjualan");
       const filename = `laporan-penjualan-${new Date().toISOString().slice(0, 10)}.csv`;
 
+      let driveFile = null;
       // Upload to Google Drive (must be awaited on Vercel so the process doesn't die)
       try {
-        await uploadCsvToDrive(filename, csv);
+        driveFile = await uploadCsvToDrive(filename, csv);
       } catch (e: any) {
         log.error("Failed to upload to GDrive", { error: String(e) });
         return NextResponse.json(
           { error: `Google Drive Upload Failed: ${e.message || String(e)}` },
           { status: 500 }
         );
+      }
+
+      if (exportDrive) {
+        if (!driveFile) {
+          return NextResponse.json(
+            { error: "Google Drive Upload Failed: Konfigurasi belum diaktifkan atau tidak valid" },
+            { status: 400 }
+          );
+        }
+        return NextResponse.json({ success: true, message: "Berhasil di-export ke Google Drive!" });
       }
 
       return new NextResponse(csv, {
