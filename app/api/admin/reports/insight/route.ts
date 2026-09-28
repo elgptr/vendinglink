@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah } from "@/lib/utils";
-import { streamSalesInsight } from "@/lib/anthropic";
+import { streamSalesInsight } from "@/lib/ai";
 
 async function requireAdmin() {
   const session = await auth();
@@ -96,12 +96,7 @@ export async function POST() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "Fitur AI Insight belum dikonfigurasi. Hubungi admin." },
-      { status: 503 }
-    );
-  }
+  // API key will be checked inside streamSalesInsight
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

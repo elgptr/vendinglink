@@ -17,6 +17,7 @@ export default function AIConfigForm() {
   
   const [showApiKey, setShowApiKey] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [status, setStatus] = useState<AIConfigStatus | null>(null);
 
@@ -79,6 +80,41 @@ export default function AIConfigForm() {
       setMessage({ type: "error", text: "Server error" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!baseUrl || !chatModel) {
+      setMessage({ type: "error", text: "Base URL dan Chat Model wajib diisi untuk test" });
+      return;
+    }
+    if (!apiKey && !status?.hasApiKey) {
+      setMessage({ type: "error", text: "API Key wajib diisi untuk test" });
+      return;
+    }
+
+    setTesting(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/ai-config/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          baseUrl,
+          apiKey: apiKey || "existing",
+          model: chatModel
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setMessage({ type: "success", text: "Koneksi berhasil! API Key valid." });
+      } else {
+        setMessage({ type: "error", text: data.message || data.error || "Koneksi gagal." });
+      }
+    } catch (e) {
+      setMessage({ type: "error", text: "Server error saat melakukan test" });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -206,14 +242,25 @@ export default function AIConfigForm() {
         </div>
       )}
 
-      <button 
-        type="submit" 
-        disabled={loading} 
-        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        {loading && <Loader2 size={18} className="animate-spin" />}
-        {loading ? "Menyimpan..." : "Simpan Konfigurasi"}
-      </button>
+      <div className="flex gap-4">
+        <button 
+          type="button" 
+          onClick={handleTestConnection}
+          disabled={loading || testing} 
+          className="w-1/3 px-4 py-3 bg-surface-input border border-surface-border hover:bg-surface-border text-slate-300 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {testing && <Loader2 size={18} className="animate-spin" />}
+          {testing ? "Testing..." : "Test Koneksi"}
+        </button>
+        <button 
+          type="submit" 
+          disabled={loading || testing} 
+          className="w-2/3 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {loading && <Loader2 size={18} className="animate-spin" />}
+          {loading ? "Menyimpan..." : "Simpan Konfigurasi"}
+        </button>
+      </div>
     </form>
   );
 }

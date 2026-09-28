@@ -1,8 +1,9 @@
-﻿import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
 import AIConfigForm from "@/components/admin/AIConfigForm";
 import PaymentGatewaySettingsCard from "@/components/admin/PaymentGatewaySettingsCard";
+import GoogleDriveSettingsCard from "@/components/admin/GoogleDriveSettingsCard";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
@@ -23,6 +24,9 @@ export default async function AdminSettingsPage() {
       <div className="grid gap-6">
         {/* Payment Gateway Card */}
         <PaymentGatewaySettingsCard />
+
+        {/* Google Drive Export Card */}
+        <GoogleDriveSettingsCard />
 
         {/* Change Password Card */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-6">
@@ -53,7 +57,7 @@ export default async function AdminSettingsPage() {
         {/* AI Configuration Card */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-6">
           <h2 className="text-xl font-semibold text-white mb-1">Konfigurasi AI</h2>
-          <p className="text-sm text-slate-400 mb-6">Kelola API keys untuk Google Gemini & Anthropic Claude</p>
+          <p className="text-sm text-slate-400 mb-6">Kelola konfigurasi Custom AI Provider (OpenRouter, 9Router, dll)</p>
           <AIConfigForm />
         </div>
       </div>

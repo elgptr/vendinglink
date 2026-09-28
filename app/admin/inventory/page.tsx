@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon, Eye, EyeOff, Copy, Check, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input, { Textarea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
@@ -163,6 +163,23 @@ export default function InventoryPage() {
     fetchProducts();
     fetchStocks();
   }, []);
+
+  const handleStockDelete = async (stock: Stock) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus stok ini dari riwayat?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/stock?id=${stock.id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Stok berhasil dihapus");
+        fetchStocks(filterProductId || undefined);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Gagal menghapus stok");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan");
+    }
+  };
 
   const submitUpdateProduct = async () => {
     if (!selectedProduct || !newPrice || !editProductName) return;
@@ -447,6 +464,7 @@ export default function InventoryPage() {
                     <th>Agen</th>
                     <th>Pembeli</th>
                     <th>Terjual Pada</th>
+                    <th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -491,6 +509,15 @@ export default function InventoryPage() {
                       <td className="text-slate-300">{stock.customerName || "—"}</td>
                       <td className="text-slate-400 text-xs">
                         {stock.claimedAt ? formatDate(stock.claimedAt) : "—"}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => handleStockDelete(stock)}
+                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-surface-border/40 rounded transition-colors"
+                          title="Hapus stok"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}

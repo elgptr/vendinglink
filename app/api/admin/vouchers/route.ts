@@ -130,3 +130,29 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await requireAdmin();
+    if (!session) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Voucher ID is required" }, { status: 400 });
+    }
+
+    await prisma.voucher.delete({
+      where: { id },
+    });
+
+    log.info("Voucher deleted", { id });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    log.error("Vouchers DELETE error", { error: String(error) });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+

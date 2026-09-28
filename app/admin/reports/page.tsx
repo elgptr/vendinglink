@@ -10,6 +10,7 @@ import {
   Filter,
   RefreshCw,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -98,6 +99,23 @@ export default function ReportsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleTransactionDelete = async (transaction: Transaction) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus transaksi (Order ID: ${transaction.orderId}) ini?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/reports?orderId=${transaction.orderId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Transaksi berhasil dihapus");
+        fetchData();
+      } else {
+        const json = await res.json();
+        toast.error(json.error || "Gagal menghapus transaksi");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan");
+    }
+  };
 
   const handleExportCSV = async () => {
     setExporting(true);
@@ -286,6 +304,7 @@ export default function ReportsPage() {
                     <th>Voucher</th>
                     <th>Total Bayar</th>
                     <th>Waktu Bayar</th>
+                    <th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -313,6 +332,15 @@ export default function ReportsPage() {
                       </td>
                       <td className="text-slate-400 text-xs">
                         {tx.paidAt ? formatDate(tx.paidAt) : "—"}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => handleTransactionDelete(tx)}
+                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-surface-border/40 rounded transition-colors"
+                          title="Hapus transaksi"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}

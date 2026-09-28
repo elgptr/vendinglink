@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { sanitizeString } from "@/lib/utils";
-import { askChatbot, buildSystemPrompt } from "@/lib/gemini";
+import { askChatbot, buildSystemPrompt, getAIConfig } from "@/lib/ai";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import { createRateLimiter } from "@/lib/rateLimit";
-import { prisma } from "@/lib/prisma";
-import { decryptAPIKey } from "@/lib/encryption";
 
 const log = createLogger({ module: "chat" });
 
@@ -21,18 +19,6 @@ const chatMessageSchema = z.object({
 const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).min(1).max(30),
 });
-
-async function resolveGeminiKey(): Promise<string | null> {
-  try {
-    const config = await prisma.aIConfiguration.findFirst();
-    if (config?.geminiApiKey) {
-      return decryptAPIKey(config.geminiApiKey);
-    }
-  } catch (err) {
-    log.error("Failed to read AIConfiguration from database", { error: String(err) });
-  }
-  return process.env.GEMINI_API_KEY || null;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,8 +44,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = await resolveGeminiKey();
-    if (!apiKey) {
+    const config = await getAIConfig();
+    if (!config.apiKey) {
       return NextResponse.json(
         { error: "Fitur chat belum dikonfigurasi. Hubungi admin." },
         { status: 503 }
@@ -91,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     const isCustomer = !session?.user?.id || session.user.role === "CUSTOMER";
     const systemPrompt = await buildSystemPrompt(isCustomer ? "customer" : "agent");
-    const reply = await askChatbot(sanitizedMessages, systemPrompt, apiKey);
+    const reply = await askChatbot(sanitizedMessages, systemPrompt);
 
     return NextResponse.json({ reply });
   } catch (error) {
