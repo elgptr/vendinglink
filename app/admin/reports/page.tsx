@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Sparkles,
   Trash2,
+  HardDrive,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -117,6 +118,21 @@ export default function ReportsPage() {
     }
   };
 
+  const handleExportDrive = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(buildUrl(false) + "&export=drive");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal export ke GDrive");
+      }
+      toast.success(data.message || "Berhasil di-export ke Google Drive!");
+    } catch (error: any) {
+      toast.error(error.message || "Gagal export ke GDrive");
+    }
+    setExporting(false);
+  };
+
   const handleExportCSV = async () => {
     setExporting(true);
     try {
@@ -220,6 +236,15 @@ export default function ReportsPage() {
             onClick={handleCleanup}
           >
             Bersihkan Data
+          </Button>
+          <Button
+            id="export-drive-btn"
+            variant="secondary"
+            icon={<HardDrive size={16} />}
+            onClick={handleExportDrive}
+            loading={exporting}
+          >
+            Export GDrive
           </Button>
           <Button
             id="export-csv-btn"
