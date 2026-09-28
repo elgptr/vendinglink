@@ -77,7 +77,7 @@ export async function applyMidtransStatusUpdate(
   // We use a single interactive transaction to ensure the idempotency check
   // and the stock claim/update happen atomically, preventing race conditions
   // if webhook and polling fire simultaneously.
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx): Promise<ApplyResult> => {
     const transaction = await tx.transaction.findUnique({
       where: { orderId },
     });
