@@ -11,7 +11,7 @@ export default function CleanupSettingsCard() {
   const handleCleanup = async () => {
     if (
       !confirm(
-        "Apakah Anda yakin ingin menghapus semua stok yang sudah terjual dan riwayat transaksi (PAID/CANCELLED/EXPIRED)? Aksi ini tidak dapat dibatalkan!"
+        "⚠️ PERINGATAN: Apakah Anda yakin ingin menghapus semua stok yang sudah terjual dan riwayat transaksi (PAID/CANCELLED/EXPIRED)? Pastikan Anda sudah mengunduh Laporan Penjualan (CSV) atau memindahkannya ke Google Drive sebelum melakukan aksi ini karena data tidak dapat dikembalikan!"
       )
     ) {
       return;
@@ -39,7 +39,7 @@ export default function CleanupSettingsCard() {
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-white mb-1">Manajemen Memori (Cleanup)</h2>
         <p className="text-sm text-slate-400">
-          Hapus stok yang sudah terjual dan riwayat penjualan yang sudah selesai agar kapasitas database tidak penuh.
+          Hapus stok yang sudah terjual dan riwayat penjualan yang sudah selesai agar kapasitas database tidak penuh. <strong>Pastikan Anda sudah mem-backup atau export data ke Google Drive terlebih dahulu.</strong>
         </p>
       </div>
       

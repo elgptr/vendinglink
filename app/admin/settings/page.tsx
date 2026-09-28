@@ -4,6 +4,7 @@ import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
 import AIConfigForm from "@/components/admin/AIConfigForm";
 import PaymentGatewaySettingsCard from "@/components/admin/PaymentGatewaySettingsCard";
 import GoogleDriveSettingsCard from "@/components/admin/GoogleDriveSettingsCard";
+import CleanupSettingsCard from "@/components/admin/CleanupSettingsCard";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
@@ -27,6 +28,9 @@ export default async function AdminSettingsPage() {
 
         {/* Google Drive Export Card */}
         <GoogleDriveSettingsCard />
+
+        {/* Database Cleanup Card */}
+        <CleanupSettingsCard />
 
         {/* Change Password Card */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-6">
