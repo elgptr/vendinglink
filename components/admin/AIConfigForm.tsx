@@ -62,7 +62,7 @@ export default function AIConfigForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          baseUrl: baseUrl ? baseUrl.trim() : null,
+          baseUrl: baseUrl.trim(),
           apiKey: apiKey ? apiKey.trim() : null,
           chatModel: chatModel ? chatModel.trim() : null,
           descriptionModel: descriptionModel ? descriptionModel.trim() : null,
@@ -70,9 +70,9 @@ export default function AIConfigForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        const errorText = typeof data.error === "string" 
-          ? data.error 
-          : "Input tidak valid. Pastikan format URL benar (menggunakan http:// atau https://).";
+        const errorText = typeof data.error === "string"
+          ? data.error
+          : data.issues?.[0]?.message || "Input tidak valid.";
         setMessage({ type: "error", text: errorText });
       } else {
         setMessage({ type: "success", text: data.message });

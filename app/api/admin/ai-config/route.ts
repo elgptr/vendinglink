@@ -6,10 +6,10 @@ import { encryptAPIKey, decryptAPIKey } from "@/lib/encryption";
 import { z } from "zod";
 
 const updateConfigSchema = z.object({
-  baseUrl: z.string().url().optional().or(z.literal("")),
-  apiKey: z.string().optional(),
-  chatModel: z.string().optional(),
-  descriptionModel: z.string().optional(),
+  baseUrl: z.string().trim().url("Base URL harus berupa URL lengkap dengan http:// atau https://").optional().or(z.literal("")),
+  apiKey: z.string().trim().optional(),
+  chatModel: z.string().trim().optional(),
+  descriptionModel: z.string().trim().optional(),
 });
 
 async function requireAdmin() {
@@ -59,7 +59,10 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Input tidak valid. Pastikan format URL benar (menggunakan http:// atau https://)." },
+        {
+          error: parsed.error.issues[0]?.message || "Input tidak valid.",
+          issues: parsed.error.issues.map(({ path, message }) => ({ path, message })),
+        },
         { status: 400 }
       );
     }
