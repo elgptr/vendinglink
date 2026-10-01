@@ -69,6 +69,7 @@ export default function InventoryPage() {
   const [newProductGuideText, setNewProductGuideText] = useState("");
   const [editGuideUrl, setEditGuideUrl] = useState("");
   const [editGuideText, setEditGuideText] = useState("");
+  const [editIsActive, setEditIsActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
@@ -196,6 +197,7 @@ export default function InventoryPage() {
         showOriginalPrice: editShowOriginalPrice,
         type: editProductType,
         description: editProductDesc || undefined,
+        isActive: editIsActive,
         guideImageUrl: editGuideUrl,
         guideText: editGuideText || undefined,
       }),
@@ -403,6 +405,7 @@ export default function InventoryPage() {
                     setEditProductDesc(product.description || "");
                     setEditGuideUrl(product.guideImageUrl || "");
                     setEditGuideText(product.guideText || "");
+                    setEditIsActive(product.isActive);
                     setShowPriceModal(true);
                   }}
                 >
@@ -603,6 +606,15 @@ export default function InventoryPage() {
                 <span className="text-sm text-slate-200">Kode Redeem</span>
               </label>
             </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-300">
+              Status Produk Aktif
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} className="accent-brand-500 w-4 h-4" />
+              <span className="text-sm text-slate-200">{editIsActive ? "Aktif" : "Nonaktif"}</span>
+            </label>
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
