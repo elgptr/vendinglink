@@ -103,17 +103,17 @@ export async function GET(request: NextRequest) {
 
       let driveFile = null;
       // Upload to Google Drive (must be awaited on Vercel so the process doesn't die)
-      try {
-        driveFile = await uploadCsvToDrive(filename, csv);
-      } catch (e: any) {
-        log.error("Failed to upload to GDrive", { error: String(e) });
-        return NextResponse.json(
-          { error: `Google Drive Upload Failed: ${e.message || String(e)}` },
-          { status: 500 }
-        );
-      }
-
       if (exportDrive) {
+        try {
+          driveFile = await uploadCsvToDrive(filename, csv);
+        } catch (e: any) {
+          log.error("Failed to upload to GDrive", { error: String(e) });
+          return NextResponse.json(
+            { error: `Google Drive Upload Failed: ${e.message || String(e)}` },
+            { status: 500 }
+          );
+        }
+
         if (!driveFile) {
           return NextResponse.json(
             { error: "Google Drive Upload Failed: Konfigurasi belum diaktifkan atau tidak valid" },
