@@ -22,3 +22,4 @@ tsconfig.tsbuildinfo
 *.pem
 .gateway-setting.json
 .env*
+_archive/

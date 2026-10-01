@@ -7,16 +7,23 @@ interface CardProps {
   className?: string;
   glow?: boolean;
   hoverable?: boolean;
+  glass?: boolean;
+  gradient?: boolean;
+  compact?: boolean;
 }
 
-export default function Card({ children, className, glow, hoverable }: CardProps) {
+export default function Card({ children, className, glow, hoverable, glass, gradient, compact }: CardProps) {
   return (
     <div
       className={cn(
-        "bg-surface-card border border-surface-border rounded-2xl",
+        glass
+          ? "bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-inner-glow"
+          : "bg-surface-card border border-surface-border rounded-2xl",
         "transition-all duration-300",
         glow && "shadow-glow border-brand-500/30",
-        hoverable && "hover:border-surface-border-light hover:shadow-card hover:-translate-y-0.5 cursor-pointer",
+        hoverable && "hover:border-surface-border-light hover:shadow-card-hover hover:-translate-y-1 cursor-pointer",
+        gradient && "gradient-border",
+        compact ? "p-4" : "",
         className
       )}
     >
