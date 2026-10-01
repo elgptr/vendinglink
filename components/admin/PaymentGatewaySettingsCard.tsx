@@ -118,7 +118,7 @@ export default function PaymentGatewaySettingsCard() {
           </p>
           <div className="flex items-center justify-between text-xs pt-3 border-t border-surface-border/50">
             <span className="text-slate-500">Kredensial .env</span>
-            <span className={data?.hasMidtrans ? "text-emerald-400" : "text-amber-400"}>
+            <span className={data?.hasMidtrans ? "text-brand-400" : "text-amber-400"}>
               {data?.hasMidtrans ? "Terhubung" : "Belum Lengkap"}
             </span>
           </div>
@@ -129,14 +129,14 @@ export default function PaymentGatewaySettingsCard() {
           onClick={() => !updating && handleToggleGateway("DOKU")}
           className={`cursor-pointer rounded-2xl border p-5 transition-all relative ${
             data?.gateway === "DOKU"
-              ? "bg-emerald-500/10 border-emerald-500/50 shadow-glow"
+              ? "bg-brand-500/10 border-brand-500/50 shadow-glow"
               : "bg-surface-card border-surface-border hover:border-slate-600 opacity-70"
           }`}
         >
           <div className="flex items-center justify-between mb-3">
             <span className="font-bold text-base text-white">DOKU Checkout</span>
             {data?.gateway === "DOKU" && (
-              <CheckCircle2 size={18} className="text-emerald-400" />
+              <CheckCircle2 size={18} className="text-brand-400" />
             )}
           </div>
           <p className="text-xs text-slate-400 mb-4 leading-relaxed">
@@ -144,7 +144,7 @@ export default function PaymentGatewaySettingsCard() {
           </p>
           <div className="flex items-center justify-between text-xs pt-3 border-t border-surface-border/50">
             <span className="text-slate-500">Kredensial .env</span>
-            <span className={data?.hasDoku ? "text-emerald-400" : "text-amber-400"}>
+            <span className={data?.hasDoku ? "text-brand-400" : "text-amber-400"}>
               {data?.hasDoku ? "Terhubung" : "Belum Lengkap"}
             </span>
           </div>
@@ -173,7 +173,7 @@ export default function PaymentGatewaySettingsCard() {
           </p>
           <div className="flex items-center justify-between text-xs pt-3 border-t border-surface-border/50">
             <span className="text-slate-500">Kredensial .env</span>
-            <span className={data?.hasKasera ? "text-emerald-400" : "text-amber-400"}>
+            <span className={data?.hasKasera ? "text-brand-400" : "text-amber-400"}>
               {data?.hasKasera ? "Terhubung" : "Belum Lengkap"}
             </span>
           </div>

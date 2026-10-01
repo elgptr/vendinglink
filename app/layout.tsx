@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description:
     "Platform penjualan link redeem digital dengan pembayaran online otomatis via Midtrans (QRIS, transfer bank, e-wallet, dan lainnya). Cepat, aman, dan terpercaya.",
   keywords: ["vending machine", "link redeem", "QRIS", "Midtrans", "pembayaran digital"],
-  robots: { index: false, follow: false }, // Private app
+  robots: { index: true, follow: true }, // Enabled indexing for Meta Ads / SEO
 };
 
 export default function RootLayout({

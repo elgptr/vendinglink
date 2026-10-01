@@ -53,6 +53,33 @@ export async function claimAvailableStock(
     });
 
     if (result.count === 1) {
+      // ── Low Stock Alert Check ──
+      const remainingCount = await tx.redeemStock.count({
+        where: { productId, status: "AVAILABLE" },
+      });
+      
+      const LOW_STOCK_THRESHOLD = parseInt(process.env.LOW_STOCK_THRESHOLD || "5", 10);
+      
+      // We only alert exactly when it hits the threshold to avoid spamming on every checkout below threshold.
+      // E.g. if threshold is 5, we only alert when remaining count drops from 6 to 5.
+      // We also alert if the stock drops exactly to 0.
+      if (remainingCount === LOW_STOCK_THRESHOLD || remainingCount === 0) {
+        // Fetch product name safely outside the critical path if needed, but we can do it inside tx
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+          select: { name: true }
+        });
+        
+        if (product) {
+          // Dynamic import to avoid circular dependencies if any
+          import("@/lib/whatsapp").then((wa) => {
+            wa.sendAdminLowStockAlert(product.name, remainingCount, remainingCount === 0).catch((e) => {
+              console.error("Failed to send low stock alert:", e);
+            });
+          });
+        }
+      }
+
       return candidate; // won the race for this row
     }
 
@@ -103,6 +130,31 @@ export async function claimAvailableStockBatch(
     });
 
     if (result.count === quantity) {
+      // ── Low Stock Alert Check ──
+      const remainingCount = await tx.redeemStock.count({
+        where: { productId, status: "AVAILABLE" },
+      });
+      
+      const LOW_STOCK_THRESHOLD = parseInt(process.env.LOW_STOCK_THRESHOLD || "5", 10);
+      
+      const crossesThreshold = remainingCount <= LOW_STOCK_THRESHOLD && remainingCount + quantity > LOW_STOCK_THRESHOLD;
+      const crossesZero = remainingCount === 0;
+
+      if (crossesThreshold || crossesZero) {
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+          select: { name: true }
+        });
+        
+        if (product) {
+          import("@/lib/whatsapp").then((wa) => {
+            wa.sendAdminLowStockAlert(product.name, remainingCount, remainingCount === 0).catch((e) => {
+              console.error("Failed to send low stock alert:", e);
+            });
+          });
+        }
+      }
+
       return candidates; // won the race for all requested rows
     }
 

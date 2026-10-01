@@ -1,14 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { cache } from "@/lib/cache";
-import { ShoppingBag, Package } from "lucide-react";
+import { Package } from "lucide-react";
 import CustomerProductCard from "@/components/customer/CustomerProductCard";
+import HeroBanner from "@/components/customer/HeroBanner";
+import TrustStrip from "@/components/customer/TrustStrip";
+import Testimonials from "@/components/customer/Testimonials";
+import Footer from "@/components/customer/Footer";
 
 // Stock count changes every time a purchase happens — never prerender this
 // page statically at build time, always fetch fresh data per request.
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Katalog Produk",
+  title: "Katalog Produk | VendingLink",
+  description: "Beli voucher game, pulsa, dan produk digital secara otomatis 24/7. Bayar pakai QRIS langsung diproses.",
 };
 
 async function getProducts() {
@@ -22,7 +27,7 @@ async function getProducts() {
       },
       },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { price: "desc" },
       });
       
       // Strip any sensitive data — only return what's needed for the public page
@@ -42,42 +47,45 @@ export default async function CustomerCatalogPage() {
   const products = await getProducts();
 
   return (
-    <div className="animate-fade-in">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-brand-500/10 rounded-xl border border-brand-500/20">
-            <ShoppingBag size={20} className="text-brand-400" />
+    <div className="min-h-screen flex flex-col">
+      <main className="customer-container pt-8 pb-16 flex-1 space-y-16">
+        {/* Hero Section */}
+        <HeroBanner />
+
+        {/* Catalog Section */}
+        <section id="catalog" className="scroll-mt-8">
+          <div className="section-header mb-8 animate-fade-in">
+            <h2 className="section-header-title text-3xl">Pilihan Produk</h2>
+            <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
+              <span className="stock-dot-available" />
+              <span>Real-time Stock</span>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-white">Katalog Produk</h1>
-        </div>
-        <p className="text-slate-400 ml-14">
-          Pilih produk yang ingin Anda beli — tanpa perlu akun
-        </p>
-      </div>
 
-      {/* Products Grid */}
-      {products.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-          <Package size={48} className="mb-4 opacity-40" />
-          <p className="text-lg font-medium">Belum ada produk tersedia</p>
-          <p className="text-sm">Silakan cek kembali nanti</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <CustomerProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      )}
+          {/* Products Grid */}
+          {products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500 bg-surface-card/50 rounded-3xl border border-surface-border">
+              <Package size={48} className="mb-4 opacity-40" />
+              <p className="text-xl font-semibold text-slate-300">Belum ada produk tersedia</p>
+              <p className="text-sm mt-2">Silakan cek kembali nanti</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product, index) => (
+                <CustomerProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+          )}
+        </section>
 
-      {/* Info bar */}
-      <div className="mt-8 p-4 bg-surface-card border border-surface-border rounded-xl flex items-center gap-3">
-        <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-        <p className="text-sm text-slate-400">
-          Pembayaran melalui QRIS, transfer bank/VA, e-wallet, dan metode lainnya — Link redeem langsung diterima setelah pembayaran dikonfirmasi
-        </p>
-      </div>
+        {/* Testimonials */}
+        <Testimonials />
+
+        {/* Trust Indicators */}
+        <TrustStrip />
+      </main>
+
+      <Footer />
     </div>
   );
 }
