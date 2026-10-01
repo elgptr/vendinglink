@@ -275,7 +275,7 @@ export default function AgentsPage() {
             className={cn(
               "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
               activeTab === "APPROVED"
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                ? "bg-brand-500/20 text-brand-400 border border-brand-500/30"
                 : "text-slate-400 hover:text-slate-200"
             )}
           >
@@ -382,7 +382,7 @@ export default function AgentsPage() {
                               setSelectedAgent(agent);
                               setModalMode("settle-debt");
                             }}
-                            className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-md text-xs hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
+                            className="px-2 py-1 bg-brand-500/10 border border-brand-500/20 text-brand-400 rounded-md text-xs hover:bg-brand-500/20 transition-colors flex items-center gap-1"
                             title="Tandai Lunas Hutang"
                           >
                             <DollarSign size={12} />
@@ -408,7 +408,7 @@ export default function AgentsPage() {
                             id={`approve-agent-btn-${agent.id}`}
                             onClick={() => handleToggleApproval(agent, true)}
                             disabled={approving === agent.id}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/20 transition-colors disabled:opacity-50 font-medium"
+                            className="flex items-center gap-1 px-2.5 py-1 bg-brand-500/10 border border-brand-500/30 text-brand-400 rounded-lg text-xs hover:bg-brand-500/20 transition-colors disabled:opacity-50 font-medium"
                             title="Setujui Agen"
                           >
                             <Check size={14} />
@@ -555,7 +555,7 @@ export default function AgentsPage() {
               id="confirm-settle-debt-btn"
               onClick={submitSettleDebt}
               loading={submitting}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              className="bg-brand-600 hover:bg-brand-500 text-white"
             >
               Konfirmasi Pelunasan
             </Button>
@@ -568,9 +568,9 @@ export default function AgentsPage() {
             <strong className="text-white">{selectedAgent?.username}</strong>?
           </p>
 
-          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-1">
+          <div className="p-4 bg-brand-500/10 border border-brand-500/20 rounded-xl space-y-1">
             <div className="text-xs text-slate-400">Total Hutang Saat Ini</div>
-            <div className="text-xl font-bold text-emerald-400">
+            <div className="text-xl font-bold text-brand-400">
               {formatRupiah(selectedAgent?.outstandingDebt || 0)}
             </div>
           </div>

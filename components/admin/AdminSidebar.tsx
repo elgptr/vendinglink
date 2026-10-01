@@ -44,12 +44,12 @@ export default function AdminSidebar({ username }: AdminSidebarProps) {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-surface-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-            <Zap size={18} className="text-purple-400" />
+          <div className="w-9 h-9 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center flex-shrink-0">
+            <Zap size={18} className="text-brand-400" />
           </div>
           <div>
             <p className="font-bold text-white text-sm">VendingLink</p>
-            <p className="text-xs text-purple-400">Admin Panel</p>
+            <p className="text-xs text-brand-400">Admin Panel</p>
           </div>
         </div>
       </div>
@@ -66,7 +66,7 @@ export default function AdminSidebar({ username }: AdminSidebarProps) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                 isActive
-                  ? "bg-purple-500/15 text-purple-400 border border-purple-500/20"
+                  ? "bg-brand-500/15 text-brand-400 border border-brand-500/20 shadow-[0_0_15px_rgba(229,244,74,0.1)]"
                   : "text-slate-400 hover:text-slate-100 hover:bg-surface-hover"
               )}
             >
@@ -79,13 +79,13 @@ export default function AdminSidebar({ username }: AdminSidebarProps) {
 
       {/* Admin badge + logout */}
       <div className="px-3 py-4 border-t border-surface-border">
-        <div className="flex items-center gap-3 px-3 py-2.5 mb-2 bg-purple-500/10 border border-purple-500/20 rounded-xl">
-          <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-            <Shield size={14} className="text-purple-400" />
+        <div className="flex items-center gap-3 px-3 py-2.5 mb-2 bg-brand-500/10 border border-brand-500/20 rounded-xl">
+          <div className="w-8 h-8 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center flex-shrink-0">
+            <Shield size={14} className="text-brand-400" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{username}</p>
-            <p className="text-xs text-purple-400">Administrator</p>
+            <p className="text-xs text-brand-400">Administrator</p>
           </div>
         </div>
         <button

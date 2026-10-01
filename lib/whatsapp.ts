@@ -329,3 +329,31 @@ export async function sendOrderCheckoutLink(
   const result = await sendViaSaungwa(normalizedPhone, message);
   return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
 }
+
+export async function sendAdminLowStockAlert(
+  productName: string,
+  remainingStock: number,
+  isOutOfStock: boolean = false
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  // Gunakan ENV jika ada, jika tidak gunakan nomor admin default
+  const adminPhone = process.env.ADMIN_PHONE || "+6282254203272";
+
+  const normalizedPhone = normalizePhone(adminPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid admin phone", mode };
+
+  let message = "";
+  if (isOutOfStock) {
+    message = `*🚨 STOK HABIS TERJUAL*\n\nProduk *${productName}* baru saja dibeli oleh pelanggan dan sekarang stoknya *KOSONG*.\n\nHarap segera isi ulang stok di dashboard VendingLink agar pelanggan lain bisa membelinya.`;
+  } else {
+    message = `*⚠️ PERINGATAN STOK MENIPIS*\n\nStok produk *${productName}* hampir habis!\nSisa stok: *${remainingStock}*\n\nHarap segera isi ulang stok di dashboard VendingLink.`;
+  }
+
+  if (mode === "mock") {
+    log.info(`WhatsApp (mock): sendAdminLowStockAlert (Out of stock: ${isOutOfStock})`, { to: normalizedPhone, productName });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}

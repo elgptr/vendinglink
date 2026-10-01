@@ -221,7 +221,7 @@ export default function VouchersPage() {
                           {v.code}
                         </span>
                       </td>
-                      <td className="font-semibold text-emerald-400">
+                      <td className="font-semibold text-brand-400">
                         {formatRupiah(v.discountAmount)}
                       </td>
                       <td>

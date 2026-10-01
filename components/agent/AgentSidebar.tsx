@@ -59,7 +59,7 @@ export default function AgentSidebar({ username }: AgentSidebarProps) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                 isActive
-                  ? "bg-brand-500/15 text-brand-400 border border-brand-500/20"
+                  ? "bg-brand-500/15 text-brand-400 border border-brand-500/20 shadow-[0_0_15px_rgba(229,244,74,0.1)]"
                   : "text-slate-400 hover:text-slate-100 hover:bg-surface-hover"
               )}
             >

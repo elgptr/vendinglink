@@ -18,11 +18,32 @@ vendinglink/
 │   └── page.tsx             Home page
 │
 ├── /lib/                      Shared business logic
+│   ├── ai.ts                AI chatbot, description gen, sales insight
+│   ├── auth.ts              Authentication helpers
+│   ├── auth.config.ts       NextAuth configuration
+│   ├── cache.ts             Caching utilities
+│   ├── csrf.ts              CSRF protection
+│   ├── discount.ts          Voucher/promo discount logic
+│   ├── doku.ts              Doku payment gateway
+│   ├── encryption.ts        API key encryption
+│   ├── gdrive.ts            Google Drive upload
+│   ├── inputValidation.ts   Input sanitization
+│   ├── kasera.ts            Kasera payment gateway
+│   ├── logger.ts            Structured logging
+│   ├── midtrans.ts          Midtrans payment gateway
+│   ├── paymentConfig.ts     Payment gateway config
+│   ├── prisma.ts            Database client
+│   ├── rateLimit.ts         Rate limiting
+│   ├── routeProtection.ts   Route access control
 │   ├── stock.ts             Stock management
 │   ├── storage.ts           File storage
-│   ├── auth.ts              Authentication
-│   ├── db.ts                Database client
-│   └── utils.ts             Utilities
+│   ├── transactionStatus.ts Transaction polling & settlement
+│   ├── utils.ts             General utilities
+│   └── whatsapp.ts          WhatsApp notification
+│
+├── /components/               React components
+│   ├── /admin/              Admin-specific UI components
+│   └── /customer/           Customer-facing UI components
 │
 ├── /prisma/                  Database
 │   ├── schema.prisma        Data schema
@@ -65,7 +86,11 @@ vendinglink/
 |------|----------|
 | API routes | `/app/api/` |
 | Business logic | `/lib/` |
+| AI integration | `/lib/ai.ts` |
+| Google Drive | `/lib/gdrive.ts` |
+| Payment gateways | `/lib/midtrans.ts`, `/lib/doku.ts`, `/lib/kasera.ts` |
 | Database schema | `/prisma/schema.prisma` |
+| React components | `/components/` |
 | Unit tests | `/__tests__/lib/` |
 | Integration tests | `/__tests__/api/` |
 | E2E tests | `/e2e/` |

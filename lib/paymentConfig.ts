@@ -65,8 +65,8 @@ export function getActivePaymentGateway(): PaymentGatewayType {
     return "KASERA";
   }
 
-  inMemoryGateway = "MIDTRANS";
-  return "MIDTRANS";
+  inMemoryGateway = "KASERA";
+  return "KASERA";
 }
 
 export function setActivePaymentGateway(gateway: PaymentGatewayType): void {

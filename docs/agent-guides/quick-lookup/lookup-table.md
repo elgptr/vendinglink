@@ -13,8 +13,14 @@ Can't find what you're looking for? Search here.
 | What's the project structure? | [Directory Structure](../conventions/directory-structure.md) |
 | Where are API endpoints? | `/app/api/` |
 | Where is business logic? | `/lib/` |
-| Where are utilities? | `/lib/utils/` |
+| Where are utilities? | `/lib/utils.ts` |
 | How do I create a new API route? | See example in `/app/api/admin/` |
+| Where is AI integration code? | `/lib/ai.ts` |
+| How do I configure AI provider? | Admin Settings → AI Configuration (`/api/admin/ai-config`) |
+| Where is Google Drive integration? | `/lib/gdrive.ts` |
+| How do I configure Google Drive export? | Admin Settings → Google Drive (`/api/admin/google-drive-config`) |
+| Where is payment gateway logic? | `/lib/midtrans.ts`, `/lib/doku.ts`, `/lib/kasera.ts` |
+| Where is encryption logic? | `/lib/encryption.ts` |
 
 ---
 

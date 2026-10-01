@@ -15,8 +15,8 @@
 
 | Role | Username | Password | Purpose |
 |------|----------|----------|---------|
-| **Admin** | `admin` | `0.nbxe1bjaix` | Admin dashboard |
-| **Agent** | `agent01` | `.r42sahjc2cc` | Agent portal |
+| **Admin** | `admin` | `.djwrq4zhdtd` | Admin dashboard |
+| **Agent** | `agent01` | `.di4d7zbb745` | Agent portal |
 | **Customer** | — | No login | Public checkout |
 
 ### Seeded Data

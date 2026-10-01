@@ -16,13 +16,13 @@ interface HealthResponse {
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "healthy") return <CheckCircle size={18} className="text-emerald-400" />;
+  if (status === "healthy") return <CheckCircle size={18} className="text-brand-400" />;
   if (status === "degraded") return <AlertTriangle size={18} className="text-amber-400" />;
   return <XCircle size={18} className="text-red-400" />;
 }
 
 function statusColor(status: string) {
-  if (status === "healthy") return "bg-emerald-500/15 border-emerald-500/30 text-emerald-400";
+  if (status === "healthy") return "bg-brand-500/15 border-brand-500/30 text-brand-400";
   if (status === "degraded") return "bg-amber-500/15 border-amber-500/30 text-amber-400";
   return "bg-red-500/15 border-red-500/30 text-red-400";
 }
@@ -174,15 +174,15 @@ export default function AdminDashboardPage() {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-                <Activity size={20} className="text-emerald-400" />
+              <div className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center">
+                <Activity size={20} className="text-brand-400" />
               </div>
               <div>
                 <p className="font-medium text-white">Laporan</p>
                 <p className="text-xs text-slate-400">Lihat data penjualan</p>
               </div>
             </div>
-            <ArrowRight size={16} className="text-slate-500 group-hover:text-emerald-400 transition-colors" />
+            <ArrowRight size={16} className="text-slate-500 group-hover:text-brand-400 transition-colors" />
           </div>
         </Link>
       </div>

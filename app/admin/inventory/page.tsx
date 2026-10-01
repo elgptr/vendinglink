@@ -379,10 +379,14 @@ export default function InventoryPage() {
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between text-sm text-slate-400 mb-4">
-                  <span>{product._count.stocks} stok tersedia</span>
+                  <span className={product._count.stocks <= 5 ? "text-amber-400 font-medium flex items-center gap-1.5" : ""}>
+                    {product._count.stocks <= 5 && <Sparkles size={12} className="animate-pulse" />}
+                    {product._count.stocks} stok tersedia
+                    {product._count.stocks <= 5 && <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded ml-1">Menipis</span>}
+                  </span>
                   <div className="flex items-center gap-2">
                     {product.guideImageUrl && (
-                      <span className="flex items-center gap-1 text-emerald-400" title="Gambar panduan tersedia">
+                      <span className="flex items-center gap-1 text-brand-400" title="Gambar panduan tersedia">
                         <ImageIcon size={12} />
                       </span>
                     )}
@@ -495,10 +499,10 @@ export default function InventoryPage() {
                             <button
                               type="button"
                               onClick={() => copyToClipboard(revealedStocks[stock.id], stock.id)}
-                              className="text-slate-400 hover:text-emerald-400 p-1 rounded hover:bg-surface-border/40 transition-colors flex-shrink-0"
+                              className="text-slate-400 hover:text-brand-400 p-1 rounded hover:bg-surface-border/40 transition-colors flex-shrink-0"
                               title="Salin link"
                             >
-                              {copiedId === stock.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                              {copiedId === stock.id ? <Check size={14} className="text-brand-400" /> : <Copy size={14} />}
                             </button>
                           )}
                         </div>
