@@ -131,4 +131,112 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Stagger animation delays for list items */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+
+  /* Fill-mode for staggered items (start invisible) */
+  .animate-stagger-item {
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+}
+
+/* ───────────────────────────────────────────────
+   Extended Component Classes
+   ─────────────────────────────────────────────── */
+
+@layer components {
+  /* Page section header */
+  .section-header {
+    @apply flex items-center gap-3 mb-2;
+  }
+
+  .section-header-icon {
+    @apply p-2.5 rounded-xl border;
+  }
+
+  .section-header-title {
+    @apply text-2xl font-bold text-white tracking-tight;
+  }
+
+  .section-header-subtitle {
+    @apply text-slate-400 text-sm;
+  }
+
+  /* Rupiah price display */
+  .price-tag {
+    @apply font-bold text-white tabular-nums;
+  }
+
+  .price-tag-original {
+    @apply text-sm text-slate-500 line-through tabular-nums;
+  }
+
+  .price-tag-discount {
+    @apply text-xs font-semibold text-amber-400;
+  }
+
+  /* Stock availability dot */
+  .stock-dot {
+    @apply w-2 h-2 rounded-full flex-shrink-0;
+  }
+
+  .stock-dot-available {
+    @apply stock-dot bg-emerald-400 animate-pulse;
+  }
+
+  .stock-dot-low {
+    @apply stock-dot bg-amber-400 animate-pulse;
+  }
+
+  .stock-dot-empty {
+    @apply stock-dot bg-red-400;
+  }
+
+  /* Skeleton shimmer loader */
+  .shimmer-line {
+    @apply h-4 rounded bg-surface-hover/50 bg-shimmer-gradient bg-[length:200%_100%] animate-shimmer;
+  }
+
+  /* Gradient border effect (used on premium cards) */
+  .gradient-border {
+    position: relative;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(59, 130, 246, 0.2), rgba(34, 197, 94, 0.1));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Overlay blur (modal backdrops, side panels) */
+  .overlay-blur {
+    @apply bg-black/60 backdrop-blur-md;
+  }
+
+  /* Payment method icon strip */
+  .payment-icon {
+    @apply h-6 w-auto opacity-60 hover:opacity-100 transition-opacity duration-200;
+  }
+
+  /* Container for constraining customer page max-width */
+  .customer-container {
+    @apply max-w-5xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
 }

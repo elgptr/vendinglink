@@ -162,7 +162,7 @@ export default function CustomerCheckoutForm({
         onChange={(e) => setCustomerPhone(e.target.value)}
         type="tel"
         leftIcon={<Phone size={16} />}
-        hint="Opsional — untuk konfirmasi pesanan jika diperlukan"
+        hint="Sangat disarankan: Isi nomor WhatsApp untuk bisa melacak riwayat pembelian Anda nanti."
       />
 
       {/* Promo code (auto-issued when a previous order ran out of stock) */}

@@ -3,8 +3,8 @@
 import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "success";
-type ButtonSize = "sm" | "md" | "lg";
+type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "success" | "outline" | "link";
+type ButtonSize = "sm" | "md" | "lg" | "xl";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -15,7 +15,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-500 hover:bg-brand-600 text-white shadow-glow hover:shadow-glow-lg border border-brand-400/30",
+    "bg-brand-500 hover:bg-brand-400 text-slate-950 shadow-glow hover:shadow-glow-lg border border-brand-400/30",
   secondary:
     "bg-surface-card hover:bg-surface-hover text-slate-200 border border-surface-border hover:border-surface-border-light",
   danger:
@@ -24,12 +24,17 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-transparent hover:bg-surface-hover text-slate-300 hover:text-white border border-transparent hover:border-surface-border",
   success:
     "bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/30",
+  outline:
+    "bg-transparent hover:bg-brand-500/10 text-brand-400 border border-brand-500/40 hover:border-brand-400",
+  link:
+    "bg-transparent text-brand-400 hover:text-brand-300 border-none underline-offset-4 hover:underline p-0 shadow-none",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
   sm: "px-3 py-1.5 text-xs",
   md: "px-4 py-2 text-sm",
   lg: "px-6 py-3 text-base",
+  xl: "px-8 py-4 text-base font-semibold",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(

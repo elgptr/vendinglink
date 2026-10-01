@@ -81,7 +81,7 @@ export default function GoogleDriveSettingsCard() {
         <div
           className={`p-4 rounded-lg mb-6 flex items-start gap-3 ${
             message.type === "success"
-              ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+              ? "bg-brand-500/10 border border-brand-500/20 text-brand-400"
               : "bg-red-500/10 border border-red-500/20 text-red-400"
           }`}
         >

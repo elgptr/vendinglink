@@ -213,8 +213,8 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20">
-              <BarChart3 size={20} className="text-purple-400" />
+            <div className="p-2 bg-brand-500/10 rounded-xl border border-brand-500/20 shadow-glow">
+              <BarChart3 size={20} className="text-brand-400" />
             </div>
             <h1 className="text-2xl font-bold text-white">Laporan Penjualan</h1>
           </div>
@@ -280,16 +280,16 @@ export default function ReportsPage() {
             value={data.metrics.totalSold.toString()}
             icon={<Package size={20} />}
             subtitle="Transaksi berhasil"
-            color="purple"
+            color="brand"
           />
         </div>
       )}
 
       {/* Filters */}
-      <Card className="p-5">
+      <Card className="p-5 border-brand-500/10">
         <div className="flex items-center gap-2 mb-4">
-          <Filter size={16} className="text-slate-400" />
-          <h3 className="text-sm font-semibold text-slate-300">Filter Laporan</h3>
+          <Filter size={16} className="text-brand-400" />
+          <h3 className="text-sm font-semibold text-slate-200">Filter Laporan</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
@@ -299,7 +299,7 @@ export default function ReportsPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-surface border border-surface-border text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              className="w-full bg-surface border border-surface-border text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
             />
           </div>
           <div>
@@ -309,7 +309,7 @@ export default function ReportsPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-surface border border-surface-border text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              className="w-full bg-surface border border-surface-border text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
             />
           </div>
           <div>
@@ -318,7 +318,7 @@ export default function ReportsPage() {
               id="filter-agent"
               value={agentId}
               onChange={(e) => setAgentId(e.target.value)}
-              className="w-full bg-surface border border-surface-border text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              className="w-full bg-surface border border-surface-border text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
             >
               <option value="">Semua Agen</option>
               {data?.agents.map((a) => (
@@ -384,7 +384,7 @@ export default function ReportsPage() {
                           <span className="text-slate-500">—</span>
                         )}
                       </td>
-                      <td className="font-semibold text-emerald-400">
+                      <td className="font-semibold text-brand-400">
                         {formatRupiah(tx.finalAmount)}
                       </td>
                       <td className="text-slate-400 text-xs">
