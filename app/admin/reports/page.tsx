@@ -280,7 +280,7 @@ export default function ReportsPage() {
             value={data.metrics.totalSold.toString()}
             icon={<Package size={20} />}
             subtitle="Transaksi berhasil"
-            color="brand"
+            color="amber"
           />
         </div>
       )}
