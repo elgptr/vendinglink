@@ -5,6 +5,8 @@ import { createLogger } from '@/lib/logger';
 
 const log = createLogger({ module: 'health-check' });
 
+export const dynamic = 'force-dynamic';
+
 const startTime = Date.now();
 
 interface HealthCheck {
