@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 const transactionSelect = {
   orderId: true,
+  productId: true,
   status: true,
   paymentType: true,
   finalAmount: true,
@@ -130,6 +131,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       orderId: transaction.orderId,
+      productId: transaction.productId,
       status: transaction.status,
       finalAmount: transaction.finalAmount,
       originalPrice: transaction.originalPrice,
