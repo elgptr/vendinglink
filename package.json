@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build": "next build",
     "build:prod": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
@@ -66,5 +66,8 @@
     "@typescript-eslint/typescript-estree": {
       "minimatch": "^9.0.7"
     }
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
