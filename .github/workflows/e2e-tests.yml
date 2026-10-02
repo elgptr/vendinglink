@@ -15,6 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       fail-fast: false
       matrix:
@@ -36,10 +51,23 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Push Database Schema
+        run: npx prisma db push
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
+
+      - name: Seed Database
+        run: npm run db:seed
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
+
       - name: Build project
         run: npm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
@@ -48,6 +76,8 @@ jobs:
         run: npm run test:e2e
         env:
           BASE_URL: http://localhost:3000
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
       - name: Upload Playwright report (${{ matrix.browser }})
         if: always()

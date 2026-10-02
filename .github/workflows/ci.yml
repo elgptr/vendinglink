@@ -49,6 +49,12 @@ jobs:
           DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
           DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
 
+      - name: Seed Database
+        run: npm run db:seed
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/testdb"
+          DIRECT_URL: "postgresql://user:password@localhost:5432/testdb"
+
       - name: Lint code
         run: npm run lint
         continue-on-error: true  # ESLint config compatibility issue (eslint-config-next@16.3.5 requires eslint>=9; pending v9 migration)
