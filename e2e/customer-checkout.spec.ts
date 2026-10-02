@@ -4,9 +4,10 @@ test.describe("E2E: Customer Checkout Flow", () => {
   test("should load the customer catalog at /customer", async ({ page }) => {
     await page.goto("/customer");
 
-    // The catalog heading is always rendered (force-dynamic page).
+    // The catalog section heading "Pilihan Produk" is always rendered
+    // (the page uses force-dynamic so it always server-renders).
     await expect(
-      page.locator("h1", { hasText: /Katalog Produk/i })
+      page.locator("h2", { hasText: /Pilihan Produk/i })
     ).toBeVisible();
 
     // Meaningful page state: either products are listed, or the empty state is shown.
@@ -21,10 +22,16 @@ test.describe("E2E: Customer Checkout Flow", () => {
   });
 
   test("should complete customer happy path when an in-stock product exists", async ({ page }) => {
+    page.on("console", msg => console.log("PAGE LOG:", msg.text()));
+    page.on("response", async res => {
+      if (res.url().includes("/api/checkout/customer")) {
+        console.log("CHECKOUT RESPONSE:", res.status(), await res.text().catch(() => ''));
+      }
+    });
     // Navigate to the public catalog.
     await page.goto("/customer");
 
-    // Find the first "Beli" (buy) link wrapping an enabled button.
+    // Find the first "Beli Sekarang" link wrapping an enabled button.
     // Out-of-stock products render a disabled button (id ends with "-disabled").
     const buyLink = page
       .locator("a:has(button[id^='customer-buy-btn-']:not([disabled]))")
@@ -34,7 +41,7 @@ test.describe("E2E: Customer Checkout Flow", () => {
     // When a product exists, the full real happy-path flow runs below.
     test.skip((await buyLink.count()) === 0, "No in-stock product to buy");
 
-    // Click "Beli" → navigation to the per-product checkout page.
+    // Click "Beli Sekarang" → navigation to the per-product checkout page.
     await buyLink.click();
     await expect(page).toHaveURL(/\/customer\/checkout\//);
     await expect(page.locator("#customer-checkout-form")).toBeVisible();
