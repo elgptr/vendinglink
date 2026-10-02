@@ -23,6 +23,10 @@ export default function CustomerProductCard({ product, index = 0 }: CustomerProd
   const inStock = product.stockCount > 0;
   const isLowStock = inStock && product.stockCount <= 5;
   const hasDiscount = product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price;
+  
+  const discountPercentage = hasDiscount
+    ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
+    : 0;
 
   // Stagger animation based on index
   const staggerClass = `stagger-${Math.min(index + 1, 6)}`;
@@ -79,12 +83,12 @@ export default function CustomerProductCard({ product, index = 0 }: CustomerProd
           <div className="mt-auto">
             <div className="flex flex-col mb-4">
               {hasDiscount && (
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="price-tag-original">
                     {formatRupiah(product.originalPrice!)}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    HEMAT
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse border border-red-400/50 uppercase tracking-wide">
+                    HEMAT s.d. {discountPercentage}%
                   </span>
                 </div>
               )}
@@ -94,15 +98,22 @@ export default function CustomerProductCard({ product, index = 0 }: CustomerProd
             </div>
 
             {inStock ? (
-              <Link href={`/customer/checkout/${product.id}`} className="block">
-                <Button
-                  id={`customer-buy-btn-${product.id}`}
-                  className="w-full shadow-none group-hover:shadow-glow transition-all"
-                  icon={<ShoppingCart size={16} />}
-                >
-                  Beli Sekarang
-                </Button>
-              </Link>
+              <div className="space-y-3">
+                {isLowStock && (
+                  <div className="text-red-400 text-xs font-bold animate-pulse text-center bg-red-500/10 py-1.5 rounded-lg border border-red-500/20">
+                    Tersisa {product.stockCount} stok - Beli sekarang!
+                  </div>
+                )}
+                <Link href={`/customer/checkout/${product.id}`} className="block">
+                  <Button
+                    id={`customer-buy-btn-${product.id}`}
+                    className="w-full shadow-none group-hover:shadow-glow transition-all"
+                    icon={<ShoppingCart size={16} />}
+                  >
+                    Beli Sekarang
+                  </Button>
+                </Link>
+              </div>
             ) : (
               <Button
                 id={`customer-buy-btn-${product.id}-disabled`}

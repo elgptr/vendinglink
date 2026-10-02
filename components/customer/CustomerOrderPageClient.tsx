@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import CustomerSnapPayment from "@/components/customer/CustomerSnapPayment";
 import CustomerSuccessScreen from "@/components/customer/CustomerSuccessScreen";
 import Spinner from "@/components/ui/Spinner";
+import Button from "@/components/ui/Button";
 
 interface CustomerOrderPageClientProps {
   orderId: string;
@@ -19,6 +20,7 @@ interface OrderData {
   status: OrderStatus;
   finalAmount: number;
   productName: string;
+  productId?: string;
   productType?: string | null;
   customerName?: string | null;
   redeemUrl?: string | null;
@@ -69,10 +71,6 @@ export default function CustomerOrderPageClient({
 
       if (data.status !== "PENDING") {
         setPollingActive(false);
-      }
-
-      if (data.status === "EXPIRED") {
-        setTimeout(() => router.push("/customer"), 4000);
       }
     } catch {
       consecutiveErrors.current += 1;
@@ -136,9 +134,27 @@ export default function CustomerOrderPageClient({
           <span className="text-3xl">⏱</span>
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Pembayaran Kedaluwarsa</h2>
-        <p className="text-slate-400 mb-6">
-          Waktu pembayaran telah habis. Anda akan diarahkan ke katalog...
+        <p className="text-slate-400 mb-8">
+          Waktu pembayaran telah habis dan QRIS sudah tidak valid. Silakan coba buat pesanan baru.
         </p>
+
+        <div className="flex flex-col gap-3">
+          {orderData.productId ? (
+            <Button
+              className="w-full bg-brand-500 hover:bg-brand-600"
+              onClick={() => router.push(`/customer/checkout/${orderData.productId}`)}
+            >
+              Coba Ulang Pembayaran
+            </Button>
+          ) : null}
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => router.push("/customer")}
+          >
+            Kembali ke Katalog
+          </Button>
+        </div>
       </div>
     );
   }

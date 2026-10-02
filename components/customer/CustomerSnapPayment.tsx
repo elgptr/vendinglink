@@ -11,8 +11,9 @@ import {
   Clock,
   AlertTriangle,
   X,
+  Download,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { QRCodeCanvas } from "qrcode.react";
 import { formatRupiah } from "@/lib/utils";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -65,6 +66,7 @@ export default function CustomerSnapPayment({
   const [scriptReady, setScriptReady] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const autoOpenedRef = useRef(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const isKasera = paymentType === "KASERA";
   const isDoku =
@@ -93,6 +95,18 @@ export default function CustomerSnapPayment({
   const formattedTime = `${String(minutes).padStart(2, "0")}:${String(
     seconds
   ).padStart(2, "0")}`;
+
+  const handleDownloadQR = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `QRIS-${orderId}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const scriptSrc = isDoku
     ? isProduction
@@ -206,9 +220,11 @@ export default function CustomerSnapPayment({
               <RefreshCw size={12} className="animate-spin" />
               Memeriksa status pembayaran otomatis...
             </div>
-            <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-600">
-              <ShieldCheck size={12} />
-              Transaksi diproses aman melalui Kasera Pay
+            <div className="mt-2 flex flex-col items-center justify-center gap-1.5 text-xs text-emerald-400 font-medium">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={14} />
+                <span>QRIS Aman & Memenuhi Standar SNAP Bank Indonesia (powered by DOKU)</span>
+              </div>
             </div>
           </Card>
 
@@ -256,13 +272,25 @@ export default function CustomerSnapPayment({
                   {/* QR Code Canvas */}
                   <div className="mb-4 flex flex-col items-center">
                     {qrString ? (
-                      <div className="p-3 bg-white rounded-xl inline-block border-2 border-slate-100 shadow-sm">
-                        <QRCodeSVG 
-                          value={qrString} 
-                          size={200}
-                          level="M"
-                          includeMargin={false}
-                        />
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="p-3 bg-white rounded-xl inline-block border-2 border-slate-100 shadow-sm">
+                          <QRCodeCanvas 
+                            ref={canvasRef}
+                            value={qrString} 
+                            size={200}
+                            level="M"
+                            includeMargin={false}
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700"
+                          onClick={handleDownloadQR}
+                        >
+                          <Download size={14} />
+                          Download QRIS
+                        </Button>
                       </div>
                     ) : (
                       <div className="w-[200px] h-[200px] bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-sm p-4 text-center border-2 border-slate-200 border-dashed">
@@ -278,16 +306,15 @@ export default function CustomerSnapPayment({
                     Buka aplikasi e-wallet (GoPay, OVO, DANA) atau mobile banking Anda, lalu scan QRIS di atas.
                   </p>
 
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="w-full text-slate-600 border-slate-300 hover:bg-slate-50"
-                    disabled={!snapToken}
-                    onClick={() => window.open(snapToken, "_blank", "noopener,noreferrer")}
-                    icon={<ExternalLink size={14} />}
-                  >
-                    Buka di Web Kasera
-                  </Button>
+                  <div className="flex items-center justify-center text-xs text-slate-400 mt-2">
+                    <button
+                      disabled={!snapToken}
+                      onClick={() => window.open(snapToken, "_blank", "noopener,noreferrer")}
+                      className="inline-flex items-center gap-1.5 hover:text-brand-500 transition-colors disabled:opacity-50"
+                    >
+                      Buka di tab baru <ExternalLink size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
