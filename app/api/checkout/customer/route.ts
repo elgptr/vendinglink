@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
           }
           const outcome = await rezekiSupplier.purchase(product.supplierProductId, 1);
           if (!outcome.success) {
-            return NextResponse.json({ error: "Stok produk habis di supplier" }, { status: 400 });
+            return NextResponse.json({ error: `Gagal beli dari supplier (${outcome.code}): ${outcome.message}` }, { status: 400 });
           }
           redeemUrlStr = outcome.items[0] || "";
         }
