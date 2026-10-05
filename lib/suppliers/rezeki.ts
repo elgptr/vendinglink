@@ -12,7 +12,7 @@ import type {
   SupplierHealth,
 } from "./types";
 
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 45_000; // /v1/order hits upstream supplier and can be slow
 
 function getApiKey(): string {
   const key = process.env.REZEKI_API_KEY;
@@ -117,6 +117,7 @@ export class RezekiSupplier implements ISupplier {
         if (res.status === 400) code = "OUT_OF_STOCK";
         if (res.status === 402) code = "INSUFFICIENT_BALANCE";
         if (res.status === 401) code = "INVALID_API_KEY";
+        // 404 = product hidden/not found, 422 = requires_email, 500/502 = upstream failure (refunded)
         console.error("[rezeki] order failed", { status: res.status, code, body: raw, productId: supplierProductId });
 
         return {
