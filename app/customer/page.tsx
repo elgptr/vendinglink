@@ -1,3 +1,4 @@
+import { syncSupplierStocks } from "@/lib/suppliers/sync";
 import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { cache } from "@/lib/cache";
@@ -19,20 +20,41 @@ export const metadata = {
 
 async function getProducts() {
   return cache.getOrSet("catalog-products", async () => {
-      const products = await prisma.product.findMany({
+    let products = await prisma.product.findMany({
       where: { isActive: true },
       include: {
-      _count: {
-      select: {
-      stocks: { where: { status: "AVAILABLE" } },
-      },
-      },
+        _count: {
+          select: {
+            stocks: { where: { status: "AVAILABLE" } },
+          },
+        },
       },
       orderBy: { price: "desc" },
+    });
+
+    const needsInitialSync = products.some(
+      (p) =>
+        (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
+        p.supplierProductId &&
+        p.supplierLastCheckedAt === null
+    );
+
+    if (needsInitialSync) {
+      await syncSupplierStocks().catch(() => null);
+      products = await prisma.product.findMany({
+        where: { isActive: true },
+        include: {
+          _count: {
+            select: {
+              stocks: { where: { status: "AVAILABLE" } },
+            },
+          },
+        },
+        orderBy: { price: "desc" },
       });
-      
-      // Strip any sensitive data — only return what's needed for the public page
-      return products.map((p) => ({
+    }
+
+    return products.map((p) => ({
       id: p.id,
       name: p.name,
       price: p.price,
@@ -40,7 +62,7 @@ async function getProducts() {
       showOriginalPrice: p.showOriginalPrice,
       description: p.description,
       stockCount: calculateProductStock(p),
-      }));
+    }));
   }, 10);
 }
 

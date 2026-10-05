@@ -13,13 +13,9 @@ export function calculateProductStock(product: {
     return manualCount;
   }
 
-  const isAvailable =
-    product.isSupplierAvailable !== false &&
-    (product.supplierLastCheckedAt === null || (product.supplierStock ?? 0) > 0);
-
-  const supplierCount = isAvailable
-    ? (product.supplierStock && product.supplierStock > 0 ? product.supplierStock : 999)
-    : 0;
+  // If supplier is explicitly unavailable or stock is <= 0
+  const isAvailable = product.isSupplierAvailable === true && (product.supplierStock ?? 0) > 0;
+  const supplierCount = isAvailable ? (product.supplierStock ?? 0) : 0;
 
   if (mode === "REZEKI") {
     return supplierCount;
