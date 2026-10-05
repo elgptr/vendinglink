@@ -117,6 +117,7 @@ export class RezekiSupplier implements ISupplier {
         if (res.status === 400) code = "OUT_OF_STOCK";
         if (res.status === 402) code = "INSUFFICIENT_BALANCE";
         if (res.status === 401) code = "INVALID_API_KEY";
+        console.error("[rezeki] order failed", { status: res.status, code, body: raw, productId: supplierProductId });
 
         return {
           success: false,
@@ -146,6 +147,7 @@ export class RezekiSupplier implements ISupplier {
         totalAmount: raw.balance?.balance_deducted || 0,
       };
     } catch (err) {
+      console.error("[rezeki] order error", { productId: supplierProductId, baseUrl: getBaseUrl(), hasKey: !!process.env.REZEKI_API_KEY, err: err instanceof Error ? { name: err.name, message: err.message, cause: String((err as any).cause ?? "") } : String(err) });
       const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
       return {
         success: false,
