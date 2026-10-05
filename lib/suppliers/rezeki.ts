@@ -73,13 +73,53 @@ export class RezekiSupplier implements ISupplier {
     const data = await res.json();
     const products = Array.isArray(data.products) ? data.products : (Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []));
 
-    return products.map((p: any) => ({
-      supplierId: String(p.id || p.product_id || ""),
-      name: p.name || "Unknown Product",
-      stock: p.availability === "in_stock" ? 999 : (Number(p.stock) || 0),
-      price: Number(p.price_idr || p.price || 0),
-      priceFrom: Number(p.price_idr || p.price || 0),
-    })).filter((p: SupplierProduct) => p.supplierId !== "");
+    return products.map((p: any) => {
+      const inStock = p.availability === "in_stock";
+      const stock = inStock ? (typeof p.stock === "number" && p.stock > 0 ? p.stock : 999) : 0;
+      return {
+        supplierId: String(p.id || p.product_id || ""),
+        name: p.name || "Unknown Product",
+        stock,
+        price: Number(p.price_idr || p.price || 0),
+        priceFrom: Number(p.price_idr || p.price || 0),
+      };
+    }).filter((p: SupplierProduct) => p.supplierId !== "");
+  }
+
+  /** GET /v1/products/{product_id} - check real-time product stock & availability */
+  async checkProductStock(
+    supplierProductId: string
+  ): Promise<{ inStock: boolean; stock: number; price?: number } | null> {
+    if (!supplierProductId) return null;
+    try {
+      const res = await fetchWithTimeout(
+        `${getBaseUrl()}/v1/products/${encodeURIComponent(supplierProductId)}`,
+        {
+          headers: { "X-API-Key": getApiKey() },
+          cache: "no-store",
+        }
+      );
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          return { inStock: false, stock: 0 };
+        }
+        return null;
+      }
+
+      const data = await res.json();
+      const inStock = data.availability === "in_stock";
+      const stock = inStock ? (typeof data.stock === "number" && data.stock > 0 ? data.stock : 999) : 0;
+
+      return {
+        inStock,
+        stock,
+        price: Number(data.price_idr || data.price || 0),
+      };
+    } catch (err) {
+      console.error("[rezeki] checkProductStock error", { supplierProductId, err });
+      return null;
+    }
   }
 
   /**

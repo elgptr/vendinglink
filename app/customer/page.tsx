@@ -1,3 +1,4 @@
+import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { cache } from "@/lib/cache";
 import { Package } from "lucide-react";
@@ -38,7 +39,7 @@ async function getProducts() {
       originalPrice: p.originalPrice,
       showOriginalPrice: p.showOriginalPrice,
       description: p.description,
-      stockCount: p.supplierMode === "REZEKI" || p.supplierMode === "AUTO" ? 999 : p._count.stocks,
+      stockCount: calculateProductStock(p),
       }));
   }, 10);
 }

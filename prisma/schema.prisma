@@ -47,6 +47,9 @@ model Product {
   supplierMode      String  @default("MANUAL")
   // Slug from the external supplier catalog, e.g. "gemini_pro_18_months"
   supplierProductId String?
+  supplierStock         Int       @default(0)
+  isSupplierAvailable   Boolean   @default(true)
+  supplierLastCheckedAt DateTime?
 
   // Relations
   stocks       RedeemStock[]

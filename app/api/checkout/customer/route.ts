@@ -91,9 +91,7 @@ export async function POST(request: NextRequest) {
     // out of stock at supplier), the promo-code compensation flow handles it.
     // For MANUAL and AUTO, check local stock as before (AUTO also has a
     // fallback at settlement if local stock runs out).
-    const isSupplierFulfilled = product.supplierMode === "REZEKI" || product.supplierMode === "AUTO";
-
-    if (!isSupplierFulfilled) {
+    if (product.supplierMode === "MANUAL") {
       const availableStock = await prisma.redeemStock.count({
         where: { productId, status: "AVAILABLE" },
       });
@@ -103,6 +101,75 @@ export async function POST(request: NextRequest) {
           { error: "Stok produk habis" },
           { status: 400 }
         );
+      }
+    } else if (product.supplierMode === "REZEKI") {
+      if (!product.supplierProductId) {
+        return NextResponse.json(
+          { error: "Produk belum dihubungkan ke supplier" },
+          { status: 400 }
+        );
+      }
+
+      const stockCheck = await rezekiSupplier.checkProductStock(product.supplierProductId);
+      if (stockCheck && (!stockCheck.inStock || stockCheck.stock <= 0)) {
+        await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            supplierStock: 0,
+            isSupplierAvailable: false,
+            supplierLastCheckedAt: new Date(),
+          },
+        }).catch(() => null);
+
+        return NextResponse.json(
+          { error: "Stok produk di supplier sedang habis. Mohon tunggu beberapa saat hingga supplier restock." },
+          { status: 400 }
+        );
+      } else if (stockCheck && stockCheck.inStock) {
+        await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            supplierStock: stockCheck.stock,
+            isSupplierAvailable: true,
+            supplierLastCheckedAt: new Date(),
+          },
+        }).catch(() => null);
+      }
+    } else if (product.supplierMode === "AUTO") {
+      const availableStock = await prisma.redeemStock.count({
+        where: { productId, status: "AVAILABLE" },
+      });
+
+      if (availableStock === 0) {
+        if (!product.supplierProductId) {
+          return NextResponse.json({ error: "Stok produk habis" }, { status: 400 });
+        }
+
+        const stockCheck = await rezekiSupplier.checkProductStock(product.supplierProductId);
+        if (stockCheck && (!stockCheck.inStock || stockCheck.stock <= 0)) {
+          await prisma.product.update({
+            where: { id: product.id },
+            data: {
+              supplierStock: 0,
+              isSupplierAvailable: false,
+              supplierLastCheckedAt: new Date(),
+            },
+          }).catch(() => null);
+
+          return NextResponse.json(
+            { error: "Stok produk habis (lokal & supplier)." },
+            { status: 400 }
+          );
+        } else if (stockCheck && stockCheck.inStock) {
+          await prisma.product.update({
+            where: { id: product.id },
+            data: {
+              supplierStock: stockCheck.stock,
+              isSupplierAvailable: true,
+              supplierLastCheckedAt: new Date(),
+            },
+          }).catch(() => null);
+        }
       }
     }
 

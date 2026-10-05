@@ -80,6 +80,9 @@ export interface ISupplier {
    */
   getProducts(): Promise<SupplierProduct[]>;
 
+  /** Check real-time stock for a single supplier product */
+  checkProductStock?(supplierProductId: string): Promise<{ inStock: boolean; stock: number; price?: number } | null>;
+
   /**
    * Purchase `quantity` units of `productId` from the supplier.
    * NEVER throws — always returns a PurchaseOutcome so callers

@@ -123,6 +123,16 @@ export async function POST(request: NextRequest) {
         }
         const outcome = await rezekiSupplier.purchase(product.supplierProductId, quantity);
         if (!outcome.success) {
+          if (outcome.code === "OUT_OF_STOCK") {
+            await prisma.product.update({
+              where: { id: product.id },
+              data: {
+                supplierStock: 0,
+                isSupplierAvailable: false,
+                supplierLastCheckedAt: new Date(),
+              },
+            }).catch(() => null);
+          }
           return NextResponse.json({ error: `Gagal beli dari supplier (${outcome.code}): ${outcome.message}` }, { status: 400 });
         }
         redeemUrlsStr = outcome.items.join(",");

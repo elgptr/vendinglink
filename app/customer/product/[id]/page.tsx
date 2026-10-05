@@ -1,3 +1,4 @@
+import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { formatRupiah } from "@/lib/utils";
@@ -38,11 +39,10 @@ export default async function CustomerProductDetailPage({ params }: ProductPageP
 
   if (!product) notFound();
 
-  const isSupplierFulfilled = product.supplierMode === "REZEKI" || product.supplierMode === "AUTO";
-    const manualStock = await prisma.redeemStock.count({
-      where: { productId: product.id, status: "AVAILABLE" },
-    });
-    const stockCount = isSupplierFulfilled ? Math.max(manualStock, 999) : manualStock;
+  const manualStock = await prisma.redeemStock.count({
+    where: { productId: product.id, status: "AVAILABLE" },
+  });
+  const stockCount = calculateProductStock({ ...product, stocksCount: manualStock });
 
   const isOutOfStock = stockCount === 0;
   const hasDiscount = product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price;

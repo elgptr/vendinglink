@@ -1,3 +1,4 @@
+import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import CustomerCheckoutForm from "@/components/customer/CustomerCheckoutForm";
@@ -25,14 +26,10 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
 
   if (!product) notFound();
 
-  const isSupplierFulfilled = product.supplierMode === "REZEKI" || product.supplierMode === "AUTO";
-  let stockCount = 999;
-  
-  if (!isSupplierFulfilled) {
-    stockCount = await prisma.redeemStock.count({
-      where: { productId: product.id, status: "AVAILABLE" },
-    });
-  }
+  const manualStock = await prisma.redeemStock.count({
+    where: { productId: product.id, status: "AVAILABLE" },
+  });
+  const stockCount = calculateProductStock({ ...product, stocksCount: manualStock });
 
   if (stockCount === 0) notFound();
 
