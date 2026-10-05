@@ -83,9 +83,10 @@ export async function buildSystemPrompt(audience: "customer" | "agent" = "agent"
   const productLines = products.length
     ? products
         .map((p) => {
+          const stockCount = p.supplierMode === "REZEKI" || p.supplierMode === "AUTO" ? 999 : p._count.stocks;
           const stockInfo =
-            p._count.stocks > 0
-              ? `stok tersedia: ${p._count.stocks}`
+            stockCount > 0
+              ? `stok tersedia: ${stockCount}`
               : "stok: HABIS";
           return `- ${p.name} - ${formatRupiah(p.price)} (${stockInfo})${
             p.description ? `. ${p.description}` : ""

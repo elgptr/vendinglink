@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderId } from "@/lib/utils";
 import { claimAvailableStockBatch } from "@/lib/stock";
+import { rezekiSupplier } from "@/lib/suppliers";
 import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
@@ -112,17 +113,33 @@ export async function POST(request: NextRequest) {
 
     // ─── Database Transaction ──────────────────────────────────────────────
     try {
-      const result = await prisma.$transaction(async (tx) => {
-        // 1. Atomically claim available stock units in batch
-        const claimedStocks = await claimAvailableStockBatch(tx, productId, quantity, {
-          claimedByAgentId: session.user.id,
-        });
-
-        if (!claimedStocks || claimedStocks.length < quantity) {
-          throw new Error("NO_STOCK");
+      let redeemUrlsStr = "";
+      
+      // If REZEKI, purchase from external API first to avoid holding DB transaction
+      // and to ensure we only charge the agent if the API succeeds.
+      if (product.supplierMode === "REZEKI") {
+        if (!product.supplierProductId) {
+          return NextResponse.json({ error: "Produk belum di-link ke Rezeki" }, { status: 400 });
         }
+        const outcome = await rezekiSupplier.purchase(product.supplierProductId, quantity);
+        if (!outcome.success) {
+          return NextResponse.json({ error: "Stok di supplier habis atau gangguan" }, { status: 400 });
+        }
+        redeemUrlsStr = outcome.items.join(",");
+      }
 
-        const redeemUrls = claimedStocks.map(s => s.redeemUrl).join(',');
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Atomically claim available stock units in batch (only for MANUAL/AUTO)
+        if (product.supplierMode !== "REZEKI") {
+          const claimedStocks = await claimAvailableStockBatch(tx, productId, quantity, {
+            claimedByAgentId: session.user.id,
+          });
+
+          if (!claimedStocks || claimedStocks.length < quantity) {
+            throw new Error("NO_STOCK");
+          }
+          redeemUrlsStr = claimedStocks.map(s => s.redeemUrl).join(',');
+        }
 
         // 2. Create the transaction as PAID
         const transaction = await tx.transaction.create({
@@ -139,7 +156,7 @@ export async function POST(request: NextRequest) {
             status: "PAID",
             stockStatus: "FULFILLED",
             isSettled: false,
-            redeemUrl: redeemUrls,
+            redeemUrl: redeemUrlsStr,
             paidAt: new Date(),
           },
         });
@@ -158,7 +175,7 @@ export async function POST(request: NextRequest) {
           data: { outstandingDebt: { increment: finalAmount } },
         });
 
-        return { transaction, claimedStocks };
+        return { transaction };
       });
 
       return NextResponse.json({
@@ -167,7 +184,7 @@ export async function POST(request: NextRequest) {
         originalPrice: originalPriceTotal,
         discountAmount,
         productName: product.name,
-        redeemUrls: result.claimedStocks.map(s => s.redeemUrl),
+        redeemUrls: redeemUrlsStr.split(",").filter(Boolean),
         guideImageUrl: product.guideImageUrl,
       });
     } catch (txError) {

@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import Modal from "@/components/ui/Modal";
 import Spinner from "@/components/ui/Spinner";
 import toast from "@/components/ui/Toast";
+import SupplierProductLinker from "@/components/admin/SupplierProductLinker";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
 interface Product {
@@ -23,6 +24,8 @@ interface Product {
   guideText: string | null;
   isActive: boolean;
   updatedAt: string;
+  supplierMode: string;
+  supplierProductId: string | null;
   _count: { stocks: number };
 }
 
@@ -70,6 +73,8 @@ export default function InventoryPage() {
   const [editGuideUrl, setEditGuideUrl] = useState("");
   const [editGuideText, setEditGuideText] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editSupplierMode, setEditSupplierMode] = useState("MANUAL");
+  const [editSupplierProductId, setEditSupplierProductId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
@@ -200,6 +205,8 @@ export default function InventoryPage() {
         isActive: editIsActive,
         guideImageUrl: editGuideUrl,
         guideText: editGuideText || undefined,
+        supplierMode: editSupplierMode,
+        supplierProductId: editSupplierProductId || null,
       }),
     });
 
@@ -410,6 +417,8 @@ export default function InventoryPage() {
                     setEditGuideUrl(product.guideImageUrl || "");
                     setEditGuideText(product.guideText || "");
                     setEditIsActive(product.isActive);
+                    setEditSupplierMode(product.supplierMode || "MANUAL");
+                    setEditSupplierProductId(product.supplierProductId || "");
                     setShowPriceModal(true);
                   }}
                 >
@@ -723,6 +732,14 @@ export default function InventoryPage() {
               hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
             />
           </div>
+
+          {/* ── Supplier Linker ── */}
+          <SupplierProductLinker
+            value={editSupplierMode}
+            productId={editSupplierProductId}
+            onModeChange={setEditSupplierMode}
+            onProductChange={setEditSupplierProductId}
+          />
         </form>
       </Modal>
 
