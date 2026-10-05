@@ -275,7 +275,7 @@ export async function applyMidtransStatusUpdate(
     }
 
     return { updated: true, transaction: updatedTransaction };
-  });
+  }, { timeout: 60_000, maxWait: 10_000 }); // Rezeki purchase runs inside; default 5s is too short
 
   // ─── Send WhatsApp notification (non-blocking, non-critical) ─────────────
   if (result.updated) {
