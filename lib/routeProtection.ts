@@ -48,6 +48,8 @@ const PUBLIC_ROUTES = [
   // unauthenticated customer can obtain a token before checkout.
   "/api/csrf",
   "/api/chat",
+  "/api/public",
+  "/api/cron",
 ];
 
 // Used (like proxy.ts's `pathname.startsWith("/api/")`) to distinguish API
