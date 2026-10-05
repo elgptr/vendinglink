@@ -1,3 +1,4 @@
+import { rezekiSupplier } from "@/lib/suppliers";
 import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -38,6 +39,27 @@ export default async function CustomerProductDetailPage({ params }: ProductPageP
   });
 
   if (!product) notFound();
+
+  if (
+    (product.supplierMode === "REZEKI" || product.supplierMode === "AUTO") &&
+    product.supplierProductId &&
+    product.supplierLastCheckedAt === null
+  ) {
+    const check = await rezekiSupplier.checkProductStock(product.supplierProductId).catch(() => null);
+    if (check) {
+      product.supplierStock = check.inStock ? check.stock : 0;
+      product.isSupplierAvailable = check.inStock;
+      product.supplierLastCheckedAt = new Date();
+      await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          supplierStock: product.supplierStock,
+          isSupplierAvailable: product.isSupplierAvailable,
+          supplierLastCheckedAt: product.supplierLastCheckedAt,
+        },
+      }).catch(() => null);
+    }
+  }
 
   const manualStock = await prisma.redeemStock.count({
     where: { productId: product.id, status: "AVAILABLE" },
