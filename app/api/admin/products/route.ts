@@ -19,6 +19,8 @@ const productSchema = z.object({
   guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().or(z.literal("")),
   guideText: z.string().max(2000).optional(),
   isActive: z.boolean().optional(),
+  supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).optional(),
+  supplierProductId: z.string().max(200).optional().nullable(),
 });
 
 const updateSchema = z.object({
@@ -32,6 +34,8 @@ const updateSchema = z.object({
   guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().nullable().or(z.literal("")),
   guideText: z.string().max(2000).optional().nullable(),
   isActive: z.boolean().optional(),
+  supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).optional(),
+  supplierProductId: z.string().max(200).optional().nullable(),
 });
 
 async function requireAdmin() {
@@ -128,7 +132,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, description, guideImageUrl, guideText, originalPrice, showOriginalPrice, ...rest } = parsed.data;
+    const { id, description, guideImageUrl, guideText, originalPrice, showOriginalPrice, supplierMode, supplierProductId, ...rest } = parsed.data;
     const updateData: Record<string, unknown> = { ...rest };
     if (originalPrice !== undefined) {
       updateData.originalPrice = originalPrice || null;
@@ -144,6 +148,12 @@ export async function PATCH(request: NextRequest) {
     }
     if (guideText !== undefined) {
       updateData.guideText = guideText ? sanitizeString(guideText) : null;
+    }
+    if (supplierMode !== undefined) {
+      updateData.supplierMode = supplierMode;
+    }
+    if (supplierProductId !== undefined) {
+      updateData.supplierProductId = supplierProductId || null;
     }
     const product = await prisma.product.update({
       where: { id },

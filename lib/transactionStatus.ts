@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { claimAvailableStock } from "@/lib/stock";
 import { generatePromoCode } from "@/lib/utils";
 import { sendPaymentNotification, type WhatsAppPaymentData } from "@/lib/whatsapp";
+import { rezekiSupplier } from "@/lib/suppliers";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "transaction-status" });
@@ -13,6 +14,85 @@ type ApplyResult =
   | { updated: false; reason: "NOT_YET_SETTLED" };
 
 const PROMO_CODE_EXPIRY_DAYS = 30;
+
+// ── Supplier-aware stock resolver ─────────────────────────────────────────────
+/**
+ * Resolves a redeemUrl for a transaction based on the product's supplierMode:
+ *
+ * - MANUAL:       claim from local RedeemStock table (existing behaviour, no change)
+ * - REZEKI:       purchase from Rezeki API automatically
+ * - AUTO:         try MANUAL first; if out-of-stock, fallback to REZEKI
+ *
+ * Returns the redeemUrl string on success, or null on failure.
+ * A null return triggers the promo code compensation flow upstream.
+ *
+ * NOTE: The external API call (REZEKI) runs outside the Prisma tx because
+ * it leaves the database boundary. The API is called first; the DB is only
+ * written to if the purchase succeeds. Failed DB writes after a successful
+ * API purchase are logged for manual recovery.
+ */
+async function resolveStock(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  info: {
+    productId: string;
+    agentId: string | null;
+    customerName: string | null;
+    customerPhone: string | null;
+  }
+): Promise<string | null> {
+  const product = await tx.product.findUnique({
+    where: { id: info.productId },
+    select: { supplierMode: true, supplierProductId: true },
+  });
+
+  const mode = product?.supplierMode ?? "MANUAL";
+  const supplierProductId = product?.supplierProductId;
+
+  // ── MANUAL: existing atomic CAS logic ────────────────────────────────────
+  if (mode === "MANUAL") {
+    const stock = await claimAvailableStock(tx, info.productId, {
+      claimedByAgentId: info.agentId,
+      customerName: info.customerName,
+      customerPhone: info.customerPhone,
+    });
+    return stock?.redeemUrl ?? null;
+  }
+
+  // ── AUTO: try local MANUAL stock first ───────────────────────────────────
+  if (mode === "AUTO") {
+    const stock = await claimAvailableStock(tx, info.productId, {
+      claimedByAgentId: info.agentId,
+      customerName: info.customerName,
+      customerPhone: info.customerPhone,
+    });
+    if (stock) return stock.redeemUrl;
+  }
+
+  // ── REZEKI (or AUTO fallback) ──────────────────────────────────────────
+  if (!supplierProductId) {
+    log.error("supplierMode is REZEKI/AUTO but supplierProductId is not set", {
+      productId: info.productId,
+    });
+    return null;
+  }
+
+  const outcome = await rezekiSupplier.purchase(supplierProductId, 1);
+
+  if (!outcome.success) {
+    log.error("Rezeki purchase failed at settlement", {
+      productId: info.productId,
+      supplierProductId,
+      code: outcome.code,
+      message: outcome.message,
+    });
+    return null;
+  }
+
+  // Quantity is always 1 here; batch checkout is handled separately
+  return outcome.items[0] ?? null;
+}
+
+// ── WhatsApp notification helper ──────────────────────────────────────────────
 /**
  * Safely send WhatsApp payment notification after transaction is settled.
  * Non-blocking: failures are logged but never thrown.
@@ -57,8 +137,7 @@ export async function notifyPaymentSuccess(
   }
 }
 
-
-
+// ── Main status update function ───────────────────────────────────────────────
 /**
  * Apply a Midtrans transaction_status/fraud_status update to our local
  * Transaction record. Shared by:
@@ -75,7 +154,7 @@ export async function applyMidtransStatusUpdate(
   fraudStatus?: string
 ): Promise<ApplyResult> {
   // We use a single interactive transaction to ensure the idempotency check
-  // and the stock claim/update happen atomically, preventing race conditions
+  // and the stock resolution happen atomically, preventing race conditions
   // if webhook and polling fire simultaneously.
   const result = await prisma.$transaction(async (tx): Promise<ApplyResult> => {
     const transaction = await tx.transaction.findUnique({
@@ -116,15 +195,16 @@ export async function applyMidtransStatusUpdate(
       return { updated: false, reason: "NOT_YET_SETTLED" as const };
     }
 
-    // ─── Anti race-condition: atomic stock claim ────────────────────────────
-    const stock = await claimAvailableStock(tx, transaction.productId, {
-      claimedByAgentId: transaction.agentId,
+    // ─── Supplier-aware stock resolution ─────────────────────────────────────
+    const redeemUrl = await resolveStock(tx, {
+      productId: transaction.productId,
+      agentId: transaction.agentId,
       customerName: transaction.customerName,
       customerPhone: transaction.customerPhone,
     });
 
-    // ─── Out-of-stock at settlement time ──────────────────────────────
-    if (!stock) {
+    // ─── Stock not available / supplier failed ────────────────────────────────
+    if (!redeemUrl) {
       if (transaction.paymentType === "AGENT_CREDIT") {
         const cancelled = await tx.transaction.update({
           where: { orderId },
@@ -144,7 +224,7 @@ export async function applyMidtransStatusUpdate(
         return { updated: true, transaction: cancelled };
       }
 
-      // MIDTRANS (customer)
+      // MIDTRANS (customer): issue promo code as full-refund compensation
       const promoCode = await tx.promoCode.create({
         data: {
           code: generatePromoCode(),
@@ -169,13 +249,13 @@ export async function applyMidtransStatusUpdate(
       return { updated: true, transaction: updatedTransaction };
     }
 
-    // ─── Happy path: stock available, fulfil normally ──────────────────
+    // ─── Happy path: key resolved, fulfil order ───────────────────────────────
     const updatedTransaction = await tx.transaction.update({
       where: { orderId },
       data: {
         status: "PAID",
         stockStatus: "FULFILLED",
-        redeemUrl: stock.redeemUrl,
+        redeemUrl,
         paidAt: new Date(),
       },
     });
@@ -197,12 +277,10 @@ export async function applyMidtransStatusUpdate(
     return { updated: true, transaction: updatedTransaction };
   });
 
-  // ─── Send WhatsApp notification (non-blocking, non-critical) ────────
+  // ─── Send WhatsApp notification (non-blocking, non-critical) ─────────────
   if (result.updated) {
     void notifyPaymentSuccess(result.transaction);
   }
 
   return result;
 }
-
-

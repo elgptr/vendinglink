@@ -36,7 +36,7 @@ async function getProducts() {
       originalPrice: p.originalPrice,
       showOriginalPrice: p.showOriginalPrice,
       description: p.description,
-      stockCount: p._count.stocks,
+      stockCount: p.supplierMode === "REZEKI" || p.supplierMode === "AUTO" ? 999 : p._count.stocks,
       }));
   }, 10);
 }

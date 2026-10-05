@@ -25,9 +25,14 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
 
   if (!product) notFound();
 
-  const stockCount = await prisma.redeemStock.count({
-    where: { productId: product.id, status: "AVAILABLE" },
-  });
+  const isSupplierFulfilled = product.supplierMode === "REZEKI" || product.supplierMode === "AUTO";
+  let stockCount = 999;
+  
+  if (!isSupplierFulfilled) {
+    stockCount = await prisma.redeemStock.count({
+      where: { productId: product.id, status: "AVAILABLE" },
+    });
+  }
 
   if (stockCount === 0) notFound();
 

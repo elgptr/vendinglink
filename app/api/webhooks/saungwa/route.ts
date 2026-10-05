@@ -74,7 +74,6 @@ async function handleOrderForm(from: string, message: string) {
       isActive: true,
       name: {
         contains: productName,
-        mode: 'insensitive',
       }
     }
   });

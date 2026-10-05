@@ -6,6 +6,7 @@ import { createKaseraQrisPayment } from "@/lib/kasera";
 import { getActivePaymentGateway } from "@/lib/paymentConfig";
 import { generateOrderId, sanitizeString } from "@/lib/utils";
 import { claimAvailableStock } from "@/lib/stock";
+import { rezekiSupplier } from "@/lib/suppliers";
 import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
@@ -84,15 +85,25 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Check stock availability ──────────────────────────────────────────
-    const availableStock = await prisma.redeemStock.count({
-      where: { productId, status: "AVAILABLE" },
-    });
+    // For REZEKI products, stock is fulfilled via external API at settlement
+    // time — there are no local RedeemStock rows to count. Skip the check so
+    // customers can proceed to payment. If the API fails (balance insufficient,
+    // out of stock at supplier), the promo-code compensation flow handles it.
+    // For MANUAL and AUTO, check local stock as before (AUTO also has a
+    // fallback at settlement if local stock runs out).
+    const isSupplierFulfilled = product.supplierMode === "REZEKI" || product.supplierMode === "AUTO";
 
-    if (availableStock === 0) {
-      return NextResponse.json(
-        { error: "Stok produk habis" },
-        { status: 400 }
-      );
+    if (!isSupplierFulfilled) {
+      const availableStock = await prisma.redeemStock.count({
+        where: { productId, status: "AVAILABLE" },
+      });
+
+      if (availableStock === 0) {
+        return NextResponse.json(
+          { error: "Stok produk habis" },
+          { status: 400 }
+        );
+      }
     }
 
     // ─── Calculate price with voucher or stockout-refund promo code ────────
@@ -143,14 +154,30 @@ export async function POST(request: NextRequest) {
     // payment gateway for a Rp 0 order.
     if (finalAmount === 0 && (resolvedPromoCodeId || resolvedVoucherId)) {
       try {
-        const result = await prisma.$transaction(async (tx) => {
-          const claimedStock = await claimAvailableStock(tx, productId, {
-            customerName: sanitizedCustomerName,
-            customerPhone: sanitizedCustomerPhone,
-          });
+        let redeemUrlStr = "";
 
-          if (!claimedStock) {
-            throw new Error("NO_STOCK");
+        if (product.supplierMode === "REZEKI") {
+          if (!product.supplierProductId) {
+            return NextResponse.json({ error: "Produk belum di-link ke Rezeki" }, { status: 400 });
+          }
+          const outcome = await rezekiSupplier.purchase(product.supplierProductId, 1);
+          if (!outcome.success) {
+            return NextResponse.json({ error: "Stok produk habis di supplier" }, { status: 400 });
+          }
+          redeemUrlStr = outcome.items[0] || "";
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+          if (product.supplierMode !== "REZEKI") {
+            const claimedStock = await claimAvailableStock(tx, productId, {
+              customerName: sanitizedCustomerName,
+              customerPhone: sanitizedCustomerPhone,
+            });
+
+            if (!claimedStock) {
+              throw new Error("NO_STOCK");
+            }
+            redeemUrlStr = claimedStock.redeemUrl;
           }
 
           if (resolvedPromoCodeId) {
@@ -186,12 +213,12 @@ export async function POST(request: NextRequest) {
               finalAmount: 0,
               status: "PAID",
               stockStatus: "FULFILLED",
-              redeemUrl: claimedStock.redeemUrl,
+              redeemUrl: redeemUrlStr,
               paidAt: new Date(),
             },
           });
 
-          return { transaction, claimedStock };
+          return { transaction };
         });
 
         return NextResponse.json({
@@ -201,7 +228,7 @@ export async function POST(request: NextRequest) {
           discountAmount,
           productName: product.name,
           customerName: sanitizedCustomerName,
-          redeemUrl: result.claimedStock.redeemUrl,
+          redeemUrl: redeemUrlStr,
           guideImageUrl: product.guideImageUrl,
         });
       } catch (txError) {
