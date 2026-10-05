@@ -108,8 +108,16 @@ export class RezekiSupplier implements ISupplier {
       }
 
       const data = await res.json();
-      const inStock = data.availability === "in_stock";
+      const inStock = data.availability === "in_stock" && (data.stock === undefined || Number(data.stock) > 0);
       const stock = inStock ? (typeof data.stock === "number" && data.stock > 0 ? data.stock : 999) : 0;
+
+      console.log("[rezeki] checkProductStock response", {
+        supplierProductId,
+        availability: data.availability,
+        stock: data.stock,
+        resolvedInStock: inStock,
+        resolvedStock: stock,
+      });
 
       return {
         inStock,

@@ -1,3 +1,4 @@
+import SyncStockButton from "@/components/customer/SyncStockButton";
 import { syncSupplierStocks } from "@/lib/suppliers/sync";
 import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
@@ -36,7 +37,7 @@ async function getProducts() {
       (p) =>
         (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
         p.supplierProductId &&
-        p.supplierLastCheckedAt === null
+        (!p.supplierLastCheckedAt || Date.now() - new Date(p.supplierLastCheckedAt).getTime() > 60 * 1000)
     );
 
     if (needsInitialSync) {
@@ -82,6 +83,7 @@ export default async function CustomerCatalogPage() {
             <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
               <span className="stock-dot-available" />
               <span>Real-time Stock</span>
+              <SyncStockButton />
             </div>
           </div>
 
