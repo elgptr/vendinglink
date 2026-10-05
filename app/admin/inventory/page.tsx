@@ -46,6 +46,24 @@ export default function InventoryPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingStocks, setLoadingStocks] = useState(false);
+  const [syncingSupplier, setSyncingSupplier] = useState(false);
+  const handleSyncSupplier = async () => {
+    setSyncingSupplier(true);
+    try {
+      const res = await fetch("/api/admin/supplier?action=sync");
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Stok supplier berhasil disinkronkan (${data.updated || 0} produk)`);
+        fetchProducts();
+      } else {
+        toast.error(data.error || "Gagal sinkronkan stok supplier");
+      }
+    } catch {
+      toast.error("Gagal terhubung ke supplier");
+    } finally {
+      setSyncingSupplier(false);
+    }
+  };
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Modals
@@ -340,6 +358,16 @@ export default function InventoryPage() {
           <p className="text-slate-400 ml-14">Kelola produk dan link redeem</p>
         </div>
         <div className="flex gap-3">
+          <Button
+            id="sync-supplier-btn"
+            variant="secondary"
+            size="sm"
+            disabled={syncingSupplier}
+            icon={<RefreshCw size={16} className={syncingSupplier ? "animate-spin" : ""} />}
+            onClick={handleSyncSupplier}
+          >
+            Sync Supplier
+          </Button>
           <Button
             id="add-product-btn"
             variant="secondary"

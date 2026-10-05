@@ -1,3 +1,4 @@
+import { syncSupplierStocks } from "@/lib/suppliers/sync";
 /**
  * Admin — DigitalCore Supplier API
  *
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const action = searchParams.get("action"); // "balance" | "products"
+  const action = searchParams.get("action"); // "balance" | "products" | "sync"
   const supplier = rezekiSupplier;
 
   // ── GET balance ───────────────────────────────────────────────────────────
@@ -63,8 +64,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // ── Sync supplier stock ──
+  if (action === "sync") {
+    const result = await syncSupplierStocks();
+    return NextResponse.json(result);
+  }
+
   return NextResponse.json(
-    { error: "Parameter 'action' harus 'balance' atau 'products'" },
+    { error: "Parameter 'action' harus 'balance', 'products', atau 'sync'" },
     { status: 400 }
   );
 }

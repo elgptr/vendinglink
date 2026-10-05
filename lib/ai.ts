@@ -1,3 +1,4 @@
+import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import { decryptAPIKey } from "@/lib/encryption";
@@ -83,7 +84,7 @@ export async function buildSystemPrompt(audience: "customer" | "agent" = "agent"
   const productLines = products.length
     ? products
         .map((p) => {
-          const stockCount = p.supplierMode === "REZEKI" || p.supplierMode === "AUTO" ? 999 : p._count.stocks;
+          const stockCount = calculateProductStock(p);
           const stockInfo =
             stockCount > 0
               ? `stok tersedia: ${stockCount}`

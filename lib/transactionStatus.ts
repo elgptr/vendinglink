@@ -79,6 +79,16 @@ async function resolveStock(
   const outcome = await rezekiSupplier.purchase(supplierProductId, 1);
 
   if (!outcome.success) {
+    if (outcome.code === "OUT_OF_STOCK") {
+      await tx.product.update({
+        where: { id: info.productId },
+        data: {
+          supplierStock: 0,
+          isSupplierAvailable: false,
+          supplierLastCheckedAt: new Date(),
+        },
+      }).catch(() => null);
+    }
     log.error("Rezeki purchase failed at settlement", {
       productId: info.productId,
       supplierProductId,
