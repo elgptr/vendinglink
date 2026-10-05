@@ -15,6 +15,7 @@ vi.mock('@/lib/prisma', () => ({
     user: { update: vi.fn() },
     promoCode: { create: vi.fn(), update: vi.fn() },
     voucher: { update: vi.fn() },
+    product: { findUnique: vi.fn().mockResolvedValue({ supplierMode: "MANUAL" }) },
   }
 }));
 
