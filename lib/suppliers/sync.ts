@@ -35,63 +35,50 @@ export async function syncSupplierStocks(): Promise<SyncResult> {
     }
 
     result.totalChecked = products.length;
-
-    // Fetch supplier catalog in one bulk request
-    let supplierCatalog: Awaited<ReturnType<typeof rezekiSupplier.getProducts>> = [];
-    try {
-      supplierCatalog = await rezekiSupplier.getProducts();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      log.error("Failed to fetch supplier products for sync", { error: msg });
-      result.errors.push(`Gagal mengambil data dari supplier: ${msg}`);
-      return result;
-    }
-
-    const catalogMap = new Map<string, (typeof supplierCatalog)[number]>();
-    for (const item of supplierCatalog) {
-      catalogMap.set(item.supplierId, item);
-    }
-
     const now = new Date();
 
     for (const product of products) {
       if (!product.supplierProductId) continue;
 
-      const supplierItem = catalogMap.get(product.supplierProductId);
-      let inStock = false;
-      let stock = 0;
+      try {
+        // Query the real-time detail endpoint: GET /v1/products/{id}
+        const check = await rezekiSupplier.checkProductStock(product.supplierProductId);
 
-      if (supplierItem) {
-        stock = supplierItem.stock;
-        inStock = stock > 0;
-      } else {
-        // Fallback to single product check if not found in catalog list
-        const singleCheck = await rezekiSupplier.checkProductStock(product.supplierProductId);
-        if (singleCheck) {
-          inStock = singleCheck.inStock;
-          stock = singleCheck.stock;
+        let inStock = false;
+        let stock = 0;
+
+        if (check) {
+          inStock = check.inStock;
+          stock = check.stock;
+        }
+
+        if (inStock && stock > 0) {
+          result.inStock++;
         } else {
+          result.outOfStock++;
           inStock = false;
           stock = 0;
         }
+
+        await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            supplierStock: stock,
+            isSupplierAvailable: inStock,
+            supplierLastCheckedAt: now,
+          },
+        });
+
+        result.updated++;
+      } catch (itemErr) {
+        const msg = itemErr instanceof Error ? itemErr.message : String(itemErr);
+        log.error("Failed to check stock for product", {
+          productId: product.id,
+          supplierProductId: product.supplierProductId,
+          error: msg,
+        });
+        result.errors.push(`Produk ${product.name}: ${msg}`);
       }
-
-      if (inStock) {
-        result.inStock++;
-      } else {
-        result.outOfStock++;
-      }
-
-      await prisma.product.update({
-        where: { id: product.id },
-        data: {
-          supplierStock: stock,
-          isSupplierAvailable: inStock,
-          supplierLastCheckedAt: now,
-        },
-      });
-
-      result.updated++;
     }
 
     log.info("Supplier stock sync completed", { ...result });
