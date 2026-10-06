@@ -50,6 +50,7 @@ const PUBLIC_ROUTES = [
   "/api/chat",
   "/api/public",
   "/api/cron",
+  "/api/bridge",
 ];
 
 // Used (like proxy.ts's `pathname.startsWith("/api/")`) to distinguish API
