@@ -9,7 +9,7 @@
   "crons": [
     {
       "path": "/api/cron/sync-supplier-stock",
-      "schedule": "0 * * * *"
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cron/reconcile",

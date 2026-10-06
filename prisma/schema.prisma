@@ -63,6 +63,8 @@ model RedeemStock {
   productId        String
   redeemUrl        String
   status           String    @default("AVAILABLE") // 'AVAILABLE' | 'SOLD'
+  source           String    @default("MANUAL")    // 'MANUAL' | 'BRIDGE'
+  bridgeTxId       String?
   claimedByAgentId String?
   customerName     String?
   customerPhone    String?
@@ -200,4 +202,24 @@ model GoogleDriveConfig {
   createdAt       DateTime  @default(now())
 
   @@map("google_drive_configs")
+}
+
+model BridgeInboundEvent {
+  id                String   @id @default(cuid())
+  transactionId     String   @unique          // idempotency (BRG-...)
+  source            String                    // "BRIDGE_BOT"
+  supplierCode      String
+  supplierProductId String
+  externalProductId String                    // "RZK-..."
+  productId         String?                   // resolved VL Product.id
+  addedQty          Int
+  insertedQty       Int      @default(0)
+  skippedQty        Int      @default(0)      // duplicates
+  status            String   @default("PROCESSING") // PROCESSING|COMPLETED|REJECTED
+  error             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([status, createdAt])
+  @@map("bridge_inbound_events")
 }

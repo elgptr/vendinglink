@@ -336,8 +336,8 @@ export async function sendAdminLowStockAlert(
   isOutOfStock: boolean = false
 ): Promise<WhatsAppSendResult> {
   const mode = getMode();
-  // Gunakan ENV jika ada, jika tidak gunakan nomor admin default
-  const adminPhone = process.env.ADMIN_PHONE || "+6282254203272";
+  // Gunakan ENV untuk nomor admin
+  const adminPhone = process.env.ADMIN_PHONE || "";
 
   const normalizedPhone = normalizePhone(adminPhone);
   if (!normalizedPhone) return { sent: false, error: "Invalid admin phone", mode };
@@ -351,6 +351,45 @@ export async function sendAdminLowStockAlert(
 
   if (mode === "mock") {
     log.info(`WhatsApp (mock): sendAdminLowStockAlert (Out of stock: ${isOutOfStock})`, { to: normalizedPhone, productName });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+
+export async function sendBridgeRezekiModeAlert(
+  productName: string
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const adminPhone = process.env.ADMIN_PHONE || "";
+  const normalizedPhone = normalizePhone(adminPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid admin phone", mode };
+
+  const message = `*⚠️ BRIDGE UPLOAD REJECTED*\n\nGagal upload stok dari Bridge untuk produk *${productName}* karena mode REZEKI sedang aktif.\n\nUbah ke mode AUTO atau MANUAL jika ingin menerima stok dari Bridge.`;
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendBridgeRezekiModeAlert", { to: normalizedPhone, productName });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+export async function sendBridgeNewProductAlert(
+  productName: string
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const adminPhone = process.env.ADMIN_PHONE || "";
+  const normalizedPhone = normalizePhone(adminPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid admin phone", mode };
+
+  const message = `*✅ NEW BRIDGE PRODUCT*\n\nBerhasil menerima suplai untuk produk baru: *${productName}*.\n\nProduk telah otomatis ditambahkan ke Etalase dalam kondisi non-aktif. Silakan atur harga jual dan aktifkan produk di Dashboard Admin.`;
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendBridgeNewProductAlert", { to: normalizedPhone, productName });
     return { sent: true, mode: "mock" };
   }
 

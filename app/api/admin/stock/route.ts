@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseBulkLinks, parseBulkCodes, isValidUrl } from "@/lib/utils";
 import { z } from "zod";
+import { checkAdminRateLimit } from "@/lib/adminRateLimit";
 
 const bulkUploadSchema = z.object({
   productId: z.string().min(1),
@@ -80,6 +81,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateCheck = checkAdminRateLimit(request);
+    if (!rateCheck.allowed) return rateCheck.response;
+
     const session = await requireAdmin();
     if (!session) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -159,6 +163,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const rateCheck = checkAdminRateLimit(request);
+    if (!rateCheck.allowed) return rateCheck.response;
+
     const session = await requireAdmin();
     if (!session) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
