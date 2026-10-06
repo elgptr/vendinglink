@@ -8,7 +8,7 @@ export async function resolveBridgeProduct(
   // First, try matching exactly by the VendingLink Product.id (which bridge sends as product_id if they have a map)
   let product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { id: true, supplierMode: true, isActive: true },
+    select: { id: true, name: true, supplierMode: true, isActive: true },
   });
 
   if (!product) {
@@ -18,7 +18,7 @@ export async function resolveBridgeProduct(
         supplierProductId: supplierProductId,
         isActive: true,
       },
-      select: { id: true, supplierMode: true, isActive: true },
+      select: { id: true, name: true, supplierMode: true, isActive: true },
     });
   }
 
@@ -27,15 +27,16 @@ export async function resolveBridgeProduct(
     product = await prisma.product.create({
       data: {
         name: `[BRIDGE AUTO] ${supplierCode}-${supplierProductId}`,
-        price: 0, // Placeholder
-        type: "KODE",
+        price: 0,
+        type: "LINK",
         supplierMode: "MANUAL",
         supplierProductId: supplierProductId,
         isActive: false, // Inactive so it doesn't show up in catalog
       },
-      select: { id: true, supplierMode: true, isActive: true },
+      select: { id: true, name: true, supplierMode: true, isActive: true },
     });
+    return { product, isNew: true };
   }
 
-  return product;
+  return { product, isNew: false };
 }

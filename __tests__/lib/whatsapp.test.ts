@@ -9,21 +9,21 @@ import {
 
 describe("normalizePhone", () => {
   it("converts 08xx format to 62xx", () => {
-    expect(normalizePhone("082254203272")).toBe("6282254203272");
+    expect(normalizePhone("081234567890")).toBe("6281234567890");
   });
 
   it("handles +62 prefix", () => {
-    expect(normalizePhone("+6282254203272")).toBe("6282254203272");
+    expect(normalizePhone("+6281234567890")).toBe("6281234567890");
   });
 
   it("passes through already-normalized numbers", () => {
-    expect(normalizePhone("6282254203272")).toBe("6282254203272");
+    expect(normalizePhone("6281234567890")).toBe("6281234567890");
   });
 
   it("handles numbers with spaces and dashes", () => {
-    expect(normalizePhone("0822-542-03272")).toBe("6282254203272");
-    expect(normalizePhone("0822 542 03272")).toBe("6282254203272");
-    expect(normalizePhone("+62 822 542 03272")).toBe("6282254203272");
+    expect(normalizePhone("0822-542-03272")).toBe("6281234567890");
+    expect(normalizePhone("0822 542 03272")).toBe("6281234567890");
+    expect(normalizePhone("+62 822 542 03272")).toBe("6281234567890");
   });
 
   it("returns null for empty or non-string input", () => {
@@ -51,7 +51,7 @@ describe("normalizePhone", () => {
 
 describe("buildPaymentMessage", () => {
   const baseData = {
-    customerPhone: "6282254203272",
+    customerPhone: "6281234567890",
     orderId: "VM-123456-ABC",
     productName: "Premium Voucher",
     finalAmount: 50000,
@@ -129,7 +129,7 @@ describe("sendPaymentNotification (mock mode)", () => {
 
   it("returns sent:true in mock mode", async () => {
     const result = await sendPaymentNotification({
-      customerPhone: "6282254203272",
+      customerPhone: "6281234567890",
       orderId: "VM-TEST-003",
       productName: "Test Product",
       finalAmount: 50000,
@@ -141,7 +141,7 @@ describe("sendPaymentNotification (mock mode)", () => {
 
   it("normalizes phone before sending", async () => {
     const result = await sendPaymentNotification({
-      customerPhone: "082254203272",
+      customerPhone: "081234567890",
       orderId: "VM-TEST-004",
       productName: "Test Product",
       finalAmount: 50000,
@@ -174,13 +174,13 @@ describe("sendPaymentNotification (live mode)", () => {
       ok: true,
       json: async () => ({
         message_status: "Success",
-        data: { from: "6281", to: "6282254203272", status_code: 200 },
+        data: { from: "6281", to: "6281234567890", status_code: 200 },
       }),
     });
     vi.stubGlobal("fetch", mockFetch);
 
     const result = await sendPaymentNotification({
-      customerPhone: "6282254203272",
+      customerPhone: "6281234567890",
       orderId: "VM-LIVE-001",
       productName: "Premium Voucher",
       finalAmount: 50000,
@@ -195,7 +195,7 @@ describe("sendPaymentNotification (live mode)", () => {
     const body = options.body as FormData;
     expect(body.get("appkey")).toBe("test-appkey");
     expect(body.get("authkey")).toBe("test-authkey");
-    expect(body.get("to")).toBe("6282254203272");
+    expect(body.get("to")).toBe("6281234567890");
     expect(body.get("message")).toContain("Pembayaran Berhasil!");
     expect(result.sent).toBe(true);
     expect(result.mode).toBe("live");
@@ -205,7 +205,7 @@ describe("sendPaymentNotification (live mode)", () => {
     delete process.env.SAUNGWA_APPKEY;
     delete process.env.SAUNGWA_AUTHKEY;
     const result = await sendPaymentNotification({
-      customerPhone: "6282254203272",
+      customerPhone: "6281234567890",
       orderId: "VM-LIVE-002",
       productName: "Test",
       finalAmount: 50000,
@@ -220,7 +220,7 @@ describe("sendPaymentNotification (live mode)", () => {
       vi.fn().mockRejectedValue(new Error("Network error"))
     );
     const result = await sendPaymentNotification({
-      customerPhone: "6282254203272",
+      customerPhone: "6281234567890",
       orderId: "VM-LIVE-003",
       productName: "Test",
       finalAmount: 50000,
@@ -239,7 +239,7 @@ describe("sendPaymentNotification (live mode)", () => {
       })
     );
     const result = await sendPaymentNotification({
-      customerPhone: "6282254203272",
+      customerPhone: "6281234567890",
       orderId: "VM-LIVE-004",
       productName: "Test",
       finalAmount: 50000,
