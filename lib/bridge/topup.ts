@@ -51,13 +51,26 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
 
   try {
     // 2. Resolve Product
-    const product = await resolveBridgeProduct(
+    const { product, isNew } = await resolveBridgeProduct(
       product_id,
       supplier_code,
       supplier_product_id
     );
 
+    if (isNew) {
+      import("@/lib/whatsapp").then((wa) => {
+        wa.sendBridgeNewProductAlert(product.name).catch((e) => {
+          log.error("Failed to send new product alert", { error: String(e) });
+        });
+      });
+    }
+
     if (product.supplierMode === "REZEKI") {
+      import("@/lib/whatsapp").then((wa) => {
+        wa.sendBridgeRezekiModeAlert(product.name).catch((e) => {
+          log.error("Failed to send rezeki mode alert", { error: String(e) });
+        });
+      });
       // User says: Reject the request with a 400 error, forcing the Bridge to mark it as NEEDS_REVIEW
       await prisma.bridgeInboundEvent.update({
         where: { id: event.id },
