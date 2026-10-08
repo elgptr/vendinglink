@@ -5,14 +5,26 @@ export async function resolveBridgeProduct(
   supplierCode: string,
   supplierProductId: string
 ) {
-  // First, try matching exactly by the VendingLink Product.id (which bridge sends as product_id if they have a map)
+  // 1. Try resolving via the new SupplierProductMapping table
+  let mapping = await prisma.supplierProductMapping.findUnique({
+    where: {
+      supplierCode_supplierProductId: { supplierCode, supplierProductId }
+    },
+    include: { product: { select: { id: true, name: true, supplierMode: true, isActive: true } } }
+  });
+
+  if (mapping) {
+    return { product: mapping.product, isNew: false };
+  }
+
+  // 2. Fallback: Try matching exactly by the VendingLink Product.id (legacy)
   let product = await prisma.product.findUnique({
     where: { id: productId },
     select: { id: true, name: true, supplierMode: true, isActive: true },
   });
 
   if (!product) {
-    // Second, try matching by supplierProductId. 
+    // 3. Fallback: try by Product.supplierProductId (legacy)
     product = await prisma.product.findFirst({
       where: {
         supplierProductId: supplierProductId,
@@ -22,7 +34,7 @@ export async function resolveBridgeProduct(
     });
   }
 
-  // If still not found, we auto-create an inactive product
+  // 4. If still not found, we auto-create an inactive product AND bind it to mapping
   if (!product) {
     product = await prisma.product.create({
       data: {
@@ -35,8 +47,19 @@ export async function resolveBridgeProduct(
       },
       select: { id: true, name: true, supplierMode: true, isActive: true },
     });
+
+    // Auto-bind the new product to the supplier mapping
+    await prisma.supplierProductMapping.create({
+      data: { supplierCode, supplierProductId, productId: product.id }
+    });
+
     return { product, isNew: true };
   }
+
+  // If found via fallback but not mapped yet, let's bind it so next time it's faster
+  await prisma.supplierProductMapping.create({
+    data: { supplierCode, supplierProductId, productId: product.id }
+  }).catch(() => {}); // Ignore error if it somehow exists
 
   return { product, isNew: false };
 }

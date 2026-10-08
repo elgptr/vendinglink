@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const bcrypt = require('bcryptjs'); const prisma = new PrismaClient(); async function main() { const hash = await bcrypt.hash('.djwrq4zhdtd', 10); await prisma.user.update({ where: { username: 'admin' }, data: { passwordHash: hash }}); console.log('Password updated to .djwrq4zhdtd'); } main().finally(() => prisma.$disconnect());

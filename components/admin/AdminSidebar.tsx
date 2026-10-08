@@ -14,6 +14,7 @@ import {
   Shield,
   Menu,
   X,
+  Truck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -25,6 +26,7 @@ interface AdminSidebarProps {
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/admin/inventory", icon: Package, label: "Inventori & Stok" },
+  { href: "/admin/supplier", icon: Truck, label: "Manajemen Supplier" },
   { href: "/admin/vouchers", icon: Ticket, label: "Voucher" },
   { href: "/admin/agents", icon: Users, label: "Manajemen Agen" },
   { href: "/admin/reports", icon: BarChart3, label: "Laporan Penjualan" },

@@ -14,10 +14,4 @@ export const stockTopupSchema = z.object({
     message: "Number of items must match added_qty",
     path: ["items"],
   }
-).refine(
-  (data) => data.product_id === `${data.supplier_code}-${data.supplier_product_id}`,
-  {
-    message: "product_id must be in the format {supplier_code}-{supplier_product_id}",
-    path: ["product_id"],
-  }
 );
