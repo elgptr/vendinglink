@@ -49,6 +49,7 @@ const PUBLIC_ROUTES = [
   "/api/csrf",
   "/api/chat",
   "/api/public",
+  "/api/request-product",
   "/api/cron",
   "/api/bridge",
 ];
