@@ -54,9 +54,23 @@ model Product {
   // Relations
   stocks             RedeemStock[]
   transactions       Transaction[]
+  mappings           SupplierProductMapping[]
   applicableVouchers Voucher[]     @relation("VoucherProducts")
 
   @@map("products")
+}
+
+model SupplierProductMapping {
+  supplierCode      String
+  supplierProductId String
+  productId         String
+  createdAt         DateTime @default(now())
+
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([supplierCode, supplierProductId])
+  @@index([productId])
+  @@map("supplier_product_mappings")
 }
 
 model RedeemStock {
