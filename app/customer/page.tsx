@@ -33,9 +33,40 @@ async function getProducts() {
       orderBy: { price: "desc" },
     });
 
-    // Render products instantly from database (0ms latency).
-    // Note: Stock syncing is handled asynchronously by webhooks, crons, 
-    // or manually via the SyncStockButton to prevent blocking page loads.
+    const needsInitialSync = products.some(
+      (p: any) =>
+        (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
+        p.supplierProductId &&
+        (!p.supplierLastCheckedAt || Date.now() - new Date(p.supplierLastCheckedAt).getTime() > 60 * 1000)
+    );
+
+    if (needsInitialSync) {
+      try {
+        // Anti-Ngadat mechanism: Try syncing, but if it takes more than 800ms, 
+        // we just proceed rendering and let the sync finish in the background.
+        await Promise.race([
+          syncSupplierStocks(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 800))
+        ]);
+        
+        // If it succeeded within 800ms, update the products list
+        products = await prisma.product.findMany({
+          where: { isActive: true },
+          include: {
+            _count: {
+              select: {
+                stocks: { where: { status: "AVAILABLE" } },
+              },
+            },
+          },
+          orderBy: { price: "desc" },
+        });
+      } catch (e) {
+        // If timeout or error, we just ignore and serve the stale products instantly.
+        // The sync might still finish in the background.
+      }
+    }
+
     return products.map((p: any) => ({
       id: p.id,
       name: p.name,
