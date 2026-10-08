@@ -375,8 +375,6 @@ export default async function AdminDashboardPage() {
               </Link>
             )}
           </div>
-
-          </div>
         </div>
       </div>
     </div>
