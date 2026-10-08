@@ -34,7 +34,7 @@ export default function SyncStockButton() {
       onClick={handleSync}
       disabled={syncing}
       title="Perbarui stok real-time dari supplier"
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-surface-card hover:bg-surface-hover text-slate-300 hover:text-white border border-surface-border transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ml-2"
+      className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-3 sm:py-1.5 rounded-full text-xs font-medium bg-surface-card hover:bg-surface-hover text-slate-300 hover:text-white border border-surface-border transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ml-2"
     >
       <RefreshCw size={12} className={syncing ? "animate-spin text-brand-400" : ""} />
       <span>{syncing ? "Syncing..." : "Sync Stok"}</span>
