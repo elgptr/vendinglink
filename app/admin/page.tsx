@@ -174,13 +174,13 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Total Agent Debt */}
-        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-red-500/50 transition-colors">
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-rose-500/50 transition-colors">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <CreditCard size={64} className="text-red-400" />
+            <CreditCard size={64} className="text-rose-400" />
           </div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center">
-              <AlertCircle size={20} className="text-red-400" />
+            <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center">
+              <AlertCircle size={20} className="text-rose-400" />
             </div>
             <p className="font-medium text-slate-300 text-sm">Total Piutang Agen</p>
           </div>
@@ -201,8 +201,8 @@ export default async function AdminDashboardPage() {
                 </div>
                 {config.lastBalance && config.lastBalance < 100000 && (
                   <span className="flex h-3 w-3 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
                   </span>
                 )}
               </div>
@@ -241,7 +241,7 @@ export default async function AdminDashboardPage() {
                 recentTransactions.map((tx: any) => (
                   <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-hover border border-surface-border/50">
                     <div className="flex items-start gap-3">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${tx.status === 'PAID' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : tx.status === 'PENDING' ? 'bg-amber-400' : 'bg-red-400'}`} />
+                      <div className={`w-2 h-2 rounded-full mt-2 ${tx.status === 'PAID' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : tx.status === 'PENDING' ? 'bg-amber-400' : 'bg-rose-400'}`} />
                       <div>
                         <p className="font-medium text-white text-sm">{tx.product.name}</p>
                         <p className="text-xs text-slate-400 mt-1">{tx.customerName || tx.agent?.username || 'Unknown'} • {formatDate(tx.createdAt)}</p>
@@ -249,7 +249,7 @@ export default async function AdminDashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-white text-sm">{formatRupiah(tx.finalAmount)}</p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${tx.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400' : tx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${tx.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400' : tx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'}`}>
                         {tx.status}
                       </span>
                     </div>
