@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon, Eye, EyeOff, Copy, Check, Trash2 } from "lucide-react";
+import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon, Eye, EyeOff, Copy, Check, Trash2, AlertTriangle, CheckCircle2, Key, Link as LinkIcon } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input, { Textarea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
@@ -394,45 +394,80 @@ export default function InventoryPage() {
         {loadingProducts ? (
           <div className="py-10"><Spinner label="Memuat produk..." /></div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
             {products.map((product) => (
-              <Card key={product.id} className="p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-white">{product.name}</h3>
-                      <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
-                        {product.type === "KODE" ? "🔑 Kode" : "🔗 Link"}
-                      </Badge>
+              <div 
+                key={product.id} 
+                className="bg-surface-card border border-surface-border rounded-2xl p-5 relative overflow-hidden group hover:border-brand-500/50 hover:shadow-glow-lg transition-all duration-300 flex flex-col justify-between"
+              >
+                {/* Background Glow */}
+                <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                <div>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="pr-4">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="font-bold text-white text-lg leading-tight group-hover:text-brand-400 transition-colors">{product.name}</h3>
+                      </div>
+                      <div className="flex items-baseline gap-2 mt-2">
+                        <p className="text-2xl font-black text-brand-400 tracking-tight">
+                          {formatRupiah(product.price)}
+                        </p>
+                        {product.showOriginalPrice && product.originalPrice && (
+                          <p className="text-sm text-slate-500 line-through decoration-rose-500/50 decoration-2">
+                            {formatRupiah(product.originalPrice)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xl font-bold text-purple-400 mt-1">
-                      {formatRupiah(product.price)}
-                    </p>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <Badge variant={product.isActive ? "success" : "danger"} className="shadow-sm">
+                        {product.isActive ? "Aktif" : "Nonaktif"}
+                      </Badge>
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-surface-hover px-2 py-1 rounded-md border border-surface-border">
+                        {product.type === "KODE" ? <Key size={10} className="text-amber-400" /> : <LinkIcon size={10} className="text-blue-400" />}
+                        {product.type}
+                      </div>
+                    </div>
                   </div>
-                  <Badge variant={product.isActive ? "success" : "danger"}>
-                    {product.isActive ? "Aktif" : "Nonaktif"}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm text-slate-400 mb-4">
-                  <span className={product._count.stocks <= 5 ? "text-amber-400 font-medium flex items-center gap-1.5" : ""}>
-                    {product._count.stocks <= 5 && <Sparkles size={12} className="animate-pulse" />}
-                    {product._count.stocks} stok tersedia
-                    {product._count.stocks <= 5 && <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded ml-1">Menipis</span>}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {product.guideImageUrl && (
-                      <span className="flex items-center gap-1 text-brand-400" title="Gambar panduan tersedia">
-                        <ImageIcon size={12} />
-                      </span>
-                    )}
-                    <span>{formatDate(product.updatedAt)}</span>
+
+                  <div className="flex flex-col gap-3 py-4 border-y border-surface-border/50 mb-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Ketersediaan Stok</span>
+                      {product._count.stocks === 0 ? (
+                        <span className="text-rose-400 font-bold flex items-center gap-1.5 bg-rose-500/10 px-2 py-0.5 rounded-full">
+                          <AlertTriangle size={14} /> Habis
+                        </span>
+                      ) : product._count.stocks <= 5 ? (
+                        <span className="text-amber-400 font-bold flex items-center gap-1.5 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                          <Sparkles size={14} className="animate-pulse" /> {product._count.stocks} Tersisa
+                        </span>
+                      ) : (
+                        <span className="text-emerald-400 font-medium flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 size={14} /> {product._count.stocks} Tersedia
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Pembaruan Terakhir</span>
+                      <div className="flex items-center gap-2 text-slate-300">
+                        {product.guideImageUrl && (
+                          <span className="flex items-center gap-1 text-brand-400 bg-brand-500/10 p-1 rounded" title="Gambar panduan tersedia">
+                            <ImageIcon size={12} />
+                          </span>
+                        )}
+                        <span>{formatDate(product.updatedAt).split(' pukul')[0]}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
                 <Button
                   id={`edit-price-btn-${product.id}`}
                   variant="secondary"
                   size="sm"
-                  className="w-full"
+                  className="w-full bg-surface-hover hover:bg-brand-500 hover:text-black border-surface-border group-hover:border-brand-500 transition-all duration-300"
                   icon={<Edit3 size={14} />}
                   onClick={() => {
                     setSelectedProduct(product);
@@ -452,7 +487,7 @@ export default function InventoryPage() {
                 >
                   Edit Produk
                 </Button>
-              </Card>
+              </div>
             ))}
           </div>
         )}
