@@ -121,7 +121,7 @@ export default async function CustomerCatalogPage() {
               <p className="text-slate-400 text-sm">Jangan ragu, hubungi admin kami untuk memesan produk spesifik yang Anda butuhkan secara langsung.</p>
             </div>
             <a 
-              href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20ingin%20request%20produk%20di%20VendingLink%20yang%20saat%20ini%20habis/tidak%20ada%20di%20katalog."
+              href="https://wa.me/6282254203272?text=Halo%20Admin,%20saya%20ingin%20request%20produk%20di%20VendingLink%20yang%20saat%20ini%20habis/tidak%20ada%20di%20katalog."
               target="_blank"
               rel="noreferrer"
               className="flex-shrink-0 bg-brand-500 hover:bg-brand-400 text-black font-bold py-3 px-6 rounded-xl transition-all hover:scale-105 hover:shadow-glow shadow-brand-500/50 flex items-center gap-2"
