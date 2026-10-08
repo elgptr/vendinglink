@@ -25,6 +25,12 @@ export async function POST(request: NextRequest) {
         return handleOrderForm(from, message);
       }
 
+      // Check if it's the "Request Produk" template from the Web CTA
+      if (text.includes("request produk") && text.includes("vendinglink")) {
+        // Do nothing, let the human admin reply to this manual request
+        return NextResponse.json({ success: true });
+      }
+
       // Fetch active products
       // In prisma schema, Product doesn't have code, only id/name/price etc. Let's select id, name, price.
       const products = await prisma.product.findMany({

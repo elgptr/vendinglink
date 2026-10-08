@@ -136,10 +136,15 @@ async function sendViaSaungwa(
     formData.append("to", to);
     formData.append("message", message);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 seconds timeout
+
     const response = await fetch(SAUNGWA_API_URL, {
       method: "POST",
       body: formData,
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const result = await response.json();
 
@@ -229,6 +234,41 @@ export async function sendPaymentNotification(
   log.error("WhatsApp: notification failed", {
     orderId: data.orderId,
     to: normalizedPhone,
+    error: result.error,
+  });
+  return { sent: false, error: result.error, mode: "live" };
+}
+
+export async function sendAdminProductRequest(
+  customerPhone: string,
+  requestText: string
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const adminPhone = process.env.ADMIN_PHONE || "6282254203272"; // Team test number / Admin number
+
+  const message = `*NEW PRODUCT REQUEST* 📦\n\nDari WA: ${customerPhone}\n\nPesan:\n"${requestText}"\n\n_Segera hubungi customer ini untuk menindaklanjuti permintaannya!_`;
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): would send admin product request", {
+      to: adminPhone,
+      messagePreview: message.substring(0, 100) + "...",
+    });
+    return { sent: true, mode: "mock" };
+  }
+
+  log.info("WhatsApp: sending admin product request", {
+    to: adminPhone,
+    customerPhone
+  });
+
+  const result = await sendViaSaungwa(adminPhone, message);
+
+  if (result.success) {
+    return { sent: true, messageId: result.messageId, mode: "live" };
+  }
+
+  log.error("WhatsApp: admin product request failed", {
+    to: adminPhone,
     error: result.error,
   });
   return { sent: false, error: result.error, mode: "live" };

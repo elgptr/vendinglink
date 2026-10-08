@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useRef, MouseEvent } from "react";
 import { ShoppingCart, Package } from "lucide-react";
 import { cn, formatRupiah } from "@/lib/utils";
 import Card from "@/components/ui/Card";
@@ -20,6 +21,9 @@ interface CustomerProductCardProps {
 }
 
 export default function CustomerProductCard({ product, index = 0 }: CustomerProductCardProps) {
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
+  
   const inStock = product.stockCount > 0;
   const isLowStock = inStock && product.stockCount <= 5;
   const hasDiscount = product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price;
@@ -31,8 +35,22 @@ export default function CustomerProductCard({ product, index = 0 }: CustomerProd
   // Stagger animation based on index
   const staggerClass = `stagger-${Math.min(index + 1, 6)}`;
 
+  // Spotlight effect
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
   return (
-    <div className={cn("animate-stagger-item animate-slide-up", staggerClass)}>
+    <div 
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      className={cn("animate-stagger-item animate-slide-up relative group", staggerClass)}
+    >
       <Card
         hoverable={inStock}
         className={cn(
@@ -40,9 +58,14 @@ export default function CustomerProductCard({ product, index = 0 }: CustomerProd
           !inStock && "opacity-60 saturate-50"
         )}
       >
-        {/* Subtle background gradient on hover */}
+        {/* Magic Spotlight gradient on hover */}
         {inStock && (
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div 
+            className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
+            style={{
+              background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(139, 92, 246, 0.08), transparent 40%)`,
+            }}
+          />
         )}
 
         <div className="p-6 flex flex-col flex-1 relative z-10">
@@ -104,15 +127,18 @@ export default function CustomerProductCard({ product, index = 0 }: CustomerProd
                     Tersisa {product.stockCount} stok - Beli sekarang!
                   </div>
                 )}
-                <Link href={`/customer/checkout/${product.id}`} className="block">
-                  <Button
-                    id={`customer-buy-btn-${product.id}`}
-                    className="w-full shadow-none group-hover:shadow-glow transition-all"
-                    icon={<ShoppingCart size={16} />}
-                  >
-                    Beli Sekarang
-                  </Button>
-                </Link>
+                <Button
+                  id={`customer-buy-btn-${product.id}`}
+                  className="w-full shadow-none group-hover:shadow-glow transition-all"
+                  icon={<ShoppingCart size={16} />}
+                  loading={isNavigating}
+                  onClick={() => {
+                    setIsNavigating(true);
+                    router.push(`/customer/checkout/${product.id}`);
+                  }}
+                >
+                  Beli Sekarang
+                </Button>
               </div>
             ) : (
               <Button

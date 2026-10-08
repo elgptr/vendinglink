@@ -154,9 +154,24 @@ function LoginContent() {
   );
 }
 
+function LoginSkeleton() {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="w-16 h-16 rounded-2xl bg-surface-card border border-surface-border mb-4 animate-pulse" />
+          <div className="w-48 h-8 rounded-lg bg-surface-card border border-surface-border mb-2 animate-pulse" />
+          <div className="w-64 h-4 rounded-lg bg-surface-card border border-surface-border animate-pulse" />
+        </div>
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-8 h-[360px] animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-400">Memuat halaman login...</div>}>
+    <Suspense fallback={<LoginSkeleton />}>
       <LoginContent />
     </Suspense>
   );

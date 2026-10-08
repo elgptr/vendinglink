@@ -90,7 +90,7 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
           </Card>
 
           {/* Trust points */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-surface-card rounded-2xl border border-surface-border flex gap-3">
               <ShieldCheck className="text-emerald-400 flex-shrink-0" />
               <div>

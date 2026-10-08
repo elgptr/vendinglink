@@ -9,6 +9,7 @@ import HeroBanner from "@/components/customer/HeroBanner";
 import TrustStrip from "@/components/customer/TrustStrip";
 import Testimonials from "@/components/customer/Testimonials";
 import Footer from "@/components/customer/Footer";
+import RequestProductCTA from "@/components/customer/RequestProductCTA";
 
 // Stock count changes every time a purchase happens — never prerender this
 // page statically at build time, always fetch fresh data per request.
@@ -34,28 +35,40 @@ async function getProducts() {
     });
 
     const needsInitialSync = products.some(
-      (p) =>
+      (p: any) =>
         (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
         p.supplierProductId &&
         (!p.supplierLastCheckedAt || Date.now() - new Date(p.supplierLastCheckedAt).getTime() > 60 * 1000)
     );
 
     if (needsInitialSync) {
-      await syncSupplierStocks().catch(() => null);
-      products = await prisma.product.findMany({
-        where: { isActive: true },
-        include: {
-          _count: {
-            select: {
-              stocks: { where: { status: "AVAILABLE" } },
+      try {
+        // Anti-Ngadat mechanism: Try syncing, but if it takes more than 800ms, 
+        // we just proceed rendering and let the sync finish in the background.
+        await Promise.race([
+          syncSupplierStocks(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 800))
+        ]);
+        
+        // If it succeeded within 800ms, update the products list
+        products = await prisma.product.findMany({
+          where: { isActive: true },
+          include: {
+            _count: {
+              select: {
+                stocks: { where: { status: "AVAILABLE" } },
+              },
             },
           },
-        },
-        orderBy: { price: "desc" },
-      });
+          orderBy: { price: "desc" },
+        });
+      } catch (e) {
+        // If timeout or error, we just ignore and serve the stale products instantly.
+        // The sync might still finish in the background.
+      }
     }
 
-    return products.map((p) => ({
+    return products.map((p: any) => ({
       id: p.id,
       name: p.name,
       price: p.price,
@@ -78,9 +91,9 @@ export default async function CustomerCatalogPage() {
 
         {/* Catalog Section */}
         <section id="catalog" className="scroll-mt-8">
-          <div className="section-header mb-8 animate-fade-in">
-            <h2 className="section-header-title text-3xl">Pilihan Produk</h2>
-            <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 animate-fade-in">
+            <h2 className="section-header-title text-2xl sm:text-3xl">Pilihan Produk</h2>
+            <div className="sm:ml-auto flex items-center gap-2 text-sm text-slate-400">
               <span className="stock-dot-available" />
               <span>Real-time Stock</span>
               <SyncStockButton />
@@ -96,11 +109,13 @@ export default async function CustomerCatalogPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product, index) => (
+              {products.map((product: any, index: any) => (
                 <CustomerProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
           )}
+
+          <RequestProductCTA />
         </section>
 
         {/* Testimonials */}
@@ -114,3 +129,5 @@ export default async function CustomerCatalogPage() {
     </div>
   );
 }
+
+

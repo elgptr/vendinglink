@@ -116,7 +116,7 @@ export async function claimAvailableStockBatch(
       return null; // genuinely out of stock for the requested quantity
     }
 
-    const candidateIds = candidates.map((c) => c.id);
+    const candidateIds = candidates.map((c: any) => c.id);
 
     const result = await tx.redeemStock.updateMany({
       where: { id: { in: candidateIds }, status: "AVAILABLE" },
@@ -163,3 +163,5 @@ export async function claimAvailableStockBatch(
 
   return null;
 }
+
+

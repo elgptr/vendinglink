@@ -93,7 +93,7 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
       select: { redeemUrl: true },
     });
 
-    const existingKeys = new Set(existingStocks.map((s) => s.redeemUrl));
+    const existingKeys = new Set(existingStocks.map((s: any) => s.redeemUrl));
     const newItems = items.filter((item) => !existingKeys.has(item));
 
     if (newItems.length === 0) {
@@ -110,7 +110,7 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
     }
 
     // 4. Insert new items
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       await tx.redeemStock.createMany({
         data: newItems.map((item) => ({
           productId: product.id,
@@ -155,3 +155,4 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
     return { status: 500, message: "Internal server error" };
   }
 }
+
