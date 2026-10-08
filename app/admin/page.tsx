@@ -1,4 +1,4 @@
-import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown, Clock, CreditCard } from "lucide-react";
+import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown, Clock, CreditCard, User } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SystemHealthWidget from "@/components/admin/SystemHealthWidget";
@@ -18,7 +18,8 @@ export default async function AdminDashboardPage() {
     totalDebtAgg,
     recentTransactions,
     activeProducts,
-    allProductsForTopSellers
+    allProductsForTopSellers,
+    pendingAgents
   ] = await Promise.all([
     prisma.transaction.aggregate({
       where: { status: "PAID" },
@@ -60,6 +61,9 @@ export default async function AdminDashboardPage() {
         _count: { select: { transactions: { where: { status: "PAID" } } } }
       }
     }),
+    prisma.user.count({
+      where: { role: "AGENT", isApproved: false }
+    })
   ]);
 
   const totalRevenue = totalRevenueAgg._sum.finalAmount || 0;
@@ -86,6 +90,24 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Pending Agent Approval Alert */}
+      {pendingAgents > 0 && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <User size={18} className="text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white text-sm">Persutujuan Agen Tertunda</h3>
+              <p className="text-xs text-blue-300">Ada {pendingAgents} agen baru yang menunggu disetujui.</p>
+            </div>
+          </div>
+          <Link href="/admin/users" className="text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+            TINJAU AGEN
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white tracking-tight">Admin Dashboard</h1>
