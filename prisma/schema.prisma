@@ -52,8 +52,9 @@ model Product {
   supplierLastCheckedAt DateTime?
 
   // Relations
-  stocks       RedeemStock[]
-  transactions Transaction[]
+  stocks             RedeemStock[]
+  transactions       Transaction[]
+  applicableVouchers Voucher[]     @relation("VoucherProducts")
 
   @@map("products")
 }
@@ -93,7 +94,8 @@ model Voucher {
   createdAt      DateTime  @default(now())
 
   // Relations
-  transactions Transaction[]
+  transactions       Transaction[]
+  applicableProducts Product[]     @relation("VoucherProducts")
 
   @@map("vouchers")
 }

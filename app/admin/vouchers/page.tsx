@@ -11,6 +11,11 @@ import Spinner from "@/components/ui/Spinner";
 import toast from "@/components/ui/Toast";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
+interface Product {
+  id: string;
+  name: string;
+}
+
 interface Voucher {
   id: string;
   code: string;
@@ -20,6 +25,7 @@ interface Voucher {
   isActive: boolean;
   expiresAt: string | null;
   createdAt: string;
+  applicableProducts?: Product[];
 }
 
 export default function VouchersPage() {
@@ -34,6 +40,8 @@ export default function VouchersPage() {
   const [discountAmount, setDiscountAmount] = useState("");
   const [quota, setQuota] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   // Form Edit
   const [showEditModal, setShowEditModal] = useState(false);
@@ -50,7 +58,13 @@ export default function VouchersPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchVouchers(); }, []);
+  const fetchProducts = async () => {
+    const res = await fetch("/api/admin/products");
+    const data = await res.json();
+    setProducts(data);
+  };
+
+  useEffect(() => { fetchVouchers(); fetchProducts(); }, []);
 
   const submitCreate = async () => {
     setSubmitting(true);
@@ -63,6 +77,7 @@ export default function VouchersPage() {
         discountAmount: parseInt(discountAmount),
         quota: parseInt(quota),
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        productIds: selectedProductIds,
       }),
     });
 
@@ -71,7 +86,7 @@ export default function VouchersPage() {
       toast.success("Voucher berhasil dibuat!");
       fetchVouchers();
       setShowModal(false);
-      setCode(""); setDiscountAmount(""); setQuota(""); setExpiresAt("");
+      setCode(""); setDiscountAmount(""); setQuota(""); setExpiresAt(""); setSelectedProductIds([]);
     } else {
       toast.error(data.error || "Gagal membuat voucher");
     }
@@ -120,6 +135,7 @@ export default function VouchersPage() {
     setEditVoucher(voucher);
     setEditDiscountAmount(voucher.discountAmount.toString());
     setEditQuota(voucher.quota.toString());
+    setSelectedProductIds(voucher.applicableProducts?.map(p => p.id) || []);
     
     if (voucher.expiresAt) {
       const date = new Date(voucher.expiresAt);
@@ -146,6 +162,7 @@ export default function VouchersPage() {
         discountAmount: parseInt(editDiscountAmount),
         quota: parseInt(editQuota),
         expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+        productIds: selectedProductIds,
       }),
     });
 
@@ -349,6 +366,27 @@ export default function VouchersPage() {
             onChange={(e) => setExpiresAt(e.target.value)}
             hint="Kosongkan jika tidak ada batas waktu"
           />
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-300">Terapkan pada Produk (Opsional)</label>
+            <p className="text-xs text-slate-500 mb-2">Biarkan kosong jika voucher berlaku untuk SEMUA produk.</p>
+            <div className="max-h-40 overflow-y-auto space-y-2 p-3 bg-surface border border-surface-border rounded-xl">
+              {products.map(p => (
+                <label key={p.id} className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500/50"
+                    checked={selectedProductIds.includes(p.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedProductIds([...selectedProductIds, p.id]);
+                      else setSelectedProductIds(selectedProductIds.filter(id => id !== p.id));
+                    }}
+                  />
+                  <span className="text-sm text-slate-300">{p.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </form>
       </Modal>
 
@@ -400,6 +438,27 @@ export default function VouchersPage() {
             onChange={(e) => setEditExpiresAt(e.target.value)}
             hint="Kosongkan jika tidak ada batas waktu"
           />
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-300">Terapkan pada Produk (Opsional)</label>
+            <p className="text-xs text-slate-500 mb-2">Biarkan kosong jika voucher berlaku untuk SEMUA produk.</p>
+            <div className="max-h-40 overflow-y-auto space-y-2 p-3 bg-surface border border-surface-border rounded-xl">
+              {products.map(p => (
+                <label key={p.id} className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500/50"
+                    checked={selectedProductIds.includes(p.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedProductIds([...selectedProductIds, p.id]);
+                      else setSelectedProductIds(selectedProductIds.filter(id => id !== p.id));
+                    }}
+                  />
+                  <span className="text-sm text-slate-300">{p.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </form>
       </Modal>
     </div>

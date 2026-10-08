@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     const voucher = await prisma.voucher.findUnique({
       where: { code },
+      include: { applicableProducts: { select: { id: true } } }
     });
 
     if (!voucher) {
@@ -60,6 +61,16 @@ export async function POST(request: NextRequest) {
         { valid: false, error: "Kuota promo sudah habis" },
         { status: 200 }
       );
+    }
+
+    if (voucher.applicableProducts && voucher.applicableProducts.length > 0) {
+      const isApplicable = voucher.applicableProducts.some(p => p.id === parsed.data.productId);
+      if (!isApplicable) {
+        return NextResponse.json(
+          { valid: false, error: "Kode promo ini tidak berlaku untuk produk ini" },
+          { status: 200 }
+        );
+      }
     }
 
     return NextResponse.json({

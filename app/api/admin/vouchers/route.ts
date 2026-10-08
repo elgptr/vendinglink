@@ -14,6 +14,7 @@ const createSchema = z.object({
   quota: z.number().int().positive(),
   isActive: z.boolean().optional().default(true),
   expiresAt: z.string().datetime().optional().nullable(),
+  productIds: z.array(z.string()).optional().default([]),
 });
 
 const updateSchema = z.object({
@@ -22,6 +23,7 @@ const updateSchema = z.object({
   quota: z.number().int().positive().optional(),
   discountAmount: z.number().int().positive().optional(),
   expiresAt: z.string().datetime().optional().nullable(),
+  productIds: z.array(z.string()).optional(),
 });
 
 async function requireAdmin() {
@@ -38,6 +40,9 @@ export async function GET() {
     }
 
     const vouchers = await prisma.voucher.findMany({
+      include: {
+        applicableProducts: { select: { id: true, name: true } }
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -79,7 +84,13 @@ export async function POST(request: NextRequest) {
         quota: parsed.data.quota,
         isActive: parsed.data.isActive,
         expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
+        applicableProducts: parsed.data.productIds && parsed.data.productIds.length > 0 
+          ? { connect: parsed.data.productIds.map(id => ({ id })) } 
+          : undefined,
       },
+      include: {
+        applicableProducts: { select: { id: true, name: true } }
+      }
     });
 
     return NextResponse.json(voucher, { status: 201 });
@@ -115,12 +126,24 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    const updatePayload: any = {
+      ...updateData,
+      expiresAt: updateData.expiresAt ? new Date(updateData.expiresAt) : undefined,
+    };
+    delete updatePayload.productIds; // handled separately
+
+    if (parsed.data.productIds !== undefined) {
+      updatePayload.applicableProducts = {
+        set: parsed.data.productIds.map(id => ({ id }))
+      };
+    }
+
     const voucher = await prisma.voucher.update({
       where: { id },
-      data: {
-        ...updateData,
-        expiresAt: updateData.expiresAt ? new Date(updateData.expiresAt) : undefined,
-      },
+      data: updatePayload,
+      include: {
+        applicableProducts: { select: { id: true, name: true } }
+      }
     });
 
     return NextResponse.json(voucher);
