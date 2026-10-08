@@ -136,10 +136,15 @@ async function sendViaSaungwa(
     formData.append("to", to);
     formData.append("message", message);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 seconds timeout
+
     const response = await fetch(SAUNGWA_API_URL, {
       method: "POST",
       body: formData,
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const result = await response.json();
 
@@ -239,7 +244,7 @@ export async function sendAdminProductRequest(
   requestText: string
 ): Promise<WhatsAppSendResult> {
   const mode = getMode();
-  const adminPhone = "6282254203272"; // Team test number / Admin number
+  const adminPhone = process.env.ADMIN_PHONE || "6282254203272"; // Team test number / Admin number
 
   const message = `*NEW PRODUCT REQUEST* 📦\n\nDari WA: ${customerPhone}\n\nPesan:\n"${requestText}"\n\n_Segera hubungi customer ini untuk menindaklanjuti permintaannya!_`;
 

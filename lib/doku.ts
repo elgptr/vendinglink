@@ -1,4 +1,4 @@
-﻿import crypto from "crypto";
+import crypto from "crypto";
 
 const isProduction = process.env.DOKU_IS_PRODUCTION === "true";
 const DOKU_BASE_URL = isProduction
@@ -153,6 +153,9 @@ export async function createDokuCheckout(params: {
     secretKey,
   });
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   const response = await fetch(`${DOKU_BASE_URL}${requestTarget}`, {
     method: "POST",
     headers: {
@@ -164,7 +167,10 @@ export async function createDokuCheckout(params: {
       Digest: digest,
     },
     body: bodyString,
+    signal: controller.signal,
   });
+  
+  clearTimeout(timeoutId);
 
   const data = await response.json().catch(() => ({}));
 
