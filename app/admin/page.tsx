@@ -1,4 +1,4 @@
-import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle } from "lucide-react";
+import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SystemHealthWidget from "@/components/admin/SystemHealthWidget";
@@ -32,10 +32,33 @@ export default async function AdminDashboardPage() {
       orderBy: { createdAt: "desc" },
       include: { product: { select: { name: true } }, agent: { select: { username: true } } },
     }),
+    prisma.product.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        supplierMode: true,
+        supplierStock: true,
+        _count: {
+          select: { stocks: { where: { status: "AVAILABLE" } } }
+        }
+      }
+    }),
   ]);
 
   const totalRevenue = totalRevenueAgg._sum.finalAmount || 0;
   const todayRevenue = todayRevenueAgg._sum.finalAmount || 0;
+
+  // Process low stock products (<= 5 items left)
+  const lowStockAlerts = activeProducts
+    .map(p => {
+      const isExternal = p.supplierMode === 'REZEKI' || p.supplierMode === 'DIGITALCORE';
+      const effectiveStock = isExternal ? p.supplierStock : p._count.stocks;
+      return { ...p, effectiveStock };
+    })
+    .filter(p => p.effectiveStock <= 5)
+    .sort((a, b) => a.effectiveStock - b.effectiveStock)
+    .slice(0, 5); // Take top 5 most critical
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -169,8 +192,51 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Right Column: System Health */}
-        <div className="lg:col-span-1">
+        {/* Right Column: System Health & Alerts */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Low Stock Alerts */}
+          <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+              <AlertTriangle size={80} className="text-amber-500" />
+            </div>
+            <div className="flex items-center justify-between mb-5 relative z-10">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <AlertTriangle size={18} className="text-amber-400" />
+                Peringatan Stok
+              </h2>
+            </div>
+            
+            <div className="space-y-3 relative z-10">
+              {lowStockAlerts.length === 0 ? (
+                <div className="text-center py-6 text-emerald-400/80 text-sm bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                  <CheckCircle size={24} className="mx-auto mb-2 opacity-50" />
+                  Semua stok produk aman!
+                </div>
+              ) : (
+                lowStockAlerts.map((product) => (
+                  <div key={product.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                    <div>
+                      <p className="font-medium text-white text-sm">{product.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Mode: {product.supplierMode}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-lg font-bold ${product.effectiveStock === 0 ? 'text-red-400' : 'text-amber-400'}`}>
+                        {product.effectiveStock}
+                      </p>
+                      <p className="text-[10px] text-slate-500">Tersisa</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {lowStockAlerts.length > 0 && (
+              <Link href="/admin/inventory" className="mt-4 block w-full text-center text-xs font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 py-2 rounded-lg transition-colors">
+                Tambah Stok Sekarang
+              </Link>
+            )}
+          </div>
+
           <SystemHealthWidget />
         </div>
       </div>
