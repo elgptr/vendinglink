@@ -72,7 +72,7 @@ export default async function AgentDashboardPage() {
           </div>
           <h2 className="text-3xl font-bold text-white relative z-10">{formatRupiah(monthTotal)}</h2>
           <p className="text-xs text-brand-400 mt-2 font-medium flex items-center gap-1 relative z-10">
-            <Activity size={12} /> Terus tingkatkan penjualan!
+            <Activity size={12} /> {monthTxs.length} transaksi bulan ini
           </p>
         </div>
 

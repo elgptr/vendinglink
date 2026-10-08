@@ -13,7 +13,7 @@ export default function HeroBanner({ className }: HeroBannerProps) {
     <div
       className={cn(
         "relative overflow-hidden rounded-3xl bg-surface-card border border-surface-border",
-        "p-8 sm:p-12 lg:p-16 text-center shadow-lg",
+        "p-6 sm:p-10 lg:p-16 text-center shadow-lg",
         className
       )}
     >
@@ -28,12 +28,12 @@ export default function HeroBanner({ className }: HeroBannerProps) {
           <span>Layanan Instant Otomatis 24/7</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight text-balance animate-slide-up stagger-1">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight text-balance animate-slide-up stagger-1">
           Beli Kode Promo &amp; Voucher Digital{" "}
           <span className="gradient-text">Tanpa Ribet</span>
         </h1>
 
-        <p className="text-lg text-slate-400 text-balance animate-slide-up stagger-2">
+        <p className="text-base sm:text-lg text-slate-400 text-balance animate-slide-up stagger-2">
           Pilih produk, bayar dengan QRIS, dan dapatkan link klaim Anda dalam hitungan detik. Garansi uang kembali jika stok habis.
         </p>
 

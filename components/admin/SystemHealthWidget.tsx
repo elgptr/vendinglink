@@ -78,7 +78,7 @@ export default function SystemHealthWidget() {
       )}
 
       {health && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div className="bg-surface-hover rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Database size={16} className="text-slate-400" />

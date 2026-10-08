@@ -90,9 +90,9 @@ export default async function CustomerCatalogPage() {
 
         {/* Catalog Section */}
         <section id="catalog" className="scroll-mt-8">
-          <div className="section-header mb-8 animate-fade-in">
-            <h2 className="section-header-title text-3xl">Pilihan Produk</h2>
-            <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 animate-fade-in">
+            <h2 className="section-header-title text-2xl sm:text-3xl">Pilihan Produk</h2>
+            <div className="sm:ml-auto flex items-center gap-2 text-sm text-slate-400">
               <span className="stock-dot-available" />
               <span>Real-time Stock</span>
               <SyncStockButton />

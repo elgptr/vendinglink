@@ -17,7 +17,8 @@ export default async function AdminDashboardPage() {
     pendingOrders,
     totalDebtAgg,
     recentTransactions,
-    activeProducts
+    activeProducts,
+    allProductsForTopSellers
   ] = await Promise.all([
     prisma.transaction.aggregate({
       where: { status: "PAID" },
@@ -54,6 +55,11 @@ export default async function AdminDashboardPage() {
         }
       }
     }),
+    prisma.product.findMany({
+      include: {
+        _count: { select: { transactions: { where: { status: "PAID" } } } }
+      }
+    }),
   ]);
 
   const totalRevenue = totalRevenueAgg._sum.finalAmount || 0;
@@ -71,12 +77,7 @@ export default async function AdminDashboardPage() {
     .sort((a: any, b: any) => a.effectiveStock - b.effectiveStock)
     .slice(0, 5); // Take top 5 most critical
 
-  // Process top sellers
-  const allProductsForTopSellers = await prisma.product.findMany({
-    include: {
-      _count: { select: { transactions: { where: { status: "PAID" } } } }
-    }
-  });
+  // Process top sellers (query already fetched in parallel above)
   
   const topSellers = allProductsForTopSellers
     .sort((a: any, b: any) => b._count.transactions - a._count.transactions)

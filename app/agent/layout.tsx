@@ -14,7 +14,7 @@ export default async function AgentLayout({
   return (
     <div className="flex min-h-screen">
       <AgentSidebar username={session.user.name || "Agen"} />
-      <main className="flex-1 md:ml-64 p-4 md:p-8">{children}</main>
+      <main className="flex-1 md:ml-64 p-4 pt-16 md:p-8">{children}</main>
     </div>
   );
 }

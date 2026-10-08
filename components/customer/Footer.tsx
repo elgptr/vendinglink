@@ -29,16 +29,16 @@ export default function Footer({ className }: FooterProps) {
             <ul className="space-y-2 text-sm text-slate-400">
               <li><Link href="/customer" className="hover:text-brand-400 transition-colors">Katalog Produk</Link></li>
               <li><Link href="/customer/orders" className="hover:text-brand-400 transition-colors">Lacak Pesanan</Link></li>
-              <li><a href="#" className="hover:text-brand-400 transition-colors">Bantuan & FAQ</a></li>
+              <li><a href="mailto:admin@txsiber.com" className="hover:text-brand-400 transition-colors">Bantuan & FAQ</a></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Legal</h4>
             <ul className="space-y-2 text-sm text-slate-400">
-              <li><a href="#" className="hover:text-brand-400 transition-colors">Syarat & Ketentuan</a></li>
-              <li><a href="#" className="hover:text-brand-400 transition-colors">Kebijakan Privasi</a></li>
-              <li><a href="#" className="hover:text-brand-400 transition-colors">Kebijakan Pengembalian Dana</a></li>
+              <li><Link href="/customer" className="hover:text-brand-400 transition-colors">Syarat & Ketentuan</Link></li>
+              <li><Link href="/customer" className="hover:text-brand-400 transition-colors">Kebijakan Privasi</Link></li>
+              <li><Link href="/customer" className="hover:text-brand-400 transition-colors">Kebijakan Pengembalian Dana</Link></li>
             </ul>
           </div>
         </div>
