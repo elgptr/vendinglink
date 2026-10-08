@@ -1,4 +1,4 @@
-import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown, Clock, CreditCard, User } from "lucide-react";
+import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown, Clock, CreditCard, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SystemHealthWidget from "@/components/admin/SystemHealthWidget";
@@ -10,19 +10,22 @@ export default async function AdminDashboardPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
   const [
-    totalRevenueAgg,
+    monthlyRevenueAgg,
     todayRevenueAgg,
     totalOrders,
-    pendingOrders,
+    failedOrders,
     totalDebtAgg,
     recentTransactions,
     activeProducts,
     allProductsForTopSellers,
-    pendingAgents
+    pendingAgents,
+    supplierConfigs
   ] = await Promise.all([
     prisma.transaction.aggregate({
-      where: { status: "PAID" },
+      where: { status: "PAID", paidAt: { gte: startOfMonth } },
       _sum: { finalAmount: true },
     }),
     prisma.transaction.aggregate({
@@ -33,7 +36,7 @@ export default async function AdminDashboardPage() {
       where: { status: "PAID" },
     }),
     prisma.transaction.count({
-      where: { status: "PENDING" },
+      where: { stockStatus: "OUT_OF_STOCK", createdAt: { gte: today } },
     }),
     prisma.user.aggregate({
       where: { role: "AGENT" },
@@ -63,10 +66,13 @@ export default async function AdminDashboardPage() {
     }),
     prisma.user.count({
       where: { role: "AGENT", isApproved: false }
+    }),
+    prisma.supplierConfig.findMany({
+      where: { isEnabled: true }
     })
   ]);
 
-  const totalRevenue = totalRevenueAgg._sum.finalAmount || 0;
+  const monthlyRevenue = monthlyRevenueAgg._sum.finalAmount || 0;
   const todayRevenue = todayRevenueAgg._sum.finalAmount || 0;
   const totalAgentDebt = totalDebtAgg._sum.outstandingDebt || 0;
 
@@ -133,19 +139,19 @@ export default async function AdminDashboardPage() {
           </p>
         </div>
 
-        {/* Total Revenue */}
-        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-purple-500/50 transition-colors">
+        {/* Monthly Revenue */}
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-brand-500/50 transition-colors">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <DollarSign size={64} className="text-purple-400" />
+            <Activity size={64} className="text-brand-400" />
           </div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center">
-              <Activity size={20} className="text-purple-400" />
+            <div className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center">
+              <TrendingUp size={20} className="text-brand-400" />
             </div>
-            <p className="font-medium text-slate-300 text-sm">Total Pendapatan</p>
+            <p className="font-medium text-slate-300 text-sm">Pendapatan Bulan Ini</p>
           </div>
-          <h2 className="text-2xl lg:text-3xl font-bold text-white">{formatRupiah(totalRevenue)}</h2>
-          <p className="text-xs text-slate-500 mt-2">Sepanjang waktu</p>
+          <h2 className="text-2xl lg:text-3xl font-bold text-white">{formatRupiah(monthlyRevenue)}</h2>
+          <p className="text-xs text-slate-500 mt-2">Dihitung dari awal bulan</p>
         </div>
 
         {/* Total Orders & Pending */}
@@ -162,8 +168,8 @@ export default async function AdminDashboardPage() {
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white">{totalOrders} <span className="text-sm text-slate-400 font-normal">sukses</span></h2>
           </div>
-          <p className="text-xs text-amber-400 mt-2 font-medium flex items-center gap-1">
-            <Clock size={12} /> {pendingOrders} pesanan tertunda
+          <p className="text-xs text-orange-400 mt-2 font-medium flex items-center gap-1">
+            <AlertTriangle size={12} /> {failedOrders} gagal / kehabisan stok hari ini
           </p>
         </div>
 
@@ -182,6 +188,31 @@ export default async function AdminDashboardPage() {
           <p className="text-xs text-slate-500 mt-2">Menunggu pelunasan</p>
         </div>
       </div>
+
+      {/* Supplier Balances */}
+      {supplierConfigs.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {supplierConfigs.map(config => (
+            <div key={config.id} className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Wallet size={16} className="text-blue-400" />
+                  <span className="text-sm font-semibold text-white">Saldo {config.provider}</span>
+                </div>
+                {config.lastBalance && config.lastBalance < 100000 && (
+                  <span className="flex h-3 w-3 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-white">
+                {config.lastBalance !== null ? formatRupiah(config.lastBalance) : "Tidak diketahui"}
+              </h3>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Transactions & Quick Links */}
