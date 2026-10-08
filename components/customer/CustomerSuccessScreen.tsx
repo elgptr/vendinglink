@@ -38,6 +38,27 @@ export default function CustomerSuccessScreen({
   useEffect(() => {
     // Trigger animation after mount for a spectacular entrance
     setTimeout(() => setAnimateIn(true), 100);
+
+    // Dynamic Confetti (No npm install required)
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js";
+    script.onload = () => {
+      if ((window as any).confetti) {
+        (window as any).confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b']
+        });
+      }
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
   }, []);
 
   const handleCopy = async () => {

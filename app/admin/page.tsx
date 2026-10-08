@@ -1,4 +1,4 @@
-import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react";
+import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SystemHealthWidget from "@/components/admin/SystemHealthWidget";
@@ -59,6 +59,18 @@ export default async function AdminDashboardPage() {
     .filter(p => p.effectiveStock <= 5)
     .sort((a, b) => a.effectiveStock - b.effectiveStock)
     .slice(0, 5); // Take top 5 most critical
+
+  // Process top sellers
+  const allProductsForTopSellers = await prisma.product.findMany({
+    include: {
+      _count: { select: { transactions: { where: { status: "PAID" } } } }
+    }
+  });
+  
+  const topSellers = allProductsForTopSellers
+    .sort((a, b) => b._count.transactions - a._count.transactions)
+    .slice(0, 3);
+  const maxSales = topSellers[0]?._count.transactions || 1;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -151,6 +163,39 @@ export default async function AdminDashboardPage() {
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${tx.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400' : tx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>
                         {tx.status}
                       </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Top Sellers Widget */}
+          <div className="bg-surface-card border border-surface-border rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30">
+                <Crown size={18} className="text-amber-400" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">Produk Terlaris</h2>
+            </div>
+            
+            <div className="space-y-4">
+              {topSellers.length === 0 || topSellers[0]._count.transactions === 0 ? (
+                <div className="text-center py-6 text-slate-500 text-sm">Belum ada data penjualan.</div>
+              ) : (
+                topSellers.map((product, index) => (
+                  <div key={product.id} className="relative">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium text-white flex items-center gap-2">
+                        <span className="text-slate-500 text-xs">#{index + 1}</span> {product.name}
+                      </span>
+                      <span className="text-brand-400 font-bold">{product._count.transactions} terjual</span>
+                    </div>
+                    <div className="w-full bg-surface-hover rounded-full h-2 overflow-hidden border border-surface-border/50">
+                      <div 
+                        className="bg-gradient-to-r from-brand-600 to-brand-400 h-2 rounded-full transition-all duration-1000 ease-out" 
+                        style={{ width: `${Math.max(5, (product._count.transactions / maxSales) * 100)}%` }}
+                      ></div>
                     </div>
                   </div>
                 ))
