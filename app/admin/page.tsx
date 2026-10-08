@@ -1,7 +1,6 @@
 import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown, Clock, CreditCard, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import SystemHealthWidget from "@/components/admin/SystemHealthWidget";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
 // Make it a Server Component
@@ -123,7 +122,8 @@ export default async function AdminDashboardPage() {
       {/* Business Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {/* Revenue Today */}
-        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-brand-500/50 transition-colors">
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-brand-500/50 hover:shadow-glow-lg transition-all duration-300">
+          <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingUp size={64} className="text-brand-400" />
           </div>
@@ -140,7 +140,8 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Monthly Revenue */}
-        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-brand-500/50 transition-colors">
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-brand-500/50 hover:shadow-glow-lg transition-all duration-300">
+          <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Activity size={64} className="text-brand-400" />
           </div>
@@ -155,7 +156,8 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Total Orders & Pending */}
-        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-blue-500/50 transition-colors flex flex-col justify-between">
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-blue-500/50 hover:shadow-glow-blue transition-all duration-300 flex flex-col justify-between">
+          <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <ShoppingCart size={64} className="text-blue-400" />
           </div>
@@ -168,13 +170,14 @@ export default async function AdminDashboardPage() {
             </div>
             <h2 className="text-2xl lg:text-3xl font-bold text-white">{totalOrders} <span className="text-sm text-slate-400 font-normal">sukses</span></h2>
           </div>
-          <p className="text-xs text-orange-400 mt-2 font-medium flex items-center gap-1">
+          <p className="text-xs text-amber-400 mt-2 font-medium flex items-center gap-1">
             <AlertTriangle size={12} /> {failedOrders} gagal / kehabisan stok hari ini
           </p>
         </div>
 
         {/* Total Agent Debt */}
-        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-rose-500/50 transition-colors">
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-rose-500/50 hover:shadow-glow-blue transition-all duration-300">
+          <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <CreditCard size={64} className="text-rose-400" />
           </div>
@@ -193,8 +196,9 @@ export default async function AdminDashboardPage() {
       {supplierConfigs.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {supplierConfigs.map(config => (
-            <div key={config.id} className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex flex-col">
-              <div className="flex items-center justify-between mb-2">
+            <div key={config.id} className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 flex flex-col relative overflow-hidden group hover:border-blue-500/50 hover:shadow-glow-blue transition-all duration-300">
+              <div className="absolute top-0 right-0 -mr-4 -mt-4 w-16 h-16 bg-blue-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="flex items-center justify-between mb-2 relative z-10">
                 <div className="flex items-center gap-2">
                   <Wallet size={16} className="text-blue-400" />
                   <span className="text-sm font-semibold text-white">Saldo {config.provider}</span>
@@ -206,7 +210,7 @@ export default async function AdminDashboardPage() {
                   </span>
                 )}
               </div>
-              <h3 className="text-xl font-bold text-white">
+              <h3 className="text-xl font-bold text-white relative z-10">
                 {config.lastBalance !== null ? formatRupiah(config.lastBalance) : "Tidak diketahui"}
               </h3>
             </div>
@@ -218,7 +222,7 @@ export default async function AdminDashboardPage() {
         {/* Left Column: Transactions & Quick Links */}
         <div className="lg:col-span-2 space-y-6">
           {/* Recent Transactions */}
-          <div className="bg-surface-card border border-surface-border rounded-2xl p-6">
+          <div className="bg-surface-card border border-surface-border rounded-2xl p-6 hover:shadow-glow-blue transition-shadow duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Clock size={18} className="text-brand-400" />
@@ -260,7 +264,7 @@ export default async function AdminDashboardPage() {
           </div>
 
           {/* Top Sellers Widget */}
-          <div className="bg-surface-card border border-surface-border rounded-2xl p-6">
+          <div className="bg-surface-card border border-surface-border rounded-2xl p-6 hover:shadow-glow-lg transition-shadow duration-300">
             <div className="flex items-center gap-2 mb-6">
               <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30">
                 <Crown size={18} className="text-amber-400" />
@@ -294,11 +298,11 @@ export default async function AdminDashboardPage() {
 
           {/* Quick Action Links */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link href="/admin/inventory" className="bg-surface-card border border-surface-border rounded-2xl p-5 hover:border-brand-500/50 transition-colors group">
+            <Link href="/admin/inventory" className="bg-surface-card border border-surface-border rounded-2xl p-5 hover:border-brand-500/50 hover:shadow-glow-lg transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:bg-brand-500/20 group-hover:border-brand-500/40 transition-colors">
-                    <Package size={20} className="text-slate-300 group-hover:text-brand-400 transition-colors" />
+                  <div className="w-10 h-10 rounded-xl bg-surface-hover border border-surface-border flex items-center justify-center group-hover:bg-brand-500/20 group-hover:border-brand-500/40 transition-colors">
+                    <Package size={20} className="text-slate-400 group-hover:text-brand-400 transition-colors" />
                   </div>
                   <div>
                     <p className="font-medium text-white group-hover:text-brand-400 transition-colors">Kelola Inventori</p>
@@ -309,27 +313,28 @@ export default async function AdminDashboardPage() {
               </div>
             </Link>
 
-            <Link href="/admin/settings" className="bg-surface-card border border-surface-border rounded-2xl p-5 hover:border-brand-500/50 transition-colors group">
+            <Link href="/admin/settings" className="bg-surface-card border border-surface-border rounded-2xl p-5 hover:border-blue-500/50 hover:shadow-glow-blue transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:bg-brand-500/20 group-hover:border-brand-500/40 transition-colors">
-                    <AlertCircle size={20} className="text-slate-300 group-hover:text-brand-400 transition-colors" />
+                  <div className="w-10 h-10 rounded-xl bg-surface-hover border border-surface-border flex items-center justify-center group-hover:bg-blue-500/20 group-hover:border-blue-500/40 transition-colors">
+                    <AlertCircle size={20} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
                   </div>
                   <div>
-                    <p className="font-medium text-white group-hover:text-brand-400 transition-colors">Pengaturan Sistem</p>
+                    <p className="font-medium text-white group-hover:text-blue-400 transition-colors">Pengaturan Sistem</p>
                     <p className="text-xs text-slate-400">Konfigurasi AI & Webhook</p>
                   </div>
                 </div>
-                <ArrowRight size={16} className="text-slate-600 group-hover:text-brand-400 transition-colors" />
+                <ArrowRight size={16} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
               </div>
             </Link>
           </div>
         </div>
 
-        {/* Right Column: System Health & Alerts */}
+        {/* Right Column: Alerts & Status */}
         <div className="lg:col-span-1 space-y-6">
           {/* Low Stock Alerts */}
-          <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden">
+          <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden hover:shadow-glow-lg transition-shadow duration-300">
+            <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <AlertTriangle size={80} className="text-amber-500" />
             </div>
@@ -371,7 +376,7 @@ export default async function AdminDashboardPage() {
             )}
           </div>
 
-          <SystemHealthWidget />
+          </div>
         </div>
       </div>
     </div>
