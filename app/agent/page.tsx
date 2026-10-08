@@ -86,8 +86,17 @@ export default async function AgentDashboardPage() {
             </div>
             <p className="font-medium text-slate-300">Tagihan Paylater / Hutang</p>
           </div>
-          <h2 className="text-3xl font-bold text-white relative z-10">{formatRupiah(outstandingDebt)}</h2>
-          <p className="text-xs text-slate-500 mt-2 relative z-10">Segera lunasi tagihan untuk menjaga limit</p>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 relative z-10">
+            <div>
+              <h2 className="text-3xl font-bold text-white">{formatRupiah(outstandingDebt)}</h2>
+              <p className="text-xs text-slate-500 mt-2">Segera lunasi tagihan untuk menjaga limit</p>
+            </div>
+            {outstandingDebt > 0 && (
+              <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer" className="text-xs font-bold bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-center">
+                LUNASI SEKARANG
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

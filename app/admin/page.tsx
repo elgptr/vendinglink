@@ -166,14 +166,19 @@ export default async function AdminDashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Recent Transactions */}
           <div className="bg-surface-card border border-surface-border rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Clock size={18} className="text-brand-400" />
                 Transaksi Terakhir
               </h2>
-              <Link href="/admin/reports" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors">
-                Lihat Semua <ArrowRight size={12} />
-              </Link>
+              <div className="flex items-center gap-3">
+                <a href="/api/admin/export-csv" className="text-xs font-medium bg-surface-hover border border-surface-border hover:bg-surface-border text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
+                  Export CSV
+                </a>
+                <Link href="/admin/reports" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors">
+                  Lihat Semua <ArrowRight size={12} />
+                </Link>
+              </div>
             </div>
             
             <div className="space-y-4">
