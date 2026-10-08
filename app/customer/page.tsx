@@ -33,28 +33,9 @@ async function getProducts() {
       orderBy: { price: "desc" },
     });
 
-    const needsInitialSync = products.some(
-      (p: any) =>
-        (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
-        p.supplierProductId &&
-        (!p.supplierLastCheckedAt || Date.now() - new Date(p.supplierLastCheckedAt).getTime() > 60 * 1000)
-    );
-
-    if (needsInitialSync) {
-      await syncSupplierStocks().catch(() => null);
-      products = await prisma.product.findMany({
-        where: { isActive: true },
-        include: {
-          _count: {
-            select: {
-              stocks: { where: { status: "AVAILABLE" } },
-            },
-          },
-        },
-        orderBy: { price: "desc" },
-      });
-    }
-
+    // Render products instantly from database (0ms latency).
+    // Note: Stock syncing is handled asynchronously by webhooks, crons, 
+    // or manually via the SyncStockButton to prevent blocking page loads.
     return products.map((p: any) => ({
       id: p.id,
       name: p.name,
