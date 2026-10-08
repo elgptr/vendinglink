@@ -9,6 +9,7 @@ import HeroBanner from "@/components/customer/HeroBanner";
 import TrustStrip from "@/components/customer/TrustStrip";
 import Testimonials from "@/components/customer/Testimonials";
 import Footer from "@/components/customer/Footer";
+import RequestProductCTA from "@/components/customer/RequestProductCTA";
 
 // Stock count changes every time a purchase happens — never prerender this
 // page statically at build time, always fetch fresh data per request.
@@ -114,22 +115,7 @@ export default async function CustomerCatalogPage() {
             </div>
           )}
 
-          {/* Request Product CTA */}
-          <div className="mt-8 bg-brand-500/10 border border-brand-500/20 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 animate-slide-up hover:border-brand-500/40 transition-colors">
-            <div>
-              <h3 className="text-xl font-bold text-white mb-2">Produk yang Anda cari habis atau tidak ada?</h3>
-              <p className="text-slate-400 text-sm">Jangan ragu, hubungi admin kami untuk memesan produk spesifik yang Anda butuhkan secara langsung.</p>
-            </div>
-            <a 
-              href="https://wa.me/6282254203272?text=Halo%20Admin,%20saya%20ingin%20request%20produk%20di%20VendingLink%20yang%20saat%20ini%20habis/tidak%20ada%20di%20katalog."
-              target="_blank"
-              rel="noreferrer"
-              className="flex-shrink-0 bg-brand-500 hover:bg-brand-400 text-black font-bold py-3 px-6 rounded-xl transition-all hover:scale-105 hover:shadow-glow shadow-brand-500/50 flex items-center gap-2"
-            >
-              <Package size={18} />
-              Request Produk via WA
-            </a>
-          </div>
+          <RequestProductCTA />
         </section>
 
         {/* Testimonials */}

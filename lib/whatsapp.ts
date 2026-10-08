@@ -234,6 +234,41 @@ export async function sendPaymentNotification(
   return { sent: false, error: result.error, mode: "live" };
 }
 
+export async function sendAdminProductRequest(
+  customerPhone: string,
+  requestText: string
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const adminPhone = "6282254203272"; // Team test number / Admin number
+
+  const message = `*NEW PRODUCT REQUEST* 📦\n\nDari WA: ${customerPhone}\n\nPesan:\n"${requestText}"\n\n_Segera hubungi customer ini untuk menindaklanjuti permintaannya!_`;
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): would send admin product request", {
+      to: adminPhone,
+      messagePreview: message.substring(0, 100) + "...",
+    });
+    return { sent: true, mode: "mock" };
+  }
+
+  log.info("WhatsApp: sending admin product request", {
+    to: adminPhone,
+    customerPhone
+  });
+
+  const result = await sendViaSaungwa(adminPhone, message);
+
+  if (result.success) {
+    return { sent: true, messageId: result.messageId, mode: "live" };
+  }
+
+  log.error("WhatsApp: admin product request failed", {
+    to: adminPhone,
+    error: result.error,
+  });
+  return { sent: false, error: result.error, mode: "live" };
+}
+
 // ─── WA Selling Channel Message Builders & Senders ──────────────────────────
 
 export function buildCatalogAndTemplateMessage(products: { id: string; name: string; price: number }[]): string {
