@@ -34,7 +34,7 @@ async function getProducts() {
     });
 
     const needsInitialSync = products.some(
-      (p) =>
+      (p: any) =>
         (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
         p.supplierProductId &&
         (!p.supplierLastCheckedAt || Date.now() - new Date(p.supplierLastCheckedAt).getTime() > 60 * 1000)
@@ -55,7 +55,7 @@ async function getProducts() {
       });
     }
 
-    return products.map((p) => ({
+    return products.map((p: any) => ({
       id: p.id,
       name: p.name,
       price: p.price,
@@ -96,7 +96,7 @@ export default async function CustomerCatalogPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product, index) => (
+              {products.map((product: any, index: any) => (
                 <CustomerProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
@@ -114,3 +114,5 @@ export default async function CustomerCatalogPage() {
     </div>
   );
 }
+
+
