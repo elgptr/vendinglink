@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Activity, Clock, ShoppingBag, DollarSign, ArrowRight, History, CreditCard } from "lucide-react";
+import { Activity, Clock, ShoppingBag, DollarSign, ArrowRight, History, CreditCard, AlertTriangle, Star } from "lucide-react";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard Agen" };
@@ -17,7 +17,7 @@ export default async function AgentDashboardPage() {
   const today = new Date();
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const [monthTxs, recentTxs] = await Promise.all([
+  const [monthTxs, recentTxs, pendingOrdersCount, topProducts] = await Promise.all([
     prisma.transaction.findMany({
       where: { agentId, createdAt: { gte: startOfMonth }, status: "PAID" },
     }),
@@ -26,8 +26,26 @@ export default async function AgentDashboardPage() {
       take: 5,
       orderBy: { createdAt: "desc" },
       include: { product: true }
+    }),
+    prisma.transaction.count({
+      where: { agentId, status: "PENDING" },
+    }),
+    prisma.transaction.groupBy({
+      by: ['productId'],
+      where: { agentId, status: "PAID" },
+      _count: { productId: true },
+      orderBy: { _count: { productId: 'desc' } },
+      take: 1
     })
   ]);
+
+  let recommendedProduct = null;
+  if (topProducts.length > 0) {
+    recommendedProduct = await prisma.product.findUnique({
+      where: { id: topProducts[0].productId },
+      select: { id: true, name: true, price: true }
+    });
+  }
 
   const monthTotal = monthTxs.reduce((sum, tx: any) => sum + tx.finalAmount, 0);
   const outstandingDebt = user?.outstandingDebt || 0;
@@ -115,15 +133,44 @@ export default async function AgentDashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions & Recommendations */}
         <div className="lg:col-span-1 space-y-4">
-          <Link href="/agent/catalog" className="bg-brand-500/10 border border-brand-500/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-brand-500/20 transition-colors group h-32">
-            <ShoppingBag size={32} className="text-brand-400 mb-3 group-hover:scale-110 transition-transform" />
-            <p className="font-bold text-white">Beli Produk Baru</p>
+          {pendingOrdersCount > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 relative overflow-hidden group">
+              <div className="flex gap-3 mb-2">
+                <AlertTriangle size={20} className="text-amber-400 shrink-0" />
+                <div>
+                  <h3 className="font-bold text-white">Menunggu Pembayaran</h3>
+                  <p className="text-xs text-amber-400 mt-1">Anda memiliki {pendingOrdersCount} pesanan belum dibayar.</p>
+                </div>
+              </div>
+              <Link href="/agent/history" className="text-xs font-bold text-amber-400 hover:text-amber-300 mt-2 inline-block transition-colors">
+                CEK SEKARANG &rarr;
+              </Link>
+            </div>
+          )}
+
+          {recommendedProduct && (
+            <div className="bg-surface-card border border-surface-border rounded-2xl p-5 hover:border-brand-500/50 transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <Star size={16} className="text-brand-400" />
+                <h3 className="text-sm font-semibold text-white">Sering Dibeli</h3>
+              </div>
+              <p className="font-medium text-white text-sm line-clamp-1">{recommendedProduct.name}</p>
+              <p className="text-xs text-slate-400 mt-1">{formatRupiah(recommendedProduct.price)}</p>
+              <Link href={`/agent/catalog`} className="mt-3 block w-full text-center text-xs font-bold bg-brand-500/10 text-brand-400 hover:bg-brand-500/20 py-2 rounded-lg transition-colors">
+                BELI LAGI
+              </Link>
+            </div>
+          )}
+
+          <Link href="/agent/catalog" className="bg-brand-500/10 border border-brand-500/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-brand-500/20 transition-colors group h-28">
+            <ShoppingBag size={28} className="text-brand-400 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="font-bold text-white text-sm">Beli Produk Baru</p>
           </Link>
-          <Link href="/agent/history" className="bg-surface-card border border-surface-border rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-slate-500/50 transition-colors group h-32">
-            <History size={32} className="text-slate-400 mb-3 group-hover:text-white transition-colors" />
-            <p className="font-bold text-white">Cek Riwayat Belanja</p>
+          <Link href="/agent/history" className="bg-surface-card border border-surface-border rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-slate-500/50 transition-colors group h-28">
+            <History size={28} className="text-slate-400 mb-2 group-hover:text-white transition-colors" />
+            <p className="font-bold text-white text-sm">Cek Riwayat Belanja</p>
           </Link>
         </div>
       </div>

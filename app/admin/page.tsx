@@ -1,4 +1,4 @@
-import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown, Clock } from "lucide-react";
+import { Activity, Package, ArrowRight, DollarSign, ShoppingCart, TrendingUp, AlertCircle, AlertTriangle, CheckCircle, Crown, Clock, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SystemHealthWidget from "@/components/admin/SystemHealthWidget";
@@ -14,6 +14,8 @@ export default async function AdminDashboardPage() {
     totalRevenueAgg,
     todayRevenueAgg,
     totalOrders,
+    pendingOrders,
+    totalDebtAgg,
     recentTransactions,
     activeProducts
   ] = await Promise.all([
@@ -27,6 +29,13 @@ export default async function AdminDashboardPage() {
     }),
     prisma.transaction.count({
       where: { status: "PAID" },
+    }),
+    prisma.transaction.count({
+      where: { status: "PENDING" },
+    }),
+    prisma.user.aggregate({
+      where: { role: "AGENT" },
+      _sum: { outstandingDebt: true }
     }),
     prisma.transaction.findMany({
       take: 5,
@@ -49,6 +58,7 @@ export default async function AdminDashboardPage() {
 
   const totalRevenue = totalRevenueAgg._sum.finalAmount || 0;
   const todayRevenue = todayRevenueAgg._sum.finalAmount || 0;
+  const totalAgentDebt = totalDebtAgg._sum.outstandingDebt || 0;
 
   // Process low stock products (<= 5 items left)
   const lowStockAlerts = activeProducts
@@ -82,7 +92,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Business Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {/* Revenue Today */}
         <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-brand-500/50 transition-colors">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -92,9 +102,9 @@ export default async function AdminDashboardPage() {
             <div className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center">
               <DollarSign size={20} className="text-brand-400" />
             </div>
-            <p className="font-medium text-slate-300">Pendapatan Hari Ini</p>
+            <p className="font-medium text-slate-300 text-sm">Pendapatan Hari Ini</p>
           </div>
-          <h2 className="text-3xl font-bold text-white">{formatRupiah(todayRevenue)}</h2>
+          <h2 className="text-2xl lg:text-3xl font-bold text-white">{formatRupiah(todayRevenue)}</h2>
           <p className="text-xs text-brand-400 mt-2 font-medium flex items-center gap-1">
             <Activity size={12} /> Real-time
           </p>
@@ -109,25 +119,44 @@ export default async function AdminDashboardPage() {
             <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center">
               <Activity size={20} className="text-purple-400" />
             </div>
-            <p className="font-medium text-slate-300">Total Pendapatan</p>
+            <p className="font-medium text-slate-300 text-sm">Total Pendapatan</p>
           </div>
-          <h2 className="text-3xl font-bold text-white">{formatRupiah(totalRevenue)}</h2>
-          <p className="text-xs text-slate-500 mt-2">Sepanjang waktu (All time)</p>
+          <h2 className="text-2xl lg:text-3xl font-bold text-white">{formatRupiah(totalRevenue)}</h2>
+          <p className="text-xs text-slate-500 mt-2">Sepanjang waktu</p>
         </div>
 
-        {/* Total Orders */}
-        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-blue-500/50 transition-colors">
+        {/* Total Orders & Pending */}
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-blue-500/50 transition-colors flex flex-col justify-between">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <ShoppingCart size={64} className="text-blue-400" />
           </div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">
-              <ShoppingCart size={20} className="text-blue-400" />
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">
+                <ShoppingCart size={20} className="text-blue-400" />
+              </div>
+              <p className="font-medium text-slate-300 text-sm">Pesanan Sukses</p>
             </div>
-            <p className="font-medium text-slate-300">Total Pesanan Sukses</p>
+            <h2 className="text-2xl lg:text-3xl font-bold text-white">{totalOrders} <span className="text-sm text-slate-400 font-normal">sukses</span></h2>
           </div>
-          <h2 className="text-3xl font-bold text-white">{totalOrders} <span className="text-lg text-slate-400 font-normal">pesanan</span></h2>
-          <p className="text-xs text-slate-500 mt-2">Status: PAID</p>
+          <p className="text-xs text-amber-400 mt-2 font-medium flex items-center gap-1">
+            <Clock size={12} /> {pendingOrders} pesanan tertunda
+          </p>
+        </div>
+
+        {/* Total Agent Debt */}
+        <div className="bg-surface-card border border-surface-border rounded-2xl p-6 relative overflow-hidden group hover:border-red-500/50 transition-colors">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <CreditCard size={64} className="text-red-400" />
+          </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+              <AlertCircle size={20} className="text-red-400" />
+            </div>
+            <p className="font-medium text-slate-300 text-sm">Total Piutang Agen</p>
+          </div>
+          <h2 className="text-2xl lg:text-3xl font-bold text-white">{formatRupiah(totalAgentDebt)}</h2>
+          <p className="text-xs text-slate-500 mt-2">Menunggu pelunasan</p>
         </div>
       </div>
 
