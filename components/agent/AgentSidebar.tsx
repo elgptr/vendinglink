@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { ShoppingBag, LogOut, Zap, User, Menu, X, MessageCircle } from "lucide-react";
+import { ShoppingBag, LogOut, Zap, User, Menu, X, MessageCircle, History, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -13,9 +13,19 @@ interface AgentSidebarProps {
 
 const navItems = [
   {
+    href: "/agent",
+    icon: LayoutDashboard,
+    label: "Dashboard",
+  },
+  {
     href: "/agent/catalog",
     icon: ShoppingBag,
     label: "Katalog Produk",
+  },
+  {
+    href: "/agent/history",
+    icon: History,
+    label: "Riwayat Transaksi",
   },
   {
     href: "/agent/chat",

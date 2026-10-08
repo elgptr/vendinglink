@@ -84,6 +84,9 @@ export async function createKaseraQrisPayment(
     amount: params.amount,
   });
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   const response = await fetch(`${KASERA_BASE_URL}/transactions`, {
     method: "POST",
     headers: {
@@ -92,7 +95,10 @@ export async function createKaseraQrisPayment(
       "Idempotency-Key": params.orderId,
     },
     body: JSON.stringify(payload),
+    signal: controller.signal,
   });
+  
+  clearTimeout(timeoutId);
 
   const data = await response.json().catch(() => ({}));
 
@@ -135,12 +141,18 @@ export async function getKaseraPaymentStatus(
     );
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   const response = await fetch(`${KASERA_BASE_URL}/transactions/${paymentId}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
+    signal: controller.signal,
   });
+  
+  clearTimeout(timeoutId);
 
   const data = await response.json().catch(() => ({}));
 

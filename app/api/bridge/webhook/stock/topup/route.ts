@@ -7,6 +7,14 @@ import { handleStockTopup } from "@/lib/bridge/topup";
 
 export const dynamic = "force-dynamic";
 
+export async function PUT(request: NextRequest) {
+  return POST(request);
+}
+
+export async function PATCH(request: NextRequest) {
+  return POST(request);
+}
+
 export async function POST(request: NextRequest) {
   if (!isBridgeIpAllowed(request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

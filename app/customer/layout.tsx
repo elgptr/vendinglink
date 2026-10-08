@@ -25,10 +25,11 @@ export default function CustomerLayout({
           <Link
             href="/login"
             id="agent-login-link"
-            className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+            className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors px-3 py-2 rounded-xl hover:bg-surface-hover border border-transparent hover:border-surface-border"
           >
             <LogIn size={16} />
             <span className="hidden sm:inline">Masuk sebagai Agen</span>
+            <span className="sm:hidden">Login</span>
           </Link>
         </div>
       </header>

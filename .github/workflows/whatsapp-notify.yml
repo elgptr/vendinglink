@@ -1,0 +1,83 @@
+name: WhatsApp Notification
+
+on:
+  push:
+    branches:
+      - main
+  deployment_status:
+
+jobs:
+  notify:
+    name: Send WA Notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify via SaungWA
+        env:
+          APPKEY: ${{ secrets.SAUNGWA_APPKEY }}
+          AUTHKEY: ${{ secrets.SAUNGWA_AUTHKEY }}
+          PHONE: ${{ secrets.ADMIN_PHONE }}
+        run: |
+          if [ -z "$APPKEY" ] || [ -z "$AUTHKEY" ] || [ -z "$PHONE" ]; then
+            echo "Secrets SAUNGWA_APPKEY, SAUNGWA_AUTHKEY, or ADMIN_PHONE not set. Skipping."
+            exit 0
+          fi
+
+          MESSAGE=""
+          
+          if [ "${{ github.event_name }}" = "push" ]; then
+            COMMIT_MSG="${{ github.event.head_commit.message }}"
+            # Ambil baris pertama dari commit message untuk menghindari pesan yang terlalu panjang
+            SHORT_MSG=$(echo "$COMMIT_MSG" | head -n 1)
+            
+            MESSAGE=$(cat <<EOF
+*GitHub Push Dideteksi* 🚀
+
+*Repo:* ${{ github.repository }}
+*Pusher:* ${{ github.actor }}
+*Commit:* $SHORT_MSG
+
+Proses deploy ke Vercel sedang berjalan... ⏳
+EOF
+            )
+          elif [ "${{ github.event_name }}" = "deployment_status" ]; then
+            STATE="${{ github.event.deployment_status.state }}"
+            URL="${{ github.event.deployment_status.target_url }}"
+            ENV="${{ github.event.deployment.environment }}"
+            
+            if [ "$STATE" = "success" ]; then
+              MESSAGE=$(cat <<EOF
+*Deploy Berhasil!* ✅
+
+*Repo:* ${{ github.repository }}
+*Environment:* $ENV
+*URL:* $URL
+
+Pembaruan sudah live! 🎉
+EOF
+              )
+            elif [ "$STATE" = "failure" ]; then
+              MESSAGE=$(cat <<EOF
+*Deploy GAGAL* ❌
+
+*Repo:* ${{ github.repository }}
+*Environment:* $ENV
+
+Silakan cek log error di Vercel atau GitHub Actions! ⚠️
+EOF
+              )
+            else
+              # Ignore pending, in_progress, etc.
+              echo "Deployment status is $STATE, not sending message."
+              exit 0
+            fi
+          fi
+
+          if [ -n "$MESSAGE" ]; then
+            echo "Sending message to $PHONE..."
+            curl -s -X POST https://app.saungwa.com/api/create-message \
+              -F "appkey=$APPKEY" \
+              -F "authkey=$AUTHKEY" \
+              -F "to=$PHONE" \
+              -F "message=$MESSAGE"
+            echo -e "\nNotification sent!"
+          fi

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CheckCircle, Copy, Check, ShoppingBag, ExternalLink, ImageIcon, AlertTriangle } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 import toast from "@/components/ui/Toast";
@@ -37,6 +38,27 @@ export default function CustomerSuccessScreen({
   useEffect(() => {
     // Trigger animation after mount for a spectacular entrance
     setTimeout(() => setAnimateIn(true), 100);
+
+    // Dynamic Confetti (No npm install required)
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js";
+    script.onload = () => {
+      if ((window as any).confetti) {
+        (window as any).confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b']
+        });
+      }
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
   }, []);
 
   const handleCopy = async () => {
@@ -144,6 +166,15 @@ export default function CustomerSuccessScreen({
                 </Button>
               </a>
             </div>
+
+            {!isKode && (
+              <div className="mt-6 flex flex-col items-center justify-center p-4 bg-surface rounded-xl border border-surface-border">
+                <p className="text-xs text-slate-400 mb-3 text-center">Buka di Desktop? Scan QR ini pakai HP Anda untuk langsung membuka link</p>
+                <div className="p-2 bg-white rounded-lg">
+                  <QRCodeCanvas value={redeemUrl} size={140} level="M" includeMargin={false} />
+                </div>
+              </div>
+            )}
 
             {(guideText || guideImageUrl) && (
               <div className="mt-5 pt-5 border-t border-surface-border">

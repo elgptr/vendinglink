@@ -25,7 +25,7 @@ const testimonials: Testimonial[] = [
   },
   {
     id: "t3",
-    name: "Mr. Isan",
+    name: "Mr. Isyak",
     text: "Murah banget buat langganan $500 token Claude disini, gw bisa bangun aplikasi dengan cepat dan menyelesaikan use case yang gw perlukan.",
     rating: 5,
   },
