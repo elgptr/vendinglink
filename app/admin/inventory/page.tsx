@@ -363,6 +363,7 @@ export default function InventoryPage() {
             variant="secondary"
             size="sm"
             disabled={syncingSupplier}
+            className="hover:border-brand-500/50 hover:shadow-glow transition-all"
             icon={<RefreshCw size={16} className={syncingSupplier ? "animate-spin" : ""} />}
             onClick={handleSyncSupplier}
           >
@@ -372,6 +373,7 @@ export default function InventoryPage() {
             id="add-product-btn"
             variant="secondary"
             size="sm"
+            className="hover:border-brand-500/50 hover:shadow-glow transition-all"
             icon={<Plus size={16} />}
             onClick={() => setShowAddProductModal(true)}
           >
@@ -380,6 +382,7 @@ export default function InventoryPage() {
           <Button
             id="bulk-upload-btn"
             size="sm"
+            className="shadow-glow shadow-brand-500/50 hover:scale-105 transition-all"
             icon={<Upload size={16} />}
             onClick={() => setShowUploadModal(true)}
           >
@@ -524,37 +527,37 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <Card className="overflow-hidden">
+        <Card noPadding className="overflow-hidden border border-surface-border bg-surface-card/50 backdrop-blur-md rounded-2xl shadow-xl">
           {loadingStocks ? (
-            <div className="py-10"><Spinner label="Memuat stok..." /></div>
+            <div className="py-12"><Spinner label="Memuat log stok..." /></div>
           ) : stocks.length === 0 ? (
             <div className="py-12 text-center text-slate-500">
-              <Package size={40} className="mx-auto mb-3 opacity-40" />
-              <p>Belum ada stok link</p>
+              <Package size={40} className="mx-auto mb-3 opacity-40 text-slate-600" />
+              <p>Belum ada log stok link</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs uppercase bg-surface-border/30 text-slate-400 border-b border-surface-border">
                   <tr>
-                    <th>Produk</th>
-                    <th>Link (Masked)</th>
-                    <th>Status</th>
-                    <th>Agen</th>
-                    <th>Pembeli</th>
-                    <th>Terjual Pada</th>
-                    <th>Aksi</th>
+                    <th className="px-6 py-4 font-semibold tracking-wider">Produk</th>
+                    <th className="px-6 py-4 font-semibold tracking-wider">Link (Masked)</th>
+                    <th className="px-6 py-4 font-semibold tracking-wider">Status</th>
+                    <th className="px-6 py-4 font-semibold tracking-wider">Agen</th>
+                    <th className="px-6 py-4 font-semibold tracking-wider">Pembeli</th>
+                    <th className="px-6 py-4 font-semibold tracking-wider">Terjual Pada</th>
+                    <th className="px-6 py-4 font-semibold tracking-wider text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-surface-border/50">
                   {stocks.map((stock) => (
-                    <tr key={stock.id}>
-                      <td className="font-medium text-slate-200">{stock.productName}</td>
-                      <td>
-                        <div className="flex items-center gap-2 max-w-[320px]">
+                    <tr key={stock.id} className="hover:bg-surface-border/20 transition-colors group">
+                      <td className="px-6 py-4 font-medium text-slate-200 group-hover:text-brand-300 transition-colors">{stock.productName}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 max-w-[250px] xl:max-w-[320px]">
                           <span
                             onClick={() => toggleRevealStock(stock)}
-                            className="font-mono text-xs text-slate-300 hover:text-brand-300 cursor-pointer truncate transition-colors"
+                            className="font-mono text-xs text-slate-400 bg-surface px-2 py-1 rounded border border-surface-border hover:border-brand-500/50 hover:text-brand-300 cursor-pointer truncate transition-all shadow-inner"
                             title={revealedStocks[stock.id] ? "Klik untuk menyembunyikan link" : "Klik untuk melihat link full"}
                           >
                             {revealingId === stock.id ? "Memuat..." : (revealedStocks[stock.id] || stock.redeemUrl)}
@@ -562,7 +565,7 @@ export default function InventoryPage() {
                           <button
                             type="button"
                             onClick={() => toggleRevealStock(stock)}
-                            className="text-slate-400 hover:text-brand-300 p-1 rounded hover:bg-surface-border/40 transition-colors flex-shrink-0"
+                            className="text-slate-500 hover:text-brand-400 p-1.5 rounded-md hover:bg-brand-500/10 transition-colors flex-shrink-0"
                             title={revealedStocks[stock.id] ? "Sembunyikan link" : "Lihat link full"}
                           >
                             {revealedStocks[stock.id] ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -571,7 +574,7 @@ export default function InventoryPage() {
                             <button
                               type="button"
                               onClick={() => copyToClipboard(revealedStocks[stock.id], stock.id)}
-                              className="text-slate-400 hover:text-brand-400 p-1 rounded hover:bg-surface-border/40 transition-colors flex-shrink-0"
+                              className="text-slate-500 hover:text-brand-400 p-1.5 rounded-md hover:bg-brand-500/10 transition-colors flex-shrink-0"
                               title="Salin link"
                             >
                               {copiedId === stock.id ? <Check size={14} className="text-brand-400" /> : <Copy size={14} />}
@@ -579,20 +582,20 @@ export default function InventoryPage() {
                           )}
                         </div>
                       </td>
-                      <td>
-                        <Badge variant={stock.status === "AVAILABLE" ? "success" : "neutral"}>
+                      <td className="px-6 py-4">
+                        <Badge variant={stock.status === "AVAILABLE" ? "success" : "neutral"} className="shadow-sm">
                           {stock.status === "AVAILABLE" ? "Tersedia" : "Terjual"}
                         </Badge>
                       </td>
-                      <td className="text-slate-300">{stock.claimedByAgent || "—"}</td>
-                      <td className="text-slate-300">{stock.customerName || "—"}</td>
-                      <td className="text-slate-400 text-xs">
+                      <td className="px-6 py-4 text-slate-300">{stock.claimedByAgent || "—"}</td>
+                      <td className="px-6 py-4 text-slate-300">{stock.customerName || "—"}</td>
+                      <td className="px-6 py-4 text-slate-400 text-xs">
                         {stock.claimedAt ? formatDate(stock.claimedAt) : "—"}
                       </td>
-                      <td>
+                      <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => handleStockDelete(stock)}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-surface-border/40 rounded transition-colors"
+                          className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
                           title="Hapus stok"
                         >
                           <Trash2 size={16} />
