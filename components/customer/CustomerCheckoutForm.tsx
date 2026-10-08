@@ -125,13 +125,13 @@ export default function CustomerCheckoutForm({
 
       if (!res.ok) {
         toast.error(data.error || "Gagal membuat order");
+        setCheckoutLoading(false);
         return;
       }
 
       router.push(`/customer/order/${data.orderId}`);
     } catch {
       toast.error("Terjadi kesalahan. Coba lagi.");
-    } finally {
       setCheckoutLoading(false);
     }
   };
@@ -151,6 +151,7 @@ export default function CustomerCheckoutForm({
         value={customerName}
         onChange={(e) => setCustomerName(e.target.value)}
         required
+        autoFocus
         leftIcon={<User size={16} />}
       />
 

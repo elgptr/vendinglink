@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { ShoppingCart, Package } from "lucide-react";
 import { cn, formatRupiah } from "@/lib/utils";
 import Card from "@/components/ui/Card";
@@ -20,6 +21,9 @@ interface CustomerProductCardProps {
 }
 
 export default function CustomerProductCard({ product, index = 0 }: CustomerProductCardProps) {
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
+  
   const inStock = product.stockCount > 0;
   const isLowStock = inStock && product.stockCount <= 5;
   const hasDiscount = product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price;
@@ -104,15 +108,18 @@ export default function CustomerProductCard({ product, index = 0 }: CustomerProd
                     Tersisa {product.stockCount} stok - Beli sekarang!
                   </div>
                 )}
-                <Link href={`/customer/checkout/${product.id}`} className="block">
-                  <Button
-                    id={`customer-buy-btn-${product.id}`}
-                    className="w-full shadow-none group-hover:shadow-glow transition-all"
-                    icon={<ShoppingCart size={16} />}
-                  >
-                    Beli Sekarang
-                  </Button>
-                </Link>
+                <Button
+                  id={`customer-buy-btn-${product.id}`}
+                  className="w-full shadow-none group-hover:shadow-glow transition-all"
+                  icon={<ShoppingCart size={16} />}
+                  loading={isNavigating}
+                  onClick={() => {
+                    setIsNavigating(true);
+                    router.push(`/customer/checkout/${product.id}`);
+                  }}
+                >
+                  Beli Sekarang
+                </Button>
               </div>
             ) : (
               <Button

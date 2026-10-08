@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CheckCircle, Copy, Check, ShoppingBag, ExternalLink, ImageIcon, AlertTriangle } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 import toast from "@/components/ui/Toast";
@@ -144,6 +145,15 @@ export default function CustomerSuccessScreen({
                 </Button>
               </a>
             </div>
+
+            {!isKode && (
+              <div className="mt-6 flex flex-col items-center justify-center p-4 bg-surface rounded-xl border border-surface-border">
+                <p className="text-xs text-slate-400 mb-3 text-center">Buka di Desktop? Scan QR ini pakai HP Anda untuk langsung membuka link</p>
+                <div className="p-2 bg-white rounded-lg">
+                  <QRCodeCanvas value={redeemUrl} size={140} level="M" includeMargin={false} />
+                </div>
+              </div>
+            )}
 
             {(guideText || guideImageUrl) && (
               <div className="mt-5 pt-5 border-t border-surface-border">
