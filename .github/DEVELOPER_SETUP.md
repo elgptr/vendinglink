@@ -1,14 +1,6 @@
 # GitHub Developer Setup Guide
 
-Panduan setup lokal untuk 3 developer yang bekerja **bersamaan** di VendingLink. 
-
-Dua model:
-- **Track A/B/C** (paralel): foundational features
-- **Phase 1-5** (sequential): roadmap initiatives
-
-Lihat `TASK_ASSIGNMENT.md` untuk tahu track/phase mana yang jadi tugasmu.
-
----
+Panduan setup lokal untuk all developers collaboration di VendingLink. 
 
 ## 1. Prerequisites
 

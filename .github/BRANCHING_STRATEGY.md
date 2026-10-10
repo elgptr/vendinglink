@@ -1,11 +1,11 @@
-# 🚀 Branching Strategy — VendingLink (Track Paralel + Phase Sequential)
+# 🚀 Branching Strategy — VendingLink
 
-Panduan setup kolaborasi 3 developer dengan dua model: **Track A/B/C (paralel)** untuk foundational work, dan **Phase 1-5 (sequential)** untuk roadmap initiatives.
+Panduan setup kolaborasi all developers (agents/developers) untuk roadmap initiatives.
 ---
 
 ## Two Collaboration Models
 
-### Track A/B/C (Legacy - Foundational)
+### Track A/B/C (Legacy - Foundational) --STATUS DONE
 
 **Model:** Fully parallel. All 3 tracks can run simultaneously from `main`.
 
@@ -18,7 +18,7 @@ Panduan setup kolaborasi 3 developer dengan dua model: **Track A/B/C (paralel)**
 
 ---
 
-### Phase 1-5 (Roadmap v0.1 → v0.5)
+### Phase 1-5 (Roadmap v0.1 → v0.5) --STATUS DONE
 
 **Model:** Sequential with partial parallel (Phase 3 & 4 run simultaneously after Phase 2).
 
@@ -67,14 +67,6 @@ feat/dev-jiwo/track-b-feature-name
 feat/dev-iqbal/track-c-feature-name
 ```
 
-**Phase work:**
-```
-feat/dev-elang/phase-1-unit-tests
-feat/dev-jiwo/phase-2-middleware-security
-feat/dev-elang/phase-3-observability
-feat/dev-jiwo/phase-4-db-performance
-feat/dev-elang/phase-5-multi-qty-checkout
-```
 
 **Rule for Phase branches:** Always include phase number for clarity.
 
@@ -88,25 +80,6 @@ feat/dev-elang/phase-5-multi-qty-checkout
 | `middleware.ts` | Owned Track B, refactored Phase 2 | **Sequential:** Track B merge first, then Phase 2 refactors. Jiwo continuous owner. |
 | `app/admin/inventory/page.tsx` | Track C form → Phase 3 badge → Phase 5 upload | **Sequential:** Track C → Phase 3 → Phase 5. Iqbal owns all. |
 | `package.json` | Dependency conflicts | Phase 1 pre-approved: Vitest, @testing-library/react, @vitejs/plugin-react, @playwright/test. Others require approval. |
-
----
-
-## FAQ
-
-**Q: Track saya harus nunggu track lain selesai dulu?**
-A: Tidak untuk Track work. Semua track independen, mulai kapan saja dari `main`. Tapi untuk Phase work, Phase N+1 harus nunggu Phase N merge.
-
-**Q: PR saya konflik dengan PR track lain?**
-A: Seharusnya tidak terjadi untuk Track work (file terpisah). Kalau terjadi (jarang), rebase dan resolve manual. Untuk Phase work, phase dependencies seharusnya prevent ini.
-
-**Q: Boleh 3 PR dari 3 track merge di hari yang sama?**
-A: Ya, silakan untuk Track work. Merge begitu masing-masing approved. Untuk Phase work, Phase 3 & 4 PRs bisa merge same day karena mereka paralel.
-
-**Q: Phase saya bisa mulai sebelum phase sebelumnya selesai?**
-A: Tidak. Phase 1 blocks all. Phase 2 blocks Phase 3/4/5. Phase 3 & 4 bisa parallel, tapi keduanya tunggu Phase 2. Phase 5 tunggu Phase 3 & 4 both done.
-
-**Q: Ada dependency riil antar track?**
-A: Tidak ada untuk Track work saat ini. Untuk Phase work, dependency chain sudah defined di TASK_ASSIGNMENT.md. Jika unexpected issue found, buka issue dan koordinasi.
 
 ---
 
