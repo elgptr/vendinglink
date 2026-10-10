@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
+/**
+ * Sentinel values the bridge uses when it cannot resolve a product.
+ * These must be rejected before any auto-create or stock mutation.
+ */
+export const UNMAPPED_PRODUCT_ID = "[UNMAPPED]";
+export const UNKNOWN_PRODUCT_ID = "[UNKNOWN]";
+
 export async function resolveBridgeProduct(
   productId: string,
   supplierCode: string,

@@ -25,7 +25,7 @@
 
 ### Product
 - `name`, `price` (Rupiah), `guideImageUrl`
-- `isActive`, `category`
+- `isActive`, `categoryId` (optional FK to `Category`)
 
 ### RedeemStock (Redeem URL)
 - `redeemUrl` (unique), `status` (AVAILABLE | SOLD)

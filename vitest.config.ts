@@ -11,7 +11,11 @@ export default defineConfig(({ mode }) => {
   // that build a real Prisma client can find DATABASE_URL and friends.
   const env = loadEnv(mode, process.cwd(), "");
   for (const [key, value] of Object.entries(env)) {
-    if (process.env[key] === undefined) {
+    // In test mode, env files (especially `.env.test`) must win for
+    // database URLs so a system-level DATABASE_URL cannot accidentally
+    // point tests at production.
+    const forceOverride = mode === "test" && (key === "DATABASE_URL" || key === "DIRECT_URL");
+    if (forceOverride || process.env[key] === undefined) {
       process.env[key] = value;
     }
   }
@@ -26,7 +30,7 @@ export default defineConfig(({ mode }) => {
       // files in parallel lets one file's cleanup delete data another file's
       // in-flight tests are still using.
       fileParallelism: false,
-      setupFiles: [],
+      setupFiles: ["__tests__/setup.ts"],
       // e2e/*.spec.ts are Playwright specs (need a real browser) — keep them
       // out of Vitest's default include glob.
       exclude: ["e2e/**", "node_modules/**", "dist/**"],

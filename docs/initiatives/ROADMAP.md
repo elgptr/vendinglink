@@ -65,7 +65,7 @@ Setiap perubahan kontrak wajib direvisi di kedua dokumen sebelum implementasi.
 | Versi | Nama                                      | Status             | Sprint Target |
 |-------|-------------------------------------------|--------------------|---------------|
 | v1.0  | Foundation                                | CLOSED · VERIFIED  | Selesai       |
-| v1.1  | Ketahanan Data & Fondasi Katalog (P0)     | IN PLANNING        | Sprint 1      |
+| v1.1  | Ketahanan Data & Fondasi Katalog (P0)     | IN PROGRESS        | Sprint 1      |
 | v1.2  | Program Promo & Loyalitas (P1)            | PLANNED            | Sprint 2-3    |
 | v2.0  | Agentic Purchasing & Supplier Dinamis (P2)| PLANNED            | Sprint 4-6    |
 | v3.x  | Long-Term / P3                            | OPTIONAL · GATED   | TBD           |
@@ -191,28 +191,32 @@ melakukan mapping dari bot atau dari UI storefront. Tipe `Product` di bridge dip
 
 **Pekerjaan bridge (v1.1-BR):**
 
-- [ ] BR-5a: Implementasikan penggunaan `ProductMapping` di `orchestrator.ts` —
+- [x] BR-5a: Implementasikan penggunaan `ProductMapping` di `orchestrator.ts` —
   resolve `vlProductId` dari tabel `ProductMapping` berdasarkan `supplierCode` + `supplierProductId`,
   fallback ke pola lama `[UNKNOWN]` hanya jika tidak ditemukan (dengan warning).
-- [ ] BR-5b: Tambah command `/map <SUPPLIER> <SUPPLIER_PRODUCT_ID> <VL_PRODUCT_ID>` di
+- [x] BR-5b: Tambah command `/map <SUPPLIER> <SUPPLIER_PRODUCT_ID> <VL_PRODUCT_ID>` di
   `commandParser.ts` dan `router.ts` agar admin bisa mendaftarkan mapping dari Telegram.
-- [ ] BR-5c: Tambah field opsional `categorySlug?: string` dan `tags?: string[]` ke tipe
+- [x] BR-5c: Tambah field opsional `categorySlug?: string` dan `tags?: string[]` ke tipe
   `Product` di `src/suppliers/types.ts` (backward-compatible, opsional).
-- [ ] BR-5d: `ISupplierAdapter.getProductList()` meneruskan `categorySlug` jika ada dari API
+- [x] BR-5d: `ISupplierAdapter.getProductList()` meneruskan `categorySlug` jika ada dari API
   supplier. RezekiShop adapter dicek apakah endpoint `/v1/products` mengembalikan kategori.
 
 **Pekerjaan storefront (v1.1-ST):**
 
-- [ ] ST-5a: Desain & migrasi skema `Category` (id, slug, name, parentId?) dan relasi ke
-  `Product`.
-- [ ] ST-5b: Endpoint `PATCH /api/bridge/products/:vlProductId/category` agar bridge atau admin
-  bisa set kategori saat mapping.
+- [x] ST-5a: Desain & migrasi skema `Category` (id, slug, name) dan relasi opsional ke
+  `Product` (`categoryId`, `onDelete: SetNull`).
+- [x] ST-5b: Endpoint `PATCH /api/bridge/products/:vlProductId/category` agar bridge atau admin
+  bisa set kategori saat mapping. Bearer-only, guard chain IP → rate-limit → bearer → Zod,
+  body `{ categorySlug: string }`, kode 200 / 400 INVALID_BODY / 401 / 403 / 404
+  PRODUCT_NOT_FOUND | CATEGORY_NOT_FOUND / 429 / 500.
 - [ ] ST-5c: UI admin kategorisasi (bisa sederhana: dropdown saat edit produk).
 
 **Acceptance criteria:**
 - `vlProductId` tidak lagi `[UNKNOWN]` untuk produk yang sudah dimapping.
 - `/map RZK <id_supplier> <id_vl>` berhasil menyimpan ke `ProductMapping` dan dikonfirmasi bot.
 - Kategori terpilih tampil di katalog storefront.
+- `PATCH /api/bridge/products/:vlProductId/category` hanya bisa diakses dengan bearer token valid,
+  mengembalikan `CATEGORY_NOT_FOUND` jika slug tidak ada, dan tidak pernah membuat kategori baru.
 
 ---
 
