@@ -191,14 +191,14 @@ melakukan mapping dari bot atau dari UI storefront. Tipe `Product` di bridge dip
 
 **Pekerjaan bridge (v1.1-BR):**
 
-- [ ] BR-5a: Implementasikan penggunaan `ProductMapping` di `orchestrator.ts` —
+- [x] BR-5a: Implementasikan penggunaan `ProductMapping` di `orchestrator.ts` —
   resolve `vlProductId` dari tabel `ProductMapping` berdasarkan `supplierCode` + `supplierProductId`,
   fallback ke pola lama `[UNKNOWN]` hanya jika tidak ditemukan (dengan warning).
-- [ ] BR-5b: Tambah command `/map <SUPPLIER> <SUPPLIER_PRODUCT_ID> <VL_PRODUCT_ID>` di
+- [x] BR-5b: Tambah command `/map <SUPPLIER> <SUPPLIER_PRODUCT_ID> <VL_PRODUCT_ID>` di
   `commandParser.ts` dan `router.ts` agar admin bisa mendaftarkan mapping dari Telegram.
-- [ ] BR-5c: Tambah field opsional `categorySlug?: string` dan `tags?: string[]` ke tipe
+- [x] BR-5c: Tambah field opsional `categorySlug?: string` dan `tags?: string[]` ke tipe
   `Product` di `src/suppliers/types.ts` (backward-compatible, opsional).
-- [ ] BR-5d: `ISupplierAdapter.getProductList()` meneruskan `categorySlug` jika ada dari API
+- [x] BR-5d: `ISupplierAdapter.getProductList()` meneruskan `categorySlug` jika ada dari API
   supplier. RezekiShop adapter dicek apakah endpoint `/v1/products` mengembalikan kategori.
 
 **Pekerjaan storefront (v1.1-ST):**
