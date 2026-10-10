@@ -35,9 +35,11 @@ Key: `buildCommand` includes `prisma migrate deploy` which runs **after** Next.j
 - Application starts with correct schema
 
 ### 3. Update Build Scripts in `package.json`
-- Added `build:prod` script: `prisma generate && next build && npx prisma migrate deploy `
+- Added `build:prod` script: `prisma generate && npx prisma migrate deploy && next build`
 - Default `build` script remains unchanged (for local development)
 - Vercel uses `build:prod` via `vercel.json`
+
+Key: migrations are applied **before** Next.js build so any build-time DB access or type generation sees the current schema.
 
 ### 4. Database Connection Strategy
 Production requires **two** PostgreSQL URLs:

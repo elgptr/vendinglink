@@ -58,7 +58,25 @@ model Product {
   mappings           SupplierProductMapping[]
   applicableVouchers Voucher[]     @relation("VoucherProducts")
 
+  // ── Category (P0 ST-5a) ──────────────────────────────────────────────────
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   @@map("products")
+}
+
+model Category {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  name     String
+  parentId String?
+
+  parent   Category? @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+  @@map("categories")
 }
 
 model SupplierProductMapping {

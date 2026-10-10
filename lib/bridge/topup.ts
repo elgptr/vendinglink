@@ -3,8 +3,27 @@ import { resolveBridgeProduct } from "./productResolver";
 import { stockTopupSchema } from "./schema";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
+import { UNMAPPED_PRODUCT_ID, UNKNOWN_PRODUCT_ID } from "./productResolver";
 
 const log = createLogger({ module: "bridge-topup" });
+
+function isProductIdSentinel(productId: string): { sentinel: boolean; code?: string; reason?: string } {
+  if (productId === UNMAPPED_PRODUCT_ID) {
+    return {
+      sentinel: true,
+      code: "PRODUCT_NOT_MAPPED",
+      reason: `product_id is "${UNMAPPED_PRODUCT_ID}". Admin must map this supplier product via /map <SUPPLIER> <SUPPLIER_PRODUCT_ID> <VL_PRODUCT_ID> before stock top-up.`,
+    };
+  }
+  if (productId === UNKNOWN_PRODUCT_ID) {
+    return {
+      sentinel: true,
+      code: "PRODUCT_ID_SENTINEL_UNKNOWN",
+      reason: `product_id is "${UNKNOWN_PRODUCT_ID}". Bridge could not resolve the product. Use /map to register the supplier product mapping.`,
+    };
+  }
+  return { sentinel: false };
+}
 
 export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
   const {
@@ -50,7 +69,25 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
   });
 
   try {
-    // 2. Resolve Product
+    // 2. Reject sentinel product_ids before any resolution/auto-create
+    const sentinelCheck = isProductIdSentinel(product_id);
+    if (sentinelCheck.sentinel) {
+      const reason = sentinelCheck.reason!;
+      await prisma.bridgeInboundEvent.update({
+        where: { id: event.id },
+        data: { status: "REJECTED", error: reason },
+      });
+      log.warn("Bridge top-up rejected: sentinel product_id", {
+        transactionId: transaction_id,
+        productId: product_id,
+        supplierCode: supplier_code,
+        supplierProductId: supplier_product_id,
+        code: sentinelCheck.code,
+      });
+      return { status: 400, code: sentinelCheck.code, message: reason };
+    }
+
+    // 3. Resolve Product
     const { product, isNew } = await resolveBridgeProduct(
       product_id,
       supplier_code,
@@ -84,7 +121,7 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
       data: { productId: product.id },
     });
 
-    // 3. Dedupe items
+    // 4. Dedupe items
     const existingStocks = await prisma.redeemStock.findMany({
       where: {
         productId: product.id,
@@ -109,7 +146,7 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
       return { status: 201, message: "All items already exist", inserted: 0, skipped: items.length };
     }
 
-    // 4. Insert new items
+    // 5. Insert new items
     const result = await prisma.$transaction(async (tx: any) => {
       await tx.redeemStock.createMany({
         data: newItems.map((item) => ({

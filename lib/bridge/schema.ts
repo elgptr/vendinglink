@@ -15,3 +15,7 @@ export const stockTopupSchema = z.object({
     path: ["items"],
   }
 );
+
+export const categoryUpdateSchema = z.object({
+  categorySlug: z.string().min(1),
+});

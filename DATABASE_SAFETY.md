@@ -24,7 +24,18 @@ Gunakan PostgreSQL lokal atau branch dev khusus di `.env.local`:
 ```env
 # .env.local (Gunakan Postgres lokal atau branch dev khusus!)
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/vendinglink_dev"
+DIRECT_URL="postgresql://postgres:postgres@localhost:5432/vendinglink_dev"
 ```
+
+> [!CAUTION]
+> Variabel lingkungan di level sistem (system env / user env) memiliki **precedence lebih tinggi** dari `.env` / `.env.local`.
+> Pastikan tidak ada `DATABASE_URL` di system environment yang mengarah ke produksi saat menjalankan `npx prisma migrate dev` di lokal.
+> Cara cek cepat (PowerShell): `cmd /c "set DATABASE_URL"`.
+
+### Rekomendasi keamanan tambahan
+- Gunakan `npx prisma migrate dev` **hanya** dengan database lokal.
+- Sebelum menjalankan perintah Prisma di terminal baru, verifikasi target database dari output Prisma.
+- Untuk CI/test, gunakan `.env.test` (Vitest sudah dikonfigurasi agar `.env.test` menimpa system env untuk `DATABASE_URL` dan `DIRECT_URL`).
 
 ---
 
