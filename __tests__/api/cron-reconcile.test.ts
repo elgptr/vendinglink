@@ -76,6 +76,21 @@ describe("GET /api/cron/reconcile — reconcile + credit promotion (ST-2e)", () 
     expect(res.status).toBe(401);
   });
 
+  it("fails closed when CRON_SECRET is unset or incorrect", async () => {
+    delete process.env.CRON_SECRET;
+    try {
+      const response = await GET(cronRequest());
+      expect(response.status).toBe(401);
+      expect(JSON.stringify(await response.json())).not.toContain(CRON_SECRET);
+    } finally {
+      process.env.CRON_SECRET = CRON_SECRET;
+    }
+    const response = await GET(new NextRequest("http://localhost:3000/api/cron/reconcile", {
+      headers: { authorization: "Bearer incorrect" },
+    }));
+    expect(response.status).toBe(401);
+  });
+
   it("still promotes matured credits when there are 0 stuck transactions", async () => {
     const customer = await prisma.customer.findFirstOrThrow({
       where: { phone: CUSTOMER_PHONE },
