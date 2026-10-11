@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Download, HandCoins } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import toast from "@/components/ui/Toast";
-import { formatRupiah } from "@/lib/utils";
+import { formatDate, formatRupiah } from "@/lib/utils";
 
 interface PayoutLine {
   customerId: string;
@@ -29,6 +29,16 @@ interface GenerateResponse {
   error?: string;
 }
 
+interface PayoutBatchRow {
+  id: string;
+  period: string;
+  channel: string;
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+  creditCount: number;
+}
+
 const CHANNEL_LABELS: Record<string, string> = {
   GOPAY: "GoPay",
   OVO: "OVO",
@@ -40,15 +50,33 @@ function currentPeriod(): string {
 }
 
 /**
- * ST-2f: Generate a referral payout batch (sweeps outstanding PAYABLE credits
- * above the min threshold) and download the transfer CSV. The batch table with
- * the "Sudah Ditransfer" action is added on top of this panel in ST-2f-2/2g.
+ * ST-2f/2f-2: Generate referral payout batches and list historical batches.
+ * Marking a transfer as PAID remains ST-2g.
  */
 export default function PayoutBatchPanel() {
   const [period, setPeriod] = useState(currentPeriod());
   const [channel, setChannel] = useState("GOPAY");
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<GenerateResponse | null>(null);
+  const [batches, setBatches] = useState<PayoutBatchRow[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState(true);
+
+  const fetchBatches = useCallback(async () => {
+    setLoadingBatches(true);
+    try {
+      const res = await fetch("/api/admin/payout-batches", { cache: "no-store" });
+      if (!res.ok) throw new Error("Gagal memuat riwayat payout batch");
+      setBatches((await res.json()) as PayoutBatchRow[]);
+    } catch {
+      toast.error("Gagal memuat riwayat payout batch");
+    } finally {
+      setLoadingBatches(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchBatches();
+  }, [fetchBatches]);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -66,6 +94,7 @@ export default function PayoutBatchPanel() {
       }
       setResult(data);
       if (data.batch) {
+        void fetchBatches();
         toast.success(
           `Batch ${data.batch.period} dibuat: ${data.lines.length} referrer, ${formatRupiah(data.batch.totalAmount)}`
         );
@@ -81,6 +110,7 @@ export default function PayoutBatchPanel() {
 
 
   return (
+    <div className="space-y-6">
     <Card className="p-5 border-brand-500/10">
       <div className="flex items-center gap-2 mb-1">
         <HandCoins className="w-5 h-5 text-brand-400" />
@@ -89,7 +119,7 @@ export default function PayoutBatchPanel() {
       <p className="text-sm text-slate-400 mb-4">
         Generate batch payout komisi referral (credit PAYABLE di atas ambang
         minimum). Tujuan transfer = nomor HP referrer; unduh CSV untuk proses
-        manual. Tabel batch dan penandaan &quot;Sudah Ditransfer&quot; menyusul.
+        manual. Penandaan &quot;Sudah Ditransfer&quot; menyusul.
       </p>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -176,5 +206,56 @@ export default function PayoutBatchPanel() {
         </div>
       )}
     </Card>
+    <Card className="p-5 border-brand-500/10">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-lg font-semibold text-white">Riwayat Payout Batch</h2>
+        <Button variant="outline" size="sm" onClick={fetchBatches} disabled={loadingBatches}>
+          Muat ulang
+        </Button>
+      </div>
+      {loadingBatches ? (
+        <p className="text-sm text-slate-400" role="status">Memuat payout batch...</p>
+      ) : batches.length === 0 ? (
+        <p className="text-sm text-slate-400">Belum ada payout batch.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-400 border-b border-surface-border">
+                <th className="py-2 pr-4 font-medium">Dibuat</th>
+                <th className="py-2 pr-4 font-medium">Periode</th>
+                <th className="py-2 pr-4 font-medium">Channel</th>
+                <th className="py-2 pr-4 font-medium">Status</th>
+                <th className="py-2 pr-4 font-medium text-right">Credit</th>
+                <th className="py-2 pr-4 font-medium text-right">Total</th>
+                <th className="py-2 font-medium text-right">CSV</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batches.map((batch) => (
+                <tr key={batch.id} className="border-b border-surface-border/50 text-slate-300">
+                  <td className="py-2 pr-4 whitespace-nowrap">{formatDate(batch.createdAt)}</td>
+                  <td className="py-2 pr-4">{batch.period}</td>
+                  <td className="py-2 pr-4">{CHANNEL_LABELS[batch.channel] ?? batch.channel}</td>
+                  <td className="py-2 pr-4">{batch.status}</td>
+                  <td className="py-2 pr-4 text-right">{batch.creditCount}</td>
+                  <td className="py-2 pr-4 text-right whitespace-nowrap">{formatRupiah(batch.totalAmount)}</td>
+                  <td className="py-2 text-right">
+                    <a
+                      href={`/api/admin/payout-batches/${encodeURIComponent(batch.id)}/csv`}
+                      className="text-brand-400 hover:text-brand-300 underline"
+                      aria-label={`Unduh CSV payout ${batch.period} ${batch.channel}`}
+                    >
+                      Unduh
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+    </div>
   );
 }

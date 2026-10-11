@@ -331,7 +331,7 @@ PayoutBatch
 - [x] ST-2d: Endpoint redeem di checkout — resolusi referral/voucher dari field sama (B5), guard berurutan (rule aktif → window UTC → minSpend → kuota total → kuota per-customer → self-referral).
 - [x] ST-2e: Fungsi akrual `CustomerCredit`: ACCRUED -> PAYABLE setelah `accrualWindowDays`, dipanggil dari `/api/cron/reconcile` (nebeng slot, lihat guardrail cron di atas).
 - [x] ST-2f: Admin UI generate `PayoutBatch` + CSV untuk periode tertentu (tujuan = nomor HP referrer; GoPay/OVO saja, transfer bank menunggu data rekening).
-- [ ] ST-2f-2: Tabel payout batch di `/admin/reports`, ditambahkan di bagian bawah halaman yang ada.
+- [x] ST-2f-2: Tabel payout batch di `/admin/reports`, ditambahkan di bagian bawah halaman yang ada.
 - [ ] ST-2g: Tombol "Sudah Ditransfer" di admin UI yang menandai batch PAID + catat `approvedBy`.
 - [ ] ST-1a: Broadcast promo ke segmen Customer yang `consentPromoAt IS NOT NULL`. Integrasi dengan WhatsApp Business API atau platform broadcast pilihan. **Desain program broadcast ditunda ke sprint mendatang** — hanya daftar/listing yang masuk sprint ini (ST-1a-1).
 - [ ] ST-1a-1: Halaman admin `/admin/customers` — list Customer + status consent + referral code + jumlah/total order. Prasyarat utk ST-1a nanti.

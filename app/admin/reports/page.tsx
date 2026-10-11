@@ -440,7 +440,7 @@ export default function ReportsPage() {
         )}
       </Card>
 
-      {/* ST-2f: Referral payout batch generator (table & mark-paid land in ST-2f-2/2g) */}
+      {/* ST-2f/2f-2: Referral payout generator and batch history; mark-paid follows in ST-2g. */}
       <PayoutBatchPanel />
 
       {/* AI Insight Modal */}
