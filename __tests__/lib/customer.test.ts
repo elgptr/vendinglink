@@ -61,6 +61,8 @@ describe("lib/customer", () => {
 
     const withConsent = await upsertCustomer({ prisma, phone, name: "With Consent", consentPromo: true });
     expect(withConsent.consentPromoAt).toBeTruthy();
+    const unchanged = await upsertCustomer({ prisma, phone, consentPromo: false });
+    expect(unchanged.consentPromoAt).toEqual(withConsent.consentPromoAt);
   });
 
   it("throws on invalid phone", async () => {

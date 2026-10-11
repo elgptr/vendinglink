@@ -24,6 +24,7 @@ export interface UpsertCustomerResult {
  * - Normalizes the phone to 628xxx before lookup.
  - Generates a referral code automatically for new customers.
  * - Records `consentPromoAt` only when the customer explicitly opts in.
+ * - An unauthenticated checkout cannot revoke an earlier opt-in by phone alone.
  */
 export async function upsertCustomer({
   prisma,
@@ -74,7 +75,7 @@ export async function upsertCustomer({
       phone: updated.phone,
       name: updated.name,
       consentPromoAt: updated.consentPromoAt,
-      referralCode,
+      referralCode: updated.consentPromoAt ? referralCode : null,
     };
   }
 
@@ -97,6 +98,6 @@ export async function upsertCustomer({
     phone: created.phone,
     name: created.name,
     consentPromoAt: created.consentPromoAt,
-    referralCode: created.referralCode?.code ?? null,
+    referralCode: created.consentPromoAt ? created.referralCode?.code ?? null : null,
   };
 }

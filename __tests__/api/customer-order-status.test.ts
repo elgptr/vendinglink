@@ -54,6 +54,7 @@ describe("api/customer/order/status — referral info (ST-2c-2)", () => {
       data: {
         phone: TEST_PHONE_NORMALIZED,
         name: "Status Test Customer",
+        consentPromoAt: new Date(),
         referralCode: { create: { code: TEST_REF_CODE } },
       },
     });
@@ -117,5 +118,16 @@ describe("api/customer/order/status — referral info (ST-2c-2)", () => {
     expect(data.status).toBe("PAID");
     expect(data.referralCode).toBeNull();
     expect(data.referralCommissionPct).toBeNull();
+  });
+
+  it("does not expose referral benefits after consent is revoked", async () => {
+    const product = await createMockProduct(prisma);
+    const txn = await createMockTransaction(prisma, {
+      productId: product.id, status: "PAID", customerPhone: TEST_PHONE,
+    });
+    await prisma.customer.update({ where: { phone: TEST_PHONE_NORMALIZED }, data: { consentPromoAt: null } });
+    const response = await GET(getRequest(txn.orderId));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ referralCode: null, referralCommissionPct: null });
   });
 });

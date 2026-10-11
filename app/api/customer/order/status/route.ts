@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
           where: { phone: normalizedPhone },
           include: { referralCode: { select: { code: true } } },
         });
-        referralCode = customer?.referralCode?.code ?? null;
+        referralCode = customer?.consentPromoAt ? customer.referralCode?.code ?? null : null;
         if (referralCode) {
           const programConfig = await getProgramConfig();
           referralCommissionPct = programConfig.referralCommissionPct;
