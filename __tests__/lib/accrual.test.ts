@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { promoteAccruedCreditsToPayable } from "@/lib/promo/accrual";
-import { cleanupTestDatabase } from "../helpers/fixtures";
+import { cleanupTestDatabase, createMockProduct, createMockTransaction } from "../helpers/fixtures";
 
 vi.mock("@/lib/logger", () => ({
   createLogger: () => ({
@@ -173,5 +173,20 @@ describe("lib/promo/accrual — promoteAccruedCreditsToPayable (ST-2e)", () => {
     expect(after.status).toBe("PAYABLE");
 
     await prisma.customerCredit.delete({ where: { id: credit.id } });
+  });
+
+  it("voids unbatched stockout commissions before promotion, without changing paid credits", async () => {
+    const product = await createMockProduct(prisma);
+    const order = await createMockTransaction(prisma, { productId: product.id, status: "PAID", stockStatus: "OUT_OF_STOCK" });
+    const credit = await prisma.customerCredit.create({ data: {
+      customerId, kind: "REFERRAL_COMMISSION", amount: 5000,
+      sourceTxnId: order.id, status: "ACCRUED", payableAt: PAST,
+    } });
+    expect(await promoteAccruedCreditsToPayable(prisma)).toBe(0);
+    expect((await prisma.customerCredit.findUniqueOrThrow({ where: { id: credit.id } })).status).toBe("VOID");
+    expect(await promoteAccruedCreditsToPayable(prisma)).toBe(0);
+    await prisma.customerCredit.update({ where: { id: credit.id }, data: { status: "PAID" } });
+    expect(await promoteAccruedCreditsToPayable(prisma)).toBe(0);
+    expect((await prisma.customerCredit.findUniqueOrThrow({ where: { id: credit.id } })).status).toBe("PAID");
   });
 });

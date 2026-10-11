@@ -18,6 +18,7 @@ vi.mock('@/lib/prisma', () => ({
     product: { findUnique: vi.fn().mockResolvedValue({ supplierMode: "MANUAL" }) },
     // ST-2d: accrual looks up a ReferralRedemption first — default to none.
     referralRedemption: { findFirst: vi.fn().mockResolvedValue(null) },
+    customerCredit: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   }
 }));
 
@@ -135,6 +136,9 @@ describe('transactionStatus - applyMidtransStatusUpdate idempotency', () => {
         stockStatus: 'OUT_OF_STOCK',
         refundPromoCodeId: 'promo-id'
       })
+    }));
+    expect(prisma.customerCredit.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: { status: 'VOID' },
     }));
   });
 });

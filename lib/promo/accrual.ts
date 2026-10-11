@@ -39,9 +39,9 @@ export async function accrueReferralCommission(
 
   const txn = await tx.transaction.findUnique({
     where: { id: transactionId },
-    select: { id: true, finalAmount: true, paidAt: true },
+    select: { id: true, finalAmount: true, paidAt: true, status: true, stockStatus: true },
   });
-  if (!txn?.paidAt) return;
+  if (!txn?.paidAt || txn.status !== "PAID" || txn.stockStatus !== "FULFILLED") return;
 
   const config = await tx.programConfig.findFirst({
     orderBy: { createdAt: "asc" },
@@ -118,6 +118,19 @@ export async function promoteAccruedCreditsToPayable(
   client: PrismaClient | Prisma.TransactionClient = prisma,
   now: Date = new Date()
 ): Promise<number> {
+  // Legacy credits created before the stockout guard must never reach payout.
+  // Leave already batched/paid rows untouched for manual financial review.
+  const stockouts = await client.transaction.findMany({
+    where: { stockStatus: "OUT_OF_STOCK" }, select: { id: true },
+  });
+  if (stockouts.length) {
+    const voided = await client.customerCredit.updateMany({
+      where: { kind: "REFERRAL_COMMISSION", sourceTxnId: { in: stockouts.map((order) => order.id) },
+        status: { in: ["ACCRUED", "PAYABLE"] }, payoutBatchId: null },
+      data: { status: "VOID" },
+    });
+    if (voided.count) log.warn("Stockout referral credits voided", { count: voided.count });
+  }
   const result = await client.customerCredit.updateMany({
     where: { status: "ACCRUED", payableAt: { lte: now } },
     data: { status: "PAYABLE" },

@@ -265,9 +265,13 @@ export async function applyMidtransStatusUpdate(
         },
       });
 
-      // ST-2d: accrue the referrer's commission if a referral code was
-      // redeemed on this order (no-op when none was).
-      await accrueReferralCommission(tx, updatedTransaction.id);
+      // A captured payment without delivered stock is not a completed sale.
+      // Never create a payable referral commission for a stockout.
+      await tx.customerCredit.updateMany({
+        where: { kind: "REFERRAL_COMMISSION", sourceTxnId: updatedTransaction.id,
+          status: { in: ["ACCRUED", "PAYABLE"] }, payoutBatchId: null },
+        data: { status: "VOID" },
+      });
 
       return { updated: true, transaction: updatedTransaction };
     }
