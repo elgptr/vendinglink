@@ -106,7 +106,7 @@ export function isValidUrl(url: string): boolean {
  */
 export function exportToCsv(
   data: Record<string, unknown>[],
-  filename: string
+  _filename: string
 ): string {
   if (data.length === 0) return "";
 

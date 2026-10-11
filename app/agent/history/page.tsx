@@ -39,7 +39,7 @@ export default async function AgentHistoryPage() {
           </div>
         ) : (
           <div className="divide-y divide-surface-border">
-            {transactions.map((tx: any) => (
+            {transactions.map((tx) => (
               <div key={tx.id} className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-surface-hover/30 transition-colors">
                 <div className="flex items-start gap-4">
                   <div className={`p-3 rounded-xl border flex-shrink-0 ${tx.status === 'PAID' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>

@@ -37,7 +37,7 @@ describe("Integration: Payment → WhatsApp Notification", () => {
     finalAmount: 50000,
     redeemUrl: "https://example.com/redeem/abc",
     stockStatus: "FULFILLED",
-    promoCodeId: null,
+    refundPromoCodeId: null,
   };
 
   beforeEach(() => {
@@ -85,7 +85,7 @@ describe("Integration: Payment → WhatsApp Notification", () => {
 
     await notifyPaymentSuccess({
       ...baseTransaction,
-      promoCodeId: "promo-1",
+      refundPromoCodeId: "promo-1",
       redeemUrl: null,
       stockStatus: "OUT_OF_STOCK",
     });

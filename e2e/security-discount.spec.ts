@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
  * The checkout submit is: #customer-proceed-payment-btn
  *
  * There are no routes /checkout/customer or /checkout/agent.
- * Voucher/promo validation goes through /api/promo-codes/validate.
+ * Voucher/promo validation goes through /api/discount/validate.
  */
 
 /** Navigate to checkout for the first available product. Returns false if no product. */

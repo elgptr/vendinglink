@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Package, Tag } from "lucide-react";
+import { ShoppingCart, Package } from "lucide-react";
 import { cn, formatRupiah } from "@/lib/utils";
-import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 

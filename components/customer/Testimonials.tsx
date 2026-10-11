@@ -44,7 +44,7 @@ export default function Testimonials({ className }: TestimonialsProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {testimonials.map((t, index) => (
+        {testimonials.map((t) => (
           <div
             key={t.id}
             className={cn(
@@ -61,7 +61,7 @@ export default function Testimonials({ className }: TestimonialsProps) {
             </div>
 
             <p className="text-slate-300 text-sm leading-relaxed mb-6 flex-1 relative z-10">
-              "{t.text}"
+              &ldquo;{t.text}&rdquo;
             </p>
 
             <div className="flex items-center gap-3 pt-4 border-t border-surface-border">

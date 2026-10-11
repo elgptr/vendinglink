@@ -92,7 +92,7 @@ function searchFileForEndpoint(filePath, endpoint) {
     });
 
     return findings;
-  } catch (error) {
+  } catch {
     // Skip files that can't be read
     return [];
   }

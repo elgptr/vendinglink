@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getMidtransStatus } from "@/lib/midtrans";
 import { getKaseraPaymentStatus } from "@/lib/kasera";
 import { applyMidtransStatusUpdate } from "@/lib/transactionStatus";
+import { promoteAccruedCreditsToPayable } from "@/lib/promo/accrual";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "cron-reconcile" });
@@ -37,65 +38,79 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    if (stuckTransactions.length === 0) {
-      return NextResponse.json({ message: "No stuck transactions found", processed: 0 });
-    }
-
-    log.info(`Found ${stuckTransactions.length} stuck transactions. Reconciling...`);
-
     let reconciledCount = 0;
     let expiredCount = 0;
     let errorCount = 0;
 
-    for (const tx of stuckTransactions) {
-      try {
-        let isPaid = false;
-        
-        if (tx.paymentType === "KASERA") {
-          // Kasera uses qrCodeUrl to store the payment ID in our DB
-          if (tx.qrCodeUrl) {
-            const kaseraStatus = await getKaseraPaymentStatus(tx.qrCodeUrl);
-            if (kaseraStatus.status === "succeeded") {
-              isPaid = true;
-              await applyMidtransStatusUpdate(tx.orderId, "settlement");
-              reconciledCount++;
-            }
-          }
-        } else if (tx.paymentType === "MIDTRANS") {
-          try {
-            const midtransStatus = await getMidtransStatus(tx.orderId);
-            const status = midtransStatus.transaction_status;
-            if (status === "settlement" || status === "capture") {
-              isPaid = true;
-              await applyMidtransStatusUpdate(tx.orderId, "settlement");
-              reconciledCount++;
-            }
-          } catch (e: any) {
-            // Midtrans often returns 404 for expired/unpaid transactions that were dropped
-            if (e.httpStatusCode === 404) {
-              isPaid = false; 
-            } else {
-              throw e;
-            }
-          }
-        }
-        // DOKU doesn't have a direct status check implemented in lib/doku.ts yet,
-        // so we default to treating it as expired.
+    if (stuckTransactions.length > 0) {
+      log.info(`Found ${stuckTransactions.length} stuck transactions. Reconciling...`);
 
-        if (!isPaid) {
-          // Mark as EXPIRED locally
-          await prisma.transaction.update({
-            where: { orderId: tx.orderId },
-            data: { status: "EXPIRED" },
+      for (const tx of stuckTransactions) {
+        try {
+          let isPaid = false;
+
+          if (tx.paymentType === "KASERA") {
+            // Kasera uses qrCodeUrl to store the payment ID in our DB
+            if (tx.qrCodeUrl) {
+              const kaseraStatus = await getKaseraPaymentStatus(tx.qrCodeUrl);
+              if (kaseraStatus.status === "succeeded") {
+                isPaid = true;
+                await applyMidtransStatusUpdate(tx.orderId, "settlement");
+                reconciledCount++;
+              }
+            }
+          } else if (tx.paymentType === "MIDTRANS") {
+            try {
+              const midtransStatus = await getMidtransStatus(tx.orderId);
+              const status = midtransStatus.transaction_status;
+              if (status === "settlement" || status === "capture") {
+                isPaid = true;
+                await applyMidtransStatusUpdate(tx.orderId, "settlement");
+                reconciledCount++;
+              }
+            } catch (e) {
+              // Midtrans often returns 404 for expired/unpaid transactions that were dropped
+              if (typeof e === "object" && e && "httpStatusCode" in e && e.httpStatusCode === 404) {
+                isPaid = false;
+              } else {
+                throw e;
+              }
+            }
+          }
+          // DOKU doesn't have a direct status check implemented in lib/doku.ts yet,
+          // so we default to treating it as expired.
+
+          if (!isPaid) {
+            // Mark as EXPIRED locally
+            await prisma.transaction.update({
+              where: { orderId: tx.orderId },
+              data: { status: "EXPIRED" },
+            });
+            expiredCount++;
+          }
+        } catch (err) {
+          log.error(`Failed to reconcile tx ${tx.orderId}`, {
+            error: err instanceof Error ? err.message : String(err),
           });
-          expiredCount++;
+          errorCount++;
         }
-      } catch (err) {
-        log.error(`Failed to reconcile tx ${tx.orderId}`, {
-          error: err instanceof Error ? err.message : String(err),
-        });
-        errorCount++;
       }
+    }
+
+    // ST-2e: promosi CustomerCredit ACCRUED → PAYABLE menumpang slot cron ini
+    // (slot cron sudah penuh — ROADMAP §5 Item 2). Berjalan setelah blok
+    // rekonsiliasi dan HARUS tetap dieksekusi walau tidak ada transaksi stuck.
+    // Idempoten via payableAt yang di-precompute saat akrual. Kegagalan di sini
+    // tidak boleh menggagalkan hasil rekonsiliasi yang sudah berjalan.
+    let promotedCredits = 0;
+    let creditPromotionFailed = false;
+    try {
+      promotedCredits = await promoteAccruedCreditsToPayable(prisma);
+    } catch (err) {
+      creditPromotionFailed = true;
+      log.error("Credit ACCRUED → PAYABLE promotion failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     return NextResponse.json({
@@ -105,7 +120,11 @@ export async function GET(request: NextRequest) {
         markedAsPaid: reconciledCount,
         markedAsExpired: expiredCount,
         errors: errorCount,
-      }
+      },
+      creditPromotion: {
+        promoted: promotedCredits,
+        failed: creditPromotionFailed,
+      },
     });
 
   } catch (error) {

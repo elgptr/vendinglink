@@ -148,7 +148,7 @@ describe("transactionStatus.ts — applyMidtransStatusUpdate", () => {
     if (result.updated) {
       expect(result.transaction.status).toBe("PAID");
       expect(result.transaction.stockStatus).toBe("OUT_OF_STOCK");
-      expect(result.transaction.promoCodeId).toBeDefined();
+      expect(result.transaction.refundPromoCodeId).toBeDefined();
     }
   });
 });

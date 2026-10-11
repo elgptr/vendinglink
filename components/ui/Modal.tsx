@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Button from "./Button";
@@ -10,7 +10,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   footer?: React.ReactNode;
 }
 
@@ -19,6 +19,7 @@ const sizeClasses = {
   md: "max-w-md",
   lg: "max-w-lg",
   xl: "max-w-2xl",
+  "2xl": "max-w-3xl",
 };
 
 export default function Modal({
@@ -30,6 +31,7 @@ export default function Modal({
   footer,
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (isOpen) {
@@ -55,6 +57,9 @@ export default function Modal({
   return (
     <div
       ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
@@ -67,13 +72,16 @@ export default function Modal({
       <div
         className={cn(
           "relative w-full bg-surface-card border border-surface-border rounded-2xl shadow-2xl",
+          "flex flex-col max-h-[calc(100dvh-2rem)]",
           "animate-slide-up",
           sizeClasses[size]
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border shrink-0">
+          <h2 id={titleId} className="text-lg font-semibold text-white">
+            {title}
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-hover transition-all"
@@ -84,11 +92,13 @@ export default function Modal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-6 py-5 flex-1 overflow-y-auto overscroll-contain">
+          {children}
+        </div>
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-surface-border flex justify-end gap-3">
+          <div className="px-6 py-4 border-t border-surface-border flex justify-end gap-3 shrink-0">
             {footer}
           </div>
         )}

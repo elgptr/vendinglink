@@ -58,7 +58,7 @@ export default function CheckoutForm({
     setVoucherLoading(true);
 
     try {
-      const res = await fetch("/api/voucher/validate", {
+      const res = await fetch("/api/discount/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: voucherCode.trim().toUpperCase(), productId }),
@@ -66,13 +66,19 @@ export default function CheckoutForm({
 
       const data = await res.json();
 
-      if (data.valid) {
+      // Agent checkout (credit-based) only supports legacy vouchers. Codes
+      // from the new promo/referral engine (ST-2d, returned as `redeemCode`)
+      // are B2C-customer-only and rejected here rather than silently dropped.
+      if (data.valid && data.voucherId) {
         setVoucher({
           id: data.voucherId,
           code: data.code,
           discountAmount: data.discountAmount,
         });
         toast.success(data.message);
+      } else if (data.valid) {
+        setVoucher(null);
+        setVoucherError("Kode ini hanya berlaku untuk pembelian pelanggan langsung");
       } else {
         setVoucher(null);
         setVoucherError(data.error || "Kode promo tidak valid");

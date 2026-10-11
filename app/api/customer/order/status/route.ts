@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getMidtransStatus } from "@/lib/midtrans";
 import { getKaseraPaymentStatus } from "@/lib/kasera";
 import { applyMidtransStatusUpdate } from "@/lib/transactionStatus";
+import { normalizePhone } from "@/lib/phone";
+import { getProgramConfig } from "@/lib/programConfig";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "customer-order-status" });
@@ -22,6 +24,7 @@ const transactionSelect = {
   originalPrice: true,
   discountAmount: true,
   customerName: true,
+  customerPhone: true,
   createdAt: true,
   paidAt: true,
   qrCodeUrl: true,
@@ -129,6 +132,28 @@ export async function GET(request: NextRequest) {
     // Only return redeemUrl/guideImageUrl if transaction is PAID
     const isPaid = transaction.status === "PAID";
 
+    // ─── Referral info (ST-2c-2) ─────────────────────────────────────────
+    // Exposed only once PAID (same gating as redeemUrl). Resolved via the
+    // normalized customer phone → Customer → ReferralCode. The commission
+    // percentage comes from the live ProgramConfig singleton — never a
+    // hardcoded number.
+    let referralCode: string | null = null;
+    let referralCommissionPct: number | null = null;
+    if (isPaid && transaction.customerPhone) {
+      const normalizedPhone = normalizePhone(transaction.customerPhone);
+      if (normalizedPhone) {
+        const customer = await prisma.customer.findUnique({
+          where: { phone: normalizedPhone },
+          include: { referralCode: { select: { code: true } } },
+        });
+        referralCode = customer?.referralCode?.code ?? null;
+        if (referralCode) {
+          const programConfig = await getProgramConfig();
+          referralCommissionPct = programConfig.referralCommissionPct;
+        }
+      }
+    }
+
     return NextResponse.json({
       orderId: transaction.orderId,
       productId: transaction.productId,
@@ -144,6 +169,8 @@ export async function GET(request: NextRequest) {
       redeemUrl: isPaid ? transaction.redeemUrl : null,
       guideImageUrl: isPaid ? transaction.product.guideImageUrl : null,
       guideText: isPaid ? transaction.product.guideText : null,
+      referralCode,
+      referralCommissionPct,
     });
   } catch (error) {
     log.error("Customer order status retrieval failed", {

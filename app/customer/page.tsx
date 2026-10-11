@@ -3,8 +3,10 @@ import { syncSupplierStocks } from "@/lib/suppliers/sync";
 import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { cache } from "@/lib/cache";
+import { buildSalesMap, groupByCategory, type ProductForCatalog } from "@/lib/catalogGrouping";
 import { Package } from "lucide-react";
-import CustomerProductCard from "@/components/customer/CustomerProductCard";
+import CategorySection from "@/components/customer/CategorySection";
+import CategoryNav from "@/components/customer/CategoryNav";
 import HeroBanner from "@/components/customer/HeroBanner";
 import TrustStrip from "@/components/customer/TrustStrip";
 import Testimonials from "@/components/customer/Testimonials";
@@ -25,6 +27,7 @@ async function getProducts() {
     let products = await prisma.product.findMany({
       where: { isActive: true },
       include: {
+        category: true,
         _count: {
           select: {
             stocks: { where: { status: "AVAILABLE" } },
@@ -35,7 +38,7 @@ async function getProducts() {
     });
 
     const needsInitialSync = products.some(
-      (p: any) =>
+      (p) =>
         (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
         p.supplierProductId &&
         (!p.supplierLastCheckedAt || Date.now() - new Date(p.supplierLastCheckedAt).getTime() > 60 * 1000)
@@ -54,6 +57,7 @@ async function getProducts() {
         products = await prisma.product.findMany({
           where: { isActive: true },
           include: {
+            category: true,
             _count: {
               select: {
                 stocks: { where: { status: "AVAILABLE" } },
@@ -62,13 +66,13 @@ async function getProducts() {
           },
           orderBy: { price: "desc" },
         });
-      } catch (e) {
+      } catch {
         // If timeout or error, we just ignore and serve the stale products instantly.
         // The sync might still finish in the background.
       }
     }
 
-    return products.map((p: any) => ({
+    return products.map((p): ProductForCatalog => ({
       id: p.id,
       name: p.name,
       price: p.price,
@@ -76,12 +80,35 @@ async function getProducts() {
       showOriginalPrice: p.showOriginalPrice,
       description: p.description,
       stockCount: calculateProductStock(p),
+      categoryId: p.categoryId,
+      categorySlug: p.category?.slug ?? null,
+      categoryName: p.category?.name ?? null,
     }));
   }, 10);
 }
 
+async function getCategorySales() {
+  return cache.getOrSet("catalog-category-sales", async () => {
+    const paidTransactions = await prisma.transaction.findMany({
+      where: {
+        status: "PAID",
+      },
+      select: {
+        productId: true,
+        status: true,
+        paidAt: true,
+        customerId: true,
+      },
+    });
+
+    return buildSalesMap(paidTransactions);
+  }, 300);
+}
+
 export default async function CustomerCatalogPage() {
   const products = await getProducts();
+  const salesMap = await getCategorySales();
+  const groups = groupByCategory(products, salesMap);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -91,7 +118,7 @@ export default async function CustomerCatalogPage() {
 
         {/* Catalog Section */}
         <section id="catalog" className="scroll-mt-8">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 animate-fade-in">
             <h2 className="section-header-title text-2xl sm:text-3xl">Pilihan Produk</h2>
             <div className="sm:ml-auto flex items-center gap-2 text-sm text-slate-400">
               <span className="stock-dot-available" />
@@ -100,7 +127,7 @@ export default async function CustomerCatalogPage() {
             </div>
           </div>
 
-          {/* Products Grid */}
+          {/* Empty State */}
           {products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-500 bg-surface-card/50 rounded-3xl border border-surface-border">
               <Package size={48} className="mb-4 opacity-40" />
@@ -108,10 +135,18 @@ export default async function CustomerCatalogPage() {
               <p className="text-sm mt-2">Silakan cek kembali nanti</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product: any, index: any) => (
-                <CustomerProductCard key={product.id} product={product} index={index} />
-              ))}
+            <div className="catalog-container">
+              <CategoryNav groups={groups} />
+
+              <div className="space-y-12 sm:space-y-16">
+                {groups.map((group, index) => (
+                  <CategorySection
+                    key={group.categoryId ?? "uncategorized"}
+                    group={group}
+                    isTopRanked={index === 0}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -129,5 +164,4 @@ export default async function CustomerCatalogPage() {
     </div>
   );
 }
-
 

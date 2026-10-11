@@ -47,7 +47,7 @@ export default async function AgentDashboardPage() {
     });
   }
 
-  const monthTotal = monthTxs.reduce((sum, tx: any) => sum + tx.finalAmount, 0);
+  const monthTotal = monthTxs.reduce((sum, tx) => sum + tx.finalAmount, 0);
   const outstandingDebt = user?.outstandingDebt || 0;
   
   return (
@@ -118,7 +118,7 @@ export default async function AgentDashboardPage() {
               {recentTxs.length === 0 ? (
                 <div className="text-center py-8 text-slate-500 text-sm">Belum ada transaksi.</div>
               ) : (
-                recentTxs.map((tx: any) => (
+                recentTxs.map((tx) => (
                   <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-hover border border-surface-border/50">
                     <div className="flex items-start gap-3">
                       <div className={`w-2 h-2 rounded-full mt-2 ${tx.status === 'PAID' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-red-400'}`} />

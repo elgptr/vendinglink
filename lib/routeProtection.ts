@@ -43,7 +43,9 @@ const PUBLIC_ROUTES = [
   "/customer",
   "/api/customer",
   "/api/checkout/customer",
-  "/api/promo-codes/validate",
+  // Consolidated public discount validation (ST-2a-2; replaces
+  // /api/promo-codes/validate and /api/voucher/validate).
+  "/api/discount/validate",
   // CSRF token bootstrap — must remain reachable WITHOUT a session so an
   // unauthenticated customer can obtain a token before checkout.
   "/api/csrf",

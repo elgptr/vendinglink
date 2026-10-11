@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     const { clientEmail, privateKey, folderId, isActive } = parsed.data;
 
-    let existing = await prisma.googleDriveConfig.findFirst();
+    const existing = await prisma.googleDriveConfig.findFirst();
 
     // If privateKey contains "...", it means user didn't change it, keep old value
     let finalPrivateKey = existing?.privateKey || null;

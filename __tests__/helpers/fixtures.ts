@@ -114,6 +114,7 @@ export async function createMockTransaction(
       agentId: overrides?.agentId,
       voucherId: overrides?.voucherId,
       promoCodeId: overrides?.promoCodeId,
+      refundPromoCodeId: overrides?.refundPromoCodeId,
       discountAmount: overrides?.discountAmount,
       stockStatus: overrides?.stockStatus,
       redeemUrl: overrides?.redeemUrl,
@@ -217,11 +218,19 @@ export async function cleanupTestDatabase(prisma: PrismaClient): Promise<void> {
   // (e.g. from a parallel suite already having cleaned up) doesn't prevent
   // the rest from running.
   const deletions = [
+    // Promo engine tables (children of customers/referral_codes/voucher_rules)
+    () => prisma.referralRedemption.deleteMany({}),
+    () => prisma.voucherRedemption.deleteMany({}),
+    () => prisma.customerCredit.deleteMany({}),
+    () => prisma.voucherRule.deleteMany({}),
+    () => prisma.payoutBatch.deleteMany({}),
     () => prisma.transaction.deleteMany({}),
     () => prisma.voucher.deleteMany({}),
     () => prisma.promoCode.deleteMany({}),
     () => prisma.redeemStock.deleteMany({}),
     () => prisma.product.deleteMany({}),
+    () => prisma.category.updateMany({ where: { parentId: { not: null } }, data: { parentId: null } }),
+    () => prisma.category.deleteMany({}),
     () => prisma.user.deleteMany({}),
   ];
 

@@ -47,6 +47,24 @@ async function main() {
   console.log(`✅ Agent created: ${agent.username}`);
   console.log(`   Dev password: ${agentPassword}`);
 
+  // Categories
+  const categoriesToSeed = [
+    { slug: "ai-tools", name: "AI Tools" },
+    { slug: "subscription", name: "Subscription" },
+    { slug: "voucher-game", name: "Voucher Game" },
+  ];
+
+  const seededCategories: Record<string, string> = {};
+  for (const c of categoriesToSeed) {
+    const category = await prisma.category.upsert({
+      where: { slug: c.slug },
+      update: {},
+      create: { slug: c.slug, name: c.name },
+    });
+    seededCategories[c.slug] = category.id;
+    console.log(`✅ Category created: ${category.name}`);
+  }
+
   // Products
   const productsToSeed = [
     {
@@ -57,6 +75,7 @@ async function main() {
       showOriginalPrice: true,
       description: "Langganan $500 token untuk Claude models (Opus, Sonnet). Cocok untuk bangun aplikasi dengan cepat dan selesaikan use case development Anda.",
       isActive: true,
+      categorySlug: "ai-tools",
       stockCount: 5,
     },
     {
@@ -67,6 +86,7 @@ async function main() {
       showOriginalPrice: true,
       description: "Google Pro untuk Family plan. Jauh lebih murah dibandingkan dengan berlangganan individu bulanan.",
       isActive: true,
+      categorySlug: "subscription",
       stockCount: 10,
     },
     {
@@ -77,6 +97,7 @@ async function main() {
       showOriginalPrice: true,
       description: "Akses eksklusif ke Claude 3 Opus, limits yang lebih besar dan akses fitur baru lebih awal.",
       isActive: true,
+      categorySlug: "ai-tools",
       stockCount: 0, // Habis (Out of stock) to demonstrate the disabled state
     },
     {
@@ -87,6 +108,7 @@ async function main() {
       showOriginalPrice: false,
       description: "Akses ke model GPT-4o, DALL-E 3, dan Advanced Data Analysis tanpa batas waktu.",
       isActive: true,
+      categorySlug: "subscription",
       stockCount: 2,
     },
   ];
@@ -103,6 +125,7 @@ async function main() {
         showOriginalPrice: p.showOriginalPrice,
         description: p.description,
         isActive: p.isActive,
+        categoryId: p.categorySlug ? seededCategories[p.categorySlug] : null,
       },
     });
     console.log(`✅ Product created: ${product.name}`);
@@ -137,6 +160,37 @@ async function main() {
     },
   });
   console.log(`✅ Voucher created`);
+
+  // ProgramConfig singleton (P1 ST-2a-2 — promo/referral engine defaults)
+  const existingProgramConfig = await prisma.programConfig.findFirst();
+  if (!existingProgramConfig) {
+    await prisma.programConfig.create({ data: {} });
+    console.log(`✅ ProgramConfig created (defaults)`);
+  } else {
+    console.log(`✅ ProgramConfig already exists`);
+  }
+
+  // REFERRAL_NEW rule (P1 ST-2d) — governs the discount a referee gets when
+  // redeeming someone's referral code. NOTE: value 5000 is a placeholder seed
+  // default — confirm with the business owner (same as referralCommissionPct).
+  const existingReferralRule = await prisma.voucherRule.findFirst({
+    where: { kind: "REFERRAL_NEW" },
+  });
+  if (!existingReferralRule) {
+    await prisma.voucherRule.create({
+      data: {
+        code: "REFERRAL-NEW",
+        name: "Diskon customer baru via kode referral",
+        kind: "REFERRAL_NEW",
+        discountType: "FIXED_IDR",
+        value: 5000,
+        validFrom: new Date("2026-01-01T00:00:00Z"),
+      },
+    });
+    console.log(`✅ REFERRAL_NEW VoucherRule created (placeholder value)`);
+  } else {
+    console.log(`✅ REFERRAL_NEW VoucherRule already exists`);
+  }
 
   console.log("\n🎉 Seed completed!");
   console.log("⚠️  For production: use change-password.js to set real passwords.");

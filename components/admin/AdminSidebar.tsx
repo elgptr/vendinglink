@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Package,
+  FolderOpen,
   Ticket,
   Users,
   BarChart3,
@@ -16,6 +17,7 @@ import {
   X,
   Truck
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -23,9 +25,17 @@ interface AdminSidebarProps {
   username: string;
 }
 
-const navItems = [
+interface NavItem {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  exact?: boolean;
+}
+
+const navItems: NavItem[] = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/admin/inventory", icon: Package, label: "Inventori & Stok" },
+  { href: "/admin/categories", icon: FolderOpen, label: "Kategori" },
   { href: "/admin/supplier", icon: Truck, label: "Manajemen Supplier" },
   { href: "/admin/vouchers", icon: Ticket, label: "Voucher" },
   { href: "/admin/agents", icon: Users, label: "Manajemen Agen" },
@@ -59,7 +69,7 @@ export default function AdminSidebar({ username }: AdminSidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
-          const isActive = (item as any).exact ? pathname === item.href : pathname.startsWith(item.href);
+          const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}

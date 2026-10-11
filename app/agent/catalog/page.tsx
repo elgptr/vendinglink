@@ -4,7 +4,6 @@ import { cache } from "@/lib/cache";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ShoppingBag, Package } from "lucide-react";
-import { formatRupiah } from "@/lib/utils";
 import ProductCard from "@/components/agent/ProductCard";
 
 // Stock count changes every time a purchase happens — never prerender this

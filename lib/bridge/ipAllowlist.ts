@@ -12,7 +12,6 @@
  */
 
 import { NextRequest } from "next/server";
-import { getClientIp } from "@/lib/auth";
 
 export function normalizeIp(ip: string): string {
   const trimmed = ip.trim().toLowerCase();
@@ -27,7 +26,7 @@ export function parseAllowedIps(raw: string | undefined): string[] {
     .filter((ip) => ip.length > 0);
 }
 
-export function isBridgeIpAllowed(request: NextRequest): boolean {
+export function isBridgeIpAllowed(_request: NextRequest): boolean {
   // Temporarily turned off for testing
   return true;
 }

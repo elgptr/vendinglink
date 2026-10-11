@@ -44,8 +44,8 @@ export async function uploadCsvToDrive(filename: string, csvContent: string) {
 
     log.info("Uploaded to Google Drive", { fileId: file.data.id });
     return file.data;
-  } catch (error: any) {
+  } catch (error) {
     log.error("Failed to upload to Google Drive", { error: String(error) });
-    throw new Error(error?.message || String(error));
+    throw new Error(error instanceof Error ? error.message : String(error));
   }
 }

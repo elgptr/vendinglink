@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Package, Plus, Upload, RefreshCw, Edit3, Search, Sparkles, ImageIcon, Eye, EyeOff, Copy, Check, Trash2, AlertTriangle, CheckCircle2, Key, Link as LinkIcon } from "lucide-react";
+import { Package, Plus, Upload, RefreshCw, Edit3, Sparkles, ImageIcon, Eye, EyeOff, Copy, Check, Trash2, AlertTriangle, CheckCircle2, Key, Link as LinkIcon } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input, { Textarea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
@@ -26,6 +26,7 @@ interface Product {
   updatedAt: string;
   supplierMode: string;
   supplierProductId: string | null;
+  categoryId: string | null;
   _count: { stocks: number };
 }
 
@@ -39,6 +40,13 @@ interface Stock {
   customerName: string | null;
   claimedAt: string | null;
   createdAt: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
 }
 
 export default function InventoryPage() {
@@ -93,6 +101,8 @@ export default function InventoryPage() {
   const [editIsActive, setEditIsActive] = useState(true);
   const [editSupplierMode, setEditSupplierMode] = useState("MANUAL");
   const [editSupplierProductId, setEditSupplierProductId] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
@@ -183,9 +193,25 @@ export default function InventoryPage() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch("/api/admin/categories");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Failed to fetch categories:", e);
+      setCategories([]);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchStocks();
+    fetchCategories();
   }, []);
 
   const handleStockDelete = async (stock: Stock) => {
@@ -225,6 +251,7 @@ export default function InventoryPage() {
         guideText: editGuideText || undefined,
         supplierMode: editSupplierMode,
         supplierProductId: editSupplierProductId || null,
+        categoryId: editCategoryId || null,
       }),
     });
 
@@ -485,6 +512,7 @@ export default function InventoryPage() {
                     setEditIsActive(product.isActive);
                     setEditSupplierMode(product.supplierMode || "MANUAL");
                     setEditSupplierProductId(product.supplierProductId || "");
+                    setEditCategoryId(product.categoryId || "");
                     setShowPriceModal(true);
                   }}
                 >
@@ -527,7 +555,7 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <Card noPadding className="overflow-hidden border border-surface-border bg-surface-card/50 backdrop-blur-md rounded-2xl shadow-xl">
+        <Card className="overflow-hidden border border-surface-border bg-surface-card/50 backdrop-blur-md rounded-2xl shadow-xl">
           {loadingStocks ? (
             <div className="py-12"><Spinner label="Memuat log stok..." /></div>
           ) : stocks.length === 0 ? (
@@ -617,6 +645,7 @@ export default function InventoryPage() {
         isOpen={showPriceModal}
         onClose={() => setShowPriceModal(false)}
         title={`Edit Produk — ${selectedProduct?.name}`}
+        size="2xl"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowPriceModal(false)}>
@@ -632,180 +661,234 @@ export default function InventoryPage() {
           </>
         }
       >
-        <form onSubmit={handleUpdateProduct} className="space-y-4">
-          <Input
-            id="edit-product-name"
-            label="Nama Produk"
-            placeholder="Link Redeem Premium"
-            value={editProductName}
-            onChange={(e) => setEditProductName(e.target.value)}
-            required
-          />
-          <Input
-            id="new-price-input"
-            label="Harga Baru (Rp)"
-            type="number"
-            min="1"
-            placeholder="350000"
-            value={newPrice}
-            onChange={(e) => setNewPrice(e.target.value)}
-            required
-          />
-          <Input
-            id="edit-original-price-input"
-            label="Harga Asli / Coret (Opsional)"
-            type="number"
-            min="1"
-            placeholder="500000"
-            value={editOriginalPrice}
-            onChange={(e) => setEditOriginalPrice(e.target.value)}
-          />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-300">Tampilkan Harga Coret?</label>
-            <div className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="editShowOriginalPrice" checked={editShowOriginalPrice} onChange={() => setEditShowOriginalPrice(true)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Ya, Tampilkan</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="editShowOriginalPrice" checked={!editShowOriginalPrice} onChange={() => setEditShowOriginalPrice(false)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Sembunyikan</span>
-              </label>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
-            <div className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="editProductType" value="LINK" checked={editProductType === "LINK"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Link Redeem</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="editProductType" value="KODE" checked={editProductType === "KODE"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Kode Redeem</span>
-              </label>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-slate-300">
-              Status Produk Aktif
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} className="accent-brand-500 w-4 h-4" />
-              <span className="text-sm text-slate-200">{editIsActive ? "Aktif" : "Nonaktif"}</span>
-            </label>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="edit-product-desc" className="text-sm font-medium text-slate-300">
-                Deskripsi
-              </label>
-              <Button
-                id="generate-desc-btn-edit"
-                type="button"
-                variant="secondary"
-                size="sm"
-                icon={<Sparkles size={14} />}
-                loading={generatingDesc}
-                onClick={() =>
-                  handleGenerateDescription(
-                    editProductName,
-                    newPrice,
-                    setEditProductDesc
-                  )
-                }
-              >
-                Generate Deskripsi
-              </Button>
-            </div>
-            <Textarea
-              id="edit-product-desc"
-              placeholder="Deskripsi produk..."
-              value={editProductDesc}
-              onChange={(e) => setEditProductDesc(e.target.value)}
-              rows={3}
-              maxLength={500}
-              hint={`${editProductDesc.length}/200 karakter disarankan`}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Input
-              id="edit-guide-url"
-              label="URL Gambar Panduan (Opsional)"
-              placeholder="https://example.com/guide-image.jpg"
-              value={editGuideUrl}
-              onChange={(e) => setEditGuideUrl(e.target.value)}
-            />
-            {editGuideUrl && (
-              <div className="mt-2 rounded-xl border border-surface-border overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={editGuideUrl}
-                  alt="Preview panduan"
-                  className="w-full max-h-48 object-contain bg-black/20"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+        <form onSubmit={handleUpdateProduct} className="space-y-6">
+          {/* ── Informasi Dasar ── */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+              Informasi Dasar
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Input
+                  id="edit-product-name"
+                  label="Nama Produk"
+                  placeholder="Link Redeem Premium"
+                  value={editProductName}
+                  onChange={(e) => setEditProductName(e.target.value)}
+                  required
                 />
               </div>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="edit-product-guide-text" className="text-sm font-medium text-slate-300">
-                Panduan Penggunaan (Opsional)
-              </label>
-              <div>
-                <input
-                  type="file"
-                  accept=".md"
-                  id="edit-upload-md"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (!file.name.endsWith(".md")) {
-                      toast.error("Hanya file .md yang diperbolehkan");
-                      e.target.value = "";
-                      return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      setEditGuideText(ev.target?.result as string);
-                      toast.success("File .md berhasil dimuat");
-                    };
-                    reader.readAsText(file);
-                    e.target.value = "";
-                  }}
-                />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
+                <div className="flex gap-4 mt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="editProductType" value="LINK" checked={editProductType === "LINK"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
+                    <span className="text-sm text-slate-200">Link Redeem</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="editProductType" value="KODE" checked={editProductType === "KODE"} onChange={(e) => setEditProductType(e.target.value)} className="accent-brand-500" />
+                    <span className="text-sm text-slate-200">Kode Redeem</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="edit-product-category" className="text-sm font-medium text-slate-300">
+                  Kategori (Opsional)
+                </label>
+                <select
+                  id="edit-product-category"
+                  value={editCategoryId}
+                  onChange={(e) => setEditCategoryId(e.target.value)}
+                  className="w-full bg-surface-card border border-surface-border text-slate-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                >
+                  <option value="">-- Tanpa Kategori --</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-2 flex items-center justify-between rounded-lg border border-surface-border bg-surface-hover/30 px-4 py-3">
+                <span className="text-sm font-medium text-slate-300">Status Produk Aktif</span>
+                <label className="toggle-switch cursor-pointer gap-3">
+                  <input
+                    type="checkbox"
+                    checked={editIsActive}
+                    onChange={(e) => setEditIsActive(e.target.checked)}
+                  />
+                  <span className="toggle-track" />
+                  <span className="toggle-thumb" />
+                  <span className="text-sm text-slate-200">{editIsActive ? "Aktif" : "Nonaktif"}</span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Harga ── */}
+          <section className="space-y-4 pt-4 border-t border-surface-border">
+            <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+              Harga
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                id="new-price-input"
+                label="Harga Baru (Rp)"
+                type="number"
+                min="1"
+                placeholder="350000"
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                required
+              />
+              <Input
+                id="edit-original-price-input"
+                label="Harga Asli / Coret (Opsional)"
+                type="number"
+                min="1"
+                placeholder="500000"
+                value={editOriginalPrice}
+                onChange={(e) => setEditOriginalPrice(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-300">Tampilkan Harga Coret?</label>
+              <div className="flex gap-4 mt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="editShowOriginalPrice" checked={editShowOriginalPrice} onChange={() => setEditShowOriginalPrice(true)} className="accent-brand-500" />
+                  <span className="text-sm text-slate-200">Ya, Tampilkan</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="editShowOriginalPrice" checked={!editShowOriginalPrice} onChange={() => setEditShowOriginalPrice(false)} className="accent-brand-500" />
+                  <span className="text-sm text-slate-200">Sembunyikan</span>
+                </label>
+              </div>
+            </div>
+          </section>
+          {/* ── Konten & Panduan ── */}
+          <section className="space-y-4 pt-4 border-t border-surface-border">
+            <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+              Konten & Panduan
+            </h3>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="edit-product-desc" className="text-sm font-medium text-slate-300">
+                  Deskripsi
+                </label>
                 <Button
+                  id="generate-desc-btn-edit"
                   type="button"
                   variant="secondary"
                   size="sm"
-                  icon={<Upload size={14} />}
-                  onClick={() => document.getElementById("edit-upload-md")?.click()}
+                  icon={<Sparkles size={14} />}
+                  loading={generatingDesc}
+                  onClick={() =>
+                    handleGenerateDescription(
+                      editProductName,
+                      newPrice,
+                      setEditProductDesc
+                    )
+                  }
                 >
-                  Upload .md
+                  Generate Deskripsi
                 </Button>
               </div>
+              <Textarea
+                id="edit-product-desc"
+                placeholder="Deskripsi produk..."
+                value={editProductDesc}
+                onChange={(e) => setEditProductDesc(e.target.value)}
+                rows={3}
+                maxLength={500}
+                hint={`${editProductDesc.length}/200 karakter disarankan`}
+              />
             </div>
-            <Textarea
-              id="edit-product-guide-text"
-              placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
-              value={editGuideText}
-              onChange={(e) => setEditGuideText(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
-            />
-          </div>
 
-          {/* ── Supplier Linker ── */}
-          <SupplierProductLinker
-            value={editSupplierMode}
-            productId={editSupplierProductId}
-            onModeChange={setEditSupplierMode}
-            onProductChange={setEditSupplierProductId}
-          />
+            <div className="space-y-1.5">
+              <Input
+                id="edit-guide-url"
+                label="URL Gambar Panduan (Opsional)"
+                placeholder="https://example.com/guide-image.jpg"
+                value={editGuideUrl}
+                onChange={(e) => setEditGuideUrl(e.target.value)}
+              />
+              {editGuideUrl && (
+                <div className="mt-2 rounded-xl border border-surface-border overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={editGuideUrl}
+                    alt="Preview panduan"
+                    className="w-full max-h-48 object-contain bg-black/20"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="edit-product-guide-text" className="text-sm font-medium text-slate-300">
+                  Panduan Penggunaan (Opsional)
+                </label>
+                <div>
+                  <input
+                    type="file"
+                    accept=".md"
+                    id="edit-upload-md"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.name.endsWith(".md")) {
+                        toast.error("Hanya file .md yang diperbolehkan");
+                        e.target.value = "";
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        setEditGuideText(ev.target?.result as string);
+                        toast.success("File .md berhasil dimuat");
+                      };
+                      reader.readAsText(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon={<Upload size={14} />}
+                    onClick={() => document.getElementById("edit-upload-md")?.click()}
+                  >
+                    Upload .md
+                  </Button>
+                </div>
+              </div>
+              <Textarea
+                id="edit-product-guide-text"
+                placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
+                value={editGuideText}
+                onChange={(e) => setEditGuideText(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
+              />
+            </div>
+          </section>
+
+          {/* ── Supplier Stok ── */}
+          <section className="space-y-4 pt-4 border-t border-surface-border">
+            <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+              Supplier Stok
+            </h3>
+            <SupplierProductLinker
+              value={editSupplierMode}
+              productId={editSupplierProductId}
+              onModeChange={setEditSupplierMode}
+              onProductChange={setEditSupplierProductId}
+            />
+          </section>
         </form>
       </Modal>
 
@@ -865,6 +948,7 @@ export default function InventoryPage() {
         isOpen={showAddProductModal}
         onClose={() => setShowAddProductModal(false)}
         title="Tambah Produk Baru"
+        size="2xl"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowAddProductModal(false)}>
@@ -880,163 +964,191 @@ export default function InventoryPage() {
           </>
         }
       >
-        <form onSubmit={handleAddProduct} className="space-y-4">
-          <Input
-            id="new-product-name"
-            label="Nama Produk"
-            placeholder="Link Redeem Premium"
-            value={newProductName}
-            onChange={(e) => setNewProductName(e.target.value)}
-            required
-          />
-          <Input
-            id="new-product-price"
-            label="Harga (Rp)"
-            type="number"
-            min="1"
-            placeholder="350000"
-            value={newProductPrice}
-            onChange={(e) => setNewProductPrice(e.target.value)}
-            required
-          />
-          <Input
-            id="new-original-price"
-            label="Harga Asli / Coret (Opsional)"
-            type="number"
-            min="1"
-            placeholder="500000"
-            value={newOriginalPrice}
-            onChange={(e) => setNewOriginalPrice(e.target.value)}
-          />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-300">Tampilkan Harga Coret?</label>
-            <div className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="newShowOriginalPrice" checked={newShowOriginalPrice} onChange={() => setNewShowOriginalPrice(true)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Ya, Tampilkan</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="newShowOriginalPrice" checked={!newShowOriginalPrice} onChange={() => setNewShowOriginalPrice(false)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Sembunyikan</span>
-              </label>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
-            <div className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="newProductType" value="LINK" checked={newProductType === "LINK"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Link Redeem</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="newProductType" value="KODE" checked={newProductType === "KODE"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
-                <span className="text-sm text-slate-200">Kode Redeem</span>
-              </label>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="new-product-desc" className="text-sm font-medium text-slate-300">
-                Deskripsi (Opsional)
-              </label>
-              <Button
-                id="generate-desc-btn-add"
-                type="button"
-                variant="secondary"
-                size="sm"
-                icon={<Sparkles size={14} />}
-                loading={generatingDesc}
-                onClick={() =>
-                  handleGenerateDescription(
-                    newProductName,
-                    newProductPrice,
-                    setNewProductDesc
-                  )
-                }
-              >
-                Generate Deskripsi
-              </Button>
-            </div>
-            <Textarea
-              id="new-product-desc"
-              placeholder="Deskripsi produk..."
-              value={newProductDesc}
-              onChange={(e) => setNewProductDesc(e.target.value)}
-              rows={3}
-              maxLength={500}
-              hint={`${newProductDesc.length}/200 karakter disarankan`}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Input
-              id="new-product-guide-url"
-              label="URL Gambar Panduan (Opsional)"
-              placeholder="https://example.com/guide-image.jpg"
-              value={newProductGuideUrl}
-              onChange={(e) => setNewProductGuideUrl(e.target.value)}
-            />
-            {newProductGuideUrl && (
-              <div className="mt-2 rounded-xl border border-surface-border overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={newProductGuideUrl}
-                  alt="Preview panduan"
-                  className="w-full max-h-48 object-contain bg-black/20"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+        <form onSubmit={handleAddProduct} className="space-y-6">
+          {/* ── Informasi Dasar ── */}
+          <section className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+              Informasi Dasar
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Input
+                  id="new-product-name"
+                  label="Nama Produk"
+                  placeholder="Link Redeem Premium"
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  required
                 />
               </div>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="new-product-guide-text" className="text-sm font-medium text-slate-300">
-                Panduan Penggunaan (Opsional)
-              </label>
-              <div>
-                <input
-                  type="file"
-                  accept=".md"
-                  id="new-upload-md"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (!file.name.endsWith(".md")) {
-                      toast.error("Hanya file .md yang diperbolehkan");
-                      e.target.value = "";
-                      return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      setNewProductGuideText(ev.target?.result as string);
-                      toast.success("File .md berhasil dimuat");
-                    };
-                    reader.readAsText(file);
-                    e.target.value = "";
-                  }}
-                />
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-300">Tipe Produk</label>
+                <div className="flex gap-4 mt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="newProductType" value="LINK" checked={newProductType === "LINK"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
+                    <span className="text-sm text-slate-200">Link Redeem</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="newProductType" value="KODE" checked={newProductType === "KODE"} onChange={(e) => setNewProductType(e.target.value)} className="accent-brand-500" />
+                    <span className="text-sm text-slate-200">Kode Redeem</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Harga ── */}
+          <section className="space-y-4 pt-4 border-t border-surface-border">
+            <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+              Harga
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                id="new-product-price"
+                label="Harga (Rp)"
+                type="number"
+                min="1"
+                placeholder="350000"
+                value={newProductPrice}
+                onChange={(e) => setNewProductPrice(e.target.value)}
+                required
+              />
+              <Input
+                id="new-original-price"
+                label="Harga Asli / Coret (Opsional)"
+                type="number"
+                min="1"
+                placeholder="500000"
+                value={newOriginalPrice}
+                onChange={(e) => setNewOriginalPrice(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-300">Tampilkan Harga Coret?</label>
+              <div className="flex gap-4 mt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="newShowOriginalPrice" checked={newShowOriginalPrice} onChange={() => setNewShowOriginalPrice(true)} className="accent-brand-500" />
+                  <span className="text-sm text-slate-200">Ya, Tampilkan</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="newShowOriginalPrice" checked={!newShowOriginalPrice} onChange={() => setNewShowOriginalPrice(false)} className="accent-brand-500" />
+                  <span className="text-sm text-slate-200">Sembunyikan</span>
+                </label>
+              </div>
+            </div>
+          </section>
+          {/* ── Konten & Panduan ── */}
+          <section className="space-y-4 pt-4 border-t border-surface-border">
+            <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+              Konten & Panduan
+            </h3>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="new-product-desc" className="text-sm font-medium text-slate-300">
+                  Deskripsi (Opsional)
+                </label>
                 <Button
+                  id="generate-desc-btn-add"
                   type="button"
                   variant="secondary"
                   size="sm"
-                  icon={<Upload size={14} />}
-                  onClick={() => document.getElementById("new-upload-md")?.click()}
+                  icon={<Sparkles size={14} />}
+                  loading={generatingDesc}
+                  onClick={() =>
+                    handleGenerateDescription(
+                      newProductName,
+                      newProductPrice,
+                      setNewProductDesc
+                    )
+                  }
                 >
-                  Upload .md
+                  Generate Deskripsi
                 </Button>
               </div>
+              <Textarea
+                id="new-product-desc"
+                placeholder="Deskripsi produk..."
+                value={newProductDesc}
+                onChange={(e) => setNewProductDesc(e.target.value)}
+                rows={3}
+                maxLength={500}
+                hint={`${newProductDesc.length}/200 karakter disarankan`}
+              />
             </div>
-            <Textarea
-              id="new-product-guide-text"
-              placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
-              value={newProductGuideText}
-              onChange={(e) => setNewProductGuideText(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
-            />
-          </div>
+
+            <div className="space-y-1.5">
+              <Input
+                id="new-product-guide-url"
+                label="URL Gambar Panduan (Opsional)"
+                placeholder="https://example.com/guide-image.jpg"
+                value={newProductGuideUrl}
+                onChange={(e) => setNewProductGuideUrl(e.target.value)}
+              />
+              {newProductGuideUrl && (
+                <div className="mt-2 rounded-xl border border-surface-border overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={newProductGuideUrl}
+                    alt="Preview panduan"
+                    className="w-full max-h-48 object-contain bg-black/20"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="new-product-guide-text" className="text-sm font-medium text-slate-300">
+                  Panduan Penggunaan (Opsional)
+                </label>
+                <div>
+                  <input
+                    type="file"
+                    accept=".md"
+                    id="new-upload-md"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.name.endsWith(".md")) {
+                        toast.error("Hanya file .md yang diperbolehkan");
+                        e.target.value = "";
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        setNewProductGuideText(ev.target?.result as string);
+                        toast.success("File .md berhasil dimuat");
+                      };
+                      reader.readAsText(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon={<Upload size={14} />}
+                    onClick={() => document.getElementById("new-upload-md")?.click()}
+                  >
+                    Upload .md
+                  </Button>
+                </div>
+              </div>
+              <Textarea
+                id="new-product-guide-text"
+                placeholder="Langkah 1: Buka link...\nLangkah 2: Masukkan kode..."
+                value={newProductGuideText}
+                onChange={(e) => setNewProductGuideText(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                hint="Akan ditampilkan sebagai step-by-step instruksi ke pembeli."
+              />
+            </div>
+          </section>
         </form>
       </Modal>
     </div>

@@ -22,3 +22,7 @@ tsconfig.tsbuildinfo
 .gateway-setting.json
 .env*
 _archive/
+
+# Test run artifacts (Vitest/Playwright) — regenerated every run, never source
+test-results/
+playwright-report/

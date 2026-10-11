@@ -58,4 +58,44 @@ test.describe("E2E: Customer Checkout Flow", () => {
     await expect(page).toHaveURL(/\/customer\/order\//, { timeout: 10000 });
     await expect(page.locator("body")).toBeVisible();
   });
+
+  test("should default consent to true, show inline warning on uncheck, and restore on re-check", async ({ page }) => {
+    await page.goto("/customer");
+
+    const buyLink = page
+      .locator("a:has(button[id^='customer-buy-btn-']:not([disabled]))")
+      .first();
+
+    test.skip((await buyLink.count()) === 0, "No in-stock product to buy");
+
+    await buyLink.click();
+    await expect(page).toHaveURL(/\/customer\/checkout\//);
+    await expect(page.locator("#customer-checkout-form")).toBeVisible();
+
+    // No consent checkbox until a phone number is typed.
+    await expect(page.locator("#customer-consent-promo")).toHaveCount(0);
+
+    await page.fill("#customer-phone-input", "081220000001");
+
+    // Checkbox appears with default checked = true; inline warning is hidden.
+    const consentBox = page.locator("#customer-consent-promo");
+    await expect(consentBox).toBeVisible();
+    await expect(consentBox).toBeChecked();
+    await expect(page.locator("#customer-consent-promo-warning")).toHaveCount(0);
+
+    // Unchecking shows the inline benefit-loss warning (non-hover, keyboard/touch accessible).
+    await consentBox.uncheck();
+    await expect(consentBox).not.toBeChecked();
+    await expect(page.locator("#customer-consent-promo-warning")).toBeVisible();
+
+    // Re-checking hides the warning again.
+    await consentBox.check();
+    await expect(consentBox).toBeChecked();
+    await expect(page.locator("#customer-consent-promo-warning")).toHaveCount(0);
+
+    // Clearing the phone hides the consent UI entirely.
+    await page.fill("#customer-phone-input", "");
+    await expect(page.locator("#customer-consent-promo")).toHaveCount(0);
+    await expect(page.locator("#customer-consent-promo-warning")).toHaveCount(0);
+  });
 });

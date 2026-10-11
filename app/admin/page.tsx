@@ -77,19 +77,19 @@ export default async function AdminDashboardPage() {
 
   // Process low stock products (<= 5 items left)
   const lowStockAlerts = activeProducts
-    .map((p: any) => {
+    .map((p) => {
       const isExternal = p.supplierMode === 'REZEKI' || p.supplierMode === 'DIGITALCORE';
       const effectiveStock = isExternal ? p.supplierStock : p._count.stocks;
       return { ...p, effectiveStock };
     })
-    .filter((p: any) => p.effectiveStock <= 5)
-    .sort((a: any, b: any) => a.effectiveStock - b.effectiveStock)
+    .filter((p) => p.effectiveStock <= 5)
+    .sort((a, b) => a.effectiveStock - b.effectiveStock)
     .slice(0, 5); // Take top 5 most critical
 
   // Process top sellers (query already fetched in parallel above)
   
   const topSellers = allProductsForTopSellers
-    .sort((a: any, b: any) => b._count.transactions - a._count.transactions)
+    .sort((a, b) => b._count.transactions - a._count.transactions)
     .slice(0, 3);
   const maxSales = topSellers[0]?._count.transactions || 1;
 
@@ -242,7 +242,7 @@ export default async function AdminDashboardPage() {
               {recentTransactions.length === 0 ? (
                 <div className="text-center py-8 text-slate-500 text-sm">Belum ada transaksi.</div>
               ) : (
-                recentTransactions.map((tx: any) => (
+                recentTransactions.map((tx) => (
                   <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-hover border border-surface-border/50">
                     <div className="flex items-start gap-3">
                       <div className={`w-2 h-2 rounded-full mt-2 ${tx.status === 'PAID' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : tx.status === 'PENDING' ? 'bg-amber-400' : 'bg-rose-400'}`} />
@@ -276,7 +276,7 @@ export default async function AdminDashboardPage() {
               {topSellers.length === 0 || topSellers[0]._count.transactions === 0 ? (
                 <div className="text-center py-6 text-slate-500 text-sm">Belum ada data penjualan.</div>
               ) : (
-                topSellers.map((product: any, index: number) => (
+                topSellers.map((product, index: number) => (
                   <div key={product.id} className="relative">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium text-white flex items-center gap-2">
@@ -352,7 +352,7 @@ export default async function AdminDashboardPage() {
                   Semua stok produk aman!
                 </div>
               ) : (
-                lowStockAlerts.map((product: any) => (
+                lowStockAlerts.map((product) => (
                   <div key={product.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
                     <div>
                       <p className="font-medium text-white text-sm">{product.name}</p>

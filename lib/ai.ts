@@ -83,7 +83,7 @@ export async function buildSystemPrompt(audience: "customer" | "agent" = "agent"
 
   const productLines = products.length
     ? products
-        .map((p: any) => {
+        .map((p) => {
           const stockCount = calculateProductStock(p);
           const stockInfo =
             stockCount > 0
@@ -98,7 +98,7 @@ export async function buildSystemPrompt(audience: "customer" | "agent" = "agent"
 
   const voucherLines = activeVouchers.length
     ? activeVouchers
-        .map((v: any) => {
+        .map((v) => {
           const sisaKuota = Math.max(0, v.quota - v.usedCount);
           const kadaluarsa = v.expiresAt
             ? `berlaku sampai ${formatDate(v.expiresAt)}`
@@ -268,7 +268,7 @@ Gunakan hanya data yang diberikan, jangan mengarang angka. Jika data tidak cukup
           const data = JSON.parse(line.slice(6));
           const content = data.choices?.[0]?.delta?.content;
           if (content) yield content;
-        } catch (e) {
+        } catch {
           // ignore parse error for incomplete chunks
         }
       }

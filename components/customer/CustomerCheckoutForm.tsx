@@ -19,6 +19,9 @@ type PromoState = {
   code: string;
   discountAmount: number;
   isVoucher?: boolean;
+  // New promo engine (ST-2d): the raw code is submitted back as `discountCode`
+  // and re-resolved server-side at checkout — never a client-trusted amount.
+  redeemCode?: string;
 } | null;
 
 export default function CustomerCheckoutForm({
@@ -28,6 +31,7 @@ export default function CustomerCheckoutForm({
   const router = useRouter();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [consentPromo, setConsentPromo] = useState(true);
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [promo, setPromo] = useState<PromoState>(null);
   const [promoError, setPromoError] = useState("");
@@ -62,20 +66,28 @@ export default function CustomerCheckoutForm({
     setPromoLoading(true);
 
     try {
-      const res = await fetch("/api/promo-codes/validate", {
+      const res = await fetch("/api/discount/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: promoCodeInput.trim().toUpperCase() }),
+        body: JSON.stringify({
+          code: promoCodeInput.trim().toUpperCase(),
+          productId,
+          // Referee identity lets the preview run the per-customer quota and
+          // self-referral guards (checkout re-checks them authoritatively).
+          customerPhone: customerPhone.trim() || undefined,
+          customerName: customerName.trim() || undefined,
+        }),
       });
 
       const data = await res.json();
 
       if (data.valid) {
         setPromo({
-          id: data.promoCodeId || data.voucherId,
+          id: data.promoCodeId || data.voucherId || "",
           code: data.code,
           discountAmount: data.discountAmount,
           isVoucher: !!data.voucherId,
+          redeemCode: data.redeemCode,
         });
         toast.success(data.message);
       } else {
@@ -114,10 +126,14 @@ export default function CustomerCheckoutForm({
         },
         body: JSON.stringify({
           productId,
-          promoCodeId: promo?.isVoucher ? undefined : promo?.id,
-          voucherId: promo?.isVoucher ? promo?.id : undefined,
+          promoCodeId: promo?.redeemCode ? undefined : promo?.isVoucher ? undefined : promo?.id,
+          voucherId: promo?.redeemCode ? undefined : promo?.isVoucher ? promo?.id : undefined,
+          discountCode: promo?.redeemCode,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim() || undefined,
+          // Consent only exists once a phone number is entered (the checkbox is
+          // rendered conditionally), so never send it otherwise.
+          consentPromo: customerPhone.trim() ? consentPromo : undefined,
         }),
       });
 
@@ -165,6 +181,40 @@ export default function CustomerCheckoutForm({
         leftIcon={<Phone size={16} />}
         hint="Sangat disarankan: Isi nomor WhatsApp untuk bisa melacak riwayat pembelian Anda nanti."
       />
+
+      {customerPhone.trim() && (
+        <div className="space-y-2">
+          <label
+            htmlFor="customer-consent-promo"
+            className="flex items-start gap-3 cursor-pointer"
+          >
+            <input
+              id="customer-consent-promo"
+              type="checkbox"
+              aria-describedby="customer-consent-promo-warning"
+              checked={consentPromo}
+              onChange={(e) => setConsentPromo(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-surface-border text-brand-500 focus:ring-brand-500/50 bg-surface-card cursor-pointer"
+            />
+            <span className="text-xs text-slate-400">
+              Dengan mengisi nomor WhatsApp saya menyetujui data saya disimpan untuk
+              riwayat pembelian, mendapatkan kode referral pribadi, dan menerima info
+              program marketing dari txsiber — termasuk melalui WhatsApp.
+            </span>
+          </label>
+          {!consentPromo && (
+            <p
+              id="customer-consent-promo-warning"
+              role="status"
+              aria-live="polite"
+              className="text-xs text-slate-400 pl-7"
+            >
+              Jika tidak dicentang, pesanan tetap diproses tetapi Anda tidak akan mendapat
+              riwayat pembelian dan benefit kode referral.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Promo code (auto-issued when a previous order ran out of stock) */}
       {!promo ? (

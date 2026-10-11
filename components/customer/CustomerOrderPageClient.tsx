@@ -27,6 +27,8 @@ interface OrderData {
   guideImageUrl?: string | null;
   guideText?: string | null;
   paidAt?: string | null;
+  referralCode?: string | null;
+  referralCommissionPct?: number | null;
 }
 
 interface SnapTokenData {
@@ -75,7 +77,7 @@ export default function CustomerOrderPageClient({
     } catch {
       consecutiveErrors.current += 1;
     }
-  }, [orderId, router, pollInterval]);
+  }, [orderId, pollInterval]);
 
   const fetchSnapToken = useCallback(async () => {
     try {
@@ -123,6 +125,8 @@ export default function CustomerOrderPageClient({
         amount={orderData.finalAmount}
         customerName={orderData.customerName}
         paidAt={orderData.paidAt}
+        referralCode={orderData.referralCode}
+        referralCommissionPct={orderData.referralCommissionPct}
       />
     );
   }

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseBulkLinks, parseBulkCodes, isValidUrl } from "@/lib/utils";
+import { parseBulkLinks, parseBulkCodes } from "@/lib/utils";
 import { z } from "zod";
 import { checkAdminRateLimit } from "@/lib/adminRateLimit";
 

@@ -3,9 +3,21 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Plus, Loader2 } from 'lucide-react';
 
+interface ProductOption {
+  id: string;
+  name: string;
+}
+
+interface SupplierMapping {
+  supplierCode: string;
+  supplierProductId: string;
+  productId: string;
+  product?: { name: string } | null;
+}
+
 export default function SupplierManagementPage() {
-  const [mappings, setMappings] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [mappings, setMappings] = useState<SupplierMapping[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [supplierCode, setSupplierCode] = useState('');

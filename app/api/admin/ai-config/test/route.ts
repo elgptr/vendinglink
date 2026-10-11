@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let { baseUrl, apiKey, model } = parsed.data;
+    const { baseUrl, model } = parsed.data;
+    let { apiKey } = parsed.data;
     
     if (!apiKey || apiKey === "existing") {
       const config = await prisma.aIConfiguration.findFirst();

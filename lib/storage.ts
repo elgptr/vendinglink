@@ -36,12 +36,6 @@ async function ensureUploadDir(): Promise<void> {
  * @returns Sanitized filename (alphanumeric + underscore + extension)
  */
 export function sanitizeFilename(filename: string): string {
-  // Remove path separators and null bytes
-  let cleaned = filename.replace(/[\\/\0]/g, "");
-  
-  // Remove suspicious patterns
-  cleaned = cleaned.replace(/\.\./g, "").replace(/<|>|:|"|\\|\||\?|\*/g, "");
-  
   // Extract extension safely
   const extMatch = filename.match(/\.([a-z0-9]{1,6})$/i);
   const ext = extMatch ? extMatch[1].toLowerCase() : "";

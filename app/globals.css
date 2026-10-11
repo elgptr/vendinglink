@@ -175,7 +175,7 @@
   }
 
   .price-tag-original {
-    @apply text-sm text-slate-500 line-through tabular-nums;
+    @apply text-sm text-slate-400 line-through tabular-nums;
   }
 
   .price-tag-discount {
@@ -188,11 +188,11 @@
   }
 
   .stock-dot-available {
-    @apply stock-dot bg-emerald-400 animate-pulse;
+    @apply stock-dot bg-emerald-400 ring-1 ring-emerald-400/40;
   }
 
   .stock-dot-low {
-    @apply stock-dot bg-amber-400 animate-pulse;
+    @apply stock-dot bg-amber-400 ring-1 ring-amber-400/40;
   }
 
   .stock-dot-empty {
@@ -238,5 +238,10 @@
   /* Container for constraining customer page max-width */
   .customer-container {
     @apply max-w-5xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Wider container for the grouped catalog so the featured card has room. */
+  .catalog-container {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 }

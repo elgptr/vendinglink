@@ -16,6 +16,8 @@ vi.mock('@/lib/prisma', () => ({
     promoCode: { create: vi.fn(), update: vi.fn() },
     voucher: { update: vi.fn() },
     product: { findUnique: vi.fn().mockResolvedValue({ supplierMode: "MANUAL" }) },
+    // ST-2d: accrual looks up a ReferralRedemption first — default to none.
+    referralRedemption: { findFirst: vi.fn().mockResolvedValue(null) },
   }
 }));
 
@@ -131,7 +133,7 @@ describe('transactionStatus - applyMidtransStatusUpdate idempotency', () => {
       data: expect.objectContaining({
         status: 'PAID',
         stockStatus: 'OUT_OF_STOCK',
-        promoCodeId: 'promo-id'
+        refundPromoCodeId: 'promo-id'
       })
     }));
   });

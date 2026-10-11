@@ -106,10 +106,10 @@ export async function GET(request: NextRequest) {
       if (exportDrive) {
         try {
           driveFile = await uploadCsvToDrive(filename, csv);
-        } catch (e: any) {
+        } catch (e) {
           log.error("Failed to upload to GDrive", { error: String(e) });
           return NextResponse.json(
-            { error: `Google Drive Upload Failed: ${e.message || String(e)}` },
+            { error: `Google Drive Upload Failed: ${e instanceof Error ? e.message : String(e)}` },
             { status: 500 }
           );
         }

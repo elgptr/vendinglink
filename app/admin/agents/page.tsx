@@ -11,7 +11,6 @@ import {
   Check,
   X,
   DollarSign,
-  ShieldCheck,
   ShieldAlert,
   Search,
 } from "lucide-react";

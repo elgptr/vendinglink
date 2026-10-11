@@ -70,7 +70,7 @@ export default function ChangePasswordForm({ onSuccess }: ChangePasswordFormProp
         setFormData({ oldPassword: "", newPassword: "", confirmPassword: "" });
         onSuccess?.();
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan" });
     } finally {
       setLoading(false);

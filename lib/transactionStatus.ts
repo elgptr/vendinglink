@@ -3,7 +3,9 @@ import { claimAvailableStock } from "@/lib/stock";
 import { generatePromoCode } from "@/lib/utils";
 import { sendPaymentNotification, type WhatsAppPaymentData } from "@/lib/whatsapp";
 import { rezekiSupplier } from "@/lib/suppliers";
+import { accrueReferralCommission } from "@/lib/promo/accrual";
 import { createLogger } from "@/lib/logger";
+import { Prisma } from "@prisma/client";
 
 const log = createLogger({ module: "transaction-status" });
 
@@ -115,7 +117,9 @@ export async function notifyPaymentSuccess(
     finalAmount: number;
     redeemUrl: string | null;
     stockStatus: string;
-    promoCodeId: string | null;
+    // The ISSUED refund code (stockout compensation) — not the applied-code
+    // column, which holds discount semantics (TD-8).
+    refundPromoCodeId: string | null;
   }
 ): Promise<void> {
   try {
@@ -123,8 +127,8 @@ export async function notifyPaymentSuccess(
 
     const [product, promoCode] = await Promise.all([
       prisma.product.findUnique({ where: { id: transaction.productId }, select: { name: true } }),
-      transaction.promoCodeId
-        ? prisma.promoCode.findUnique({ where: { id: transaction.promoCodeId }, select: { code: true } })
+      transaction.refundPromoCodeId
+        ? prisma.promoCode.findUnique({ where: { id: transaction.refundPromoCodeId }, select: { code: true } })
         : null,
     ]);
 
@@ -166,7 +170,7 @@ export async function applyMidtransStatusUpdate(
   // We use a single interactive transaction to ensure the idempotency check
   // and the stock resolution happen atomically, preventing race conditions
   // if webhook and polling fire simultaneously.
-  const result = await prisma.$transaction(async (tx: any): Promise<ApplyResult> => {
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient): Promise<ApplyResult> => {
     const transaction = await tx.transaction.findUnique({
       where: { orderId },
     });
@@ -251,10 +255,16 @@ export async function applyMidtransStatusUpdate(
         data: {
           status: "PAID",
           stockStatus: "OUT_OF_STOCK",
-          promoCodeId: promoCode.id,
+          // TD-8: write to the dedicated issued-refund column, never to
+          // promoCodeId (which references the code applied at checkout).
+          refundPromoCodeId: promoCode.id,
           paidAt: new Date(),
         },
       });
+
+      // ST-2d: accrue the referrer's commission if a referral code was
+      // redeemed on this order (no-op when none was).
+      await accrueReferralCommission(tx, updatedTransaction.id);
 
       return { updated: true, transaction: updatedTransaction };
     }
@@ -283,6 +293,10 @@ export async function applyMidtransStatusUpdate(
         data: { usedAt: new Date() },
       });
     }
+
+    // ST-2d: accrue the referrer's commission if a referral code was
+    // redeemed on this order (no-op when none was).
+    await accrueReferralCommission(tx, updatedTransaction.id);
 
     return { updated: true, transaction: updatedTransaction };
   }, { timeout: 60_000, maxWait: 10_000 }); // Rezeki purchase runs inside; default 5s is too short

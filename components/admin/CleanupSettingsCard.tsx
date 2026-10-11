@@ -27,7 +27,7 @@ export default function CleanupSettingsCard() {
       } else {
         toast.error(data.error || "Gagal melakukan cleanup");
       }
-    } catch (error) {
+    } catch {
       toast.error("Terjadi kesalahan server");
     } finally {
       setLoading(false);

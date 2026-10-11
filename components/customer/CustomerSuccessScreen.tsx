@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle, Copy, Check, ShoppingBag, ExternalLink, ImageIcon, AlertTriangle } from "lucide-react";
+import { CheckCircle, Copy, Check, ShoppingBag, ExternalLink, ImageIcon, AlertTriangle, Gift } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import Button from "@/components/ui/Button";
@@ -18,6 +18,14 @@ interface CustomerSuccessScreenProps {
   amount: number;
   customerName?: string | null;
   paidAt?: string | null;
+  referralCode?: string | null;
+  referralCommissionPct?: number | null;
+}
+
+declare global {
+  interface Window {
+    confetti?: (options: Record<string, unknown>) => void;
+  }
 }
 
 export default function CustomerSuccessScreen({
@@ -29,8 +37,11 @@ export default function CustomerSuccessScreen({
   amount,
   customerName,
   paidAt,
+  referralCode,
+  referralCommissionPct,
 }: CustomerSuccessScreenProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedReferral, setCopiedReferral] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
   const isKode = productType === "KODE";
@@ -43,8 +54,8 @@ export default function CustomerSuccessScreen({
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js";
     script.onload = () => {
-      if ((window as any).confetti) {
-        (window as any).confetti({
+      if (window.confetti) {
+        window.confetti({
           particleCount: 150,
           spread: 80,
           origin: { y: 0.6 },
@@ -77,6 +88,26 @@ export default function CustomerSuccessScreen({
       setCopied(true);
       toast.success(isKode ? "Kode berhasil disalin!" : "Link berhasil disalin!");
       setTimeout(() => setCopied(false), 3000);
+    }
+  };
+
+  const handleCopyReferral = async () => {
+    if (!referralCode) return;
+    try {
+      await navigator.clipboard.writeText(referralCode);
+      setCopiedReferral(true);
+      toast.success("Kode referral berhasil disalin ke clipboard!");
+      setTimeout(() => setCopiedReferral(false), 3000);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = referralCode;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopiedReferral(true);
+      toast.success("Kode referral berhasil disalin!");
+      setTimeout(() => setCopiedReferral(false), 3000);
     }
   };
 
@@ -191,6 +222,42 @@ export default function CustomerSuccessScreen({
               </div>
             )}
           </Card>
+
+          {/* Referral program card (ST-2c-2) — commission pct comes from the
+              live ProgramConfig.referralCommissionPct via the status API. */}
+          {referralCode && (
+            <div id="customer-referral-card">
+            <Card className="p-6 border-violet-500/40">
+              <p className="text-sm font-bold text-violet-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <Gift size={16} />
+                Kode Referral Anda
+              </p>
+              <p className="text-sm text-slate-300 mb-4 leading-relaxed">
+                Bagikan kode ini ke teman Anda — untuk setiap pembelian mereka,
+                Anda mendapat <strong className="text-white">komisi jual hingga{" "}
+                {referralCommissionPct ?? 0}%</strong> dari nilai transaksi.
+              </p>
+              <div className="bg-surface rounded-xl p-4 mb-4 border border-surface-border shadow-inner">
+                <p
+                  id="customer-referral-code-text"
+                  className="text-lg text-white font-mono tracking-widest select-all text-center"
+                >
+                  {referralCode}
+                </p>
+              </div>
+              <Button
+                id="customer-copy-referral-btn"
+                variant={copiedReferral ? "success" : "secondary"}
+                size="md"
+                className="w-full font-bold"
+                onClick={handleCopyReferral}
+                icon={copiedReferral ? <Check size={18} /> : <Copy size={18} />}
+              >
+                {copiedReferral ? "Kode Tersalin!" : "Salin Kode Referral"}
+              </Button>
+            </Card>
+            </div>
+          )}
         </div>
 
         {/* Right Col: Receipt */}

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     const mappings = await prisma.supplierProductMapping.findMany({
       include: {
@@ -18,8 +18,8 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({ mappings, products });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -44,11 +44,11 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ mapping: newMapping }, { status: 201 });
-  } catch (error: any) {
-    if (error.code === 'P2002') {
+  } catch (error) {
+    if (typeof error === "object" && error && "code" in error && error.code === 'P2002') {
       return NextResponse.json({ error: 'Mapping already exists for this supplier code and product ID' }, { status: 409 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -72,7 +72,7 @@ export async function DELETE(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

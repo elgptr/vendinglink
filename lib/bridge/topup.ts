@@ -4,6 +4,7 @@ import { stockTopupSchema } from "./schema";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import { UNMAPPED_PRODUCT_ID, UNKNOWN_PRODUCT_ID } from "./productResolver";
+import { Prisma } from "@prisma/client";
 
 const log = createLogger({ module: "bridge-topup" });
 
@@ -130,7 +131,7 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
       select: { redeemUrl: true },
     });
 
-    const existingKeys = new Set(existingStocks.map((s: any) => s.redeemUrl));
+    const existingKeys = new Set(existingStocks.map((s) => s.redeemUrl));
     const newItems = items.filter((item) => !existingKeys.has(item));
 
     if (newItems.length === 0) {
@@ -147,7 +148,7 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
     }
 
     // 5. Insert new items
-    const result = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.redeemStock.createMany({
         data: newItems.map((item) => ({
           productId: product.id,

@@ -10,6 +10,14 @@ import { rezekiSupplier } from "@/lib/suppliers";
 import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
+import { upsertCustomer } from "@/lib/customer";
+import {
+  resolveRedeemCode,
+  recordRedemption,
+  RedeemQuotaError,
+  type RedeemResolution,
+} from "@/lib/promo/redeem";
+import { accrueReferralCommission } from "@/lib/promo/accrual";
 import { z } from "zod";
 
 // Rate limiter for public customer checkout (20 attempts / min / IP).
@@ -19,8 +27,13 @@ const customerCheckoutSchema = z.object({
   productId: z.string().min(1),
   voucherId: z.string().optional(),
   promoCodeId: z.string().optional(),
+  // Unified discount field (B5, ST-2d): raw referral/voucher code resolved
+  // server-side via the new promo engine. Mutually exclusive with the legacy
+  // promoCodeId/voucherId above (legacy wins if both are somehow sent).
+  discountCode: z.string().max(50).optional(),
   customerName: z.string().min(1).max(100),
   customerPhone: z.string().max(20).optional(),
+  consentPromo: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -61,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productId, voucherId, promoCodeId, customerName, customerPhone } = parsed.data;
+    const { productId, voucherId, promoCodeId, discountCode, customerName, customerPhone, consentPromo } = parsed.data;
     const sanitizedCustomerName = sanitizeString(customerName);
     const sanitizedCustomerPhone = customerPhone ? sanitizeString(customerPhone) : undefined;
 
@@ -70,6 +83,25 @@ export async function POST(request: NextRequest) {
         { error: "Nama pembeli wajib diisi" },
         { status: 400 }
       );
+    }
+
+    // Upsert customer record when a phone number is provided.
+    let customerId: string | undefined;
+    if (sanitizedCustomerPhone) {
+      try {
+        const customer = await upsertCustomer({
+          prisma,
+          phone: sanitizedCustomerPhone,
+          name: sanitizedCustomerName,
+          consentPromo,
+        });
+        customerId = customer.id;
+      } catch (customerError) {
+        return NextResponse.json(
+          { error: customerError instanceof Error ? customerError.message : "Nomor WhatsApp tidak valid" },
+          { status: 400 }
+        );
+      }
     }
 
     // ─── Verify product exists and is active ──────────────────────────────
@@ -208,6 +240,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ─── New promo/referral engine (ST-2d, B5) ────────────────────────────
+    // Single discountCode field, resolved server-side ReferralCode →
+    // VoucherRule with sequential guards. Requires a WhatsApp number: the
+    // per-customer quota and self-referral guards are keyed on Customer, so a
+    // code cannot be redeemed anonymously.
+    let redeemResolution: Extract<RedeemResolution, { ok: true }> | null = null;
+    if (!resolvedPromoCodeId && !resolvedVoucherId && discountCode) {
+      if (!sanitizedCustomerPhone || !customerId) {
+        return NextResponse.json(
+          { error: "Nomor WhatsApp wajib diisi untuk menggunakan kode promo atau referral" },
+          { status: 400 }
+        );
+      }
+
+      const resolution = await resolveRedeemCode({
+        prisma,
+        code: sanitizeString(discountCode).toUpperCase(),
+        amount: product.price,
+        productCategoryId: product.categoryId,
+        customerPhone: sanitizedCustomerPhone,
+        customerName: sanitizedCustomerName,
+      });
+
+      if (!resolution.ok) {
+        return NextResponse.json({ error: resolution.error }, { status: 400 });
+      }
+
+      redeemResolution = resolution;
+      discountAmount = resolution.discountAmount;
+    }
+
     const originalPrice = product.price;
     const finalAmount = Math.max(0, originalPrice - discountAmount);
 
@@ -219,7 +282,7 @@ export async function POST(request: NextRequest) {
     // to charge anyway — fulfil the order immediately and atomically, the
     // same way agent credit checkout does, instead of routing through a
     // payment gateway for a Rp 0 order.
-    if (finalAmount === 0 && (resolvedPromoCodeId || resolvedVoucherId)) {
+    if (finalAmount === 0 && (resolvedPromoCodeId || resolvedVoucherId || redeemResolution)) {
       try {
         let redeemUrlStr = "";
 
@@ -272,6 +335,7 @@ export async function POST(request: NextRequest) {
               agentId: null,
               promoCodeId: resolvedPromoCodeId,
               voucherId: resolvedVoucherId,
+              customerId,
               customerName: sanitizedCustomerName,
               customerPhone: sanitizedCustomerPhone,
               paymentType: "MIDTRANS",
@@ -284,6 +348,13 @@ export async function POST(request: NextRequest) {
               paidAt: new Date(),
             },
           });
+
+          if (redeemResolution && customerId) {
+            await recordRedemption(tx, redeemResolution, transaction.id, customerId);
+            // finalAmount is 0, so the commission computes to Rp 0 and the
+            // accrual no-ops — called anyway to keep both PAID paths uniform.
+            await accrueReferralCommission(tx, transaction.id);
+          }
 
           return { transaction };
         });
@@ -307,6 +378,9 @@ export async function POST(request: NextRequest) {
             { error: "Kode promo sudah digunakan" },
             { status: 400 }
           );
+        }
+        if (txError instanceof RedeemQuotaError) {
+          return NextResponse.json({ error: txError.message }, { status: 400 });
         }
         throw txError;
       }
@@ -397,25 +471,49 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Save transaction to DB ────────────────────────────────────────────
-    const transaction = await prisma.transaction.create({
-      data: {
-        orderId,
-        productId,
-        agentId: null, // Public B2C transaction has no agent
-        voucherId: resolvedVoucherId,
-        promoCodeId: resolvedPromoCodeId,
-        customerName: sanitizedCustomerName,
-        customerPhone: sanitizedCustomerPhone,
-        paymentType: activeGateway,
-        originalPrice,
-        discountAmount,
-        finalAmount,
-        status: "PENDING",
-        snapToken,
-        qrString,
-        qrCodeUrl,
-      },
-    });
+    let transaction;
+    try {
+      transaction = await prisma.$transaction(async (tx) => {
+        const created = await tx.transaction.create({
+          data: {
+            orderId,
+            productId,
+            agentId: null, // Public B2C transaction has no agent
+            voucherId: resolvedVoucherId,
+            promoCodeId: resolvedPromoCodeId,
+            customerId,
+            customerName: sanitizedCustomerName,
+            customerPhone: sanitizedCustomerPhone,
+            paymentType: activeGateway,
+            originalPrice,
+            discountAmount,
+            finalAmount,
+            status: "PENDING",
+            snapToken,
+            qrString,
+            qrCodeUrl,
+          },
+        });
+
+        if (redeemResolution && customerId) {
+          // Quota guards re-checked atomically here (unique seq claim +
+          // guarded usedCount increment). If this throws, the whole insert
+          // rolls back and the unpaid gateway token simply expires — no money
+          // has moved at token-creation time.
+          await recordRedemption(tx, redeemResolution, created.id, customerId);
+        }
+
+        return created;
+      });
+    } catch (redeemError) {
+      if (redeemError instanceof RedeemQuotaError) {
+        return NextResponse.json(
+          { error: redeemError.message },
+          { status: 400 }
+        );
+      }
+      throw redeemError;
+    }
 
     return NextResponse.json({
       orderId: transaction.orderId,

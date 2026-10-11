@@ -209,7 +209,7 @@ melakukan mapping dari bot atau dari UI storefront. Tipe `Product` di bridge dip
   bisa set kategori saat mapping. Bearer-only, guard chain IP → rate-limit → bearer → Zod,
   body `{ categorySlug: string }`, kode 200 / 400 INVALID_BODY / 401 / 403 / 404
   PRODUCT_NOT_FOUND | CATEGORY_NOT_FOUND / 429 / 500.
-- [ ] ST-5c: UI admin kategorisasi (bisa sederhana: dropdown saat edit produk).
+- [x] ST-5c: UI admin kategorisasi (bisa sederhana: dropdown saat edit produk).
 
 **Acceptance criteria:**
 - `vlProductId` tidak lagi `[UNKNOWN]` untuk produk yang sudah dimapping.
@@ -223,107 +223,134 @@ melakukan mapping dari bot atau dari UI storefront. Tipe `Product` di bridge dip
 ## 5. Sprint P1 — Program Promo & Loyalitas (v1.2)
 
 > **Prasyarat:** v1.1 (P0) selesai. Item 2 (Referral) dan Item 1 (Loyalty/Broadcast) dikerjakan
-> sebagai satu engine, bukan dua fitur terpisah. Item 3 (Voucher Berjadwal) menumpang engine
-> yang sama. Semua pekerjaan P1 ada di sisi **storefront** kecuali yang bertanda [Bridge].
+> sebagai **dua engine terpisah**, dipisah berdasarkan siapa yang menciptakan nilai (lihat
+> `docs/initiatives/PROMO_ENGINE_DESIGN.md` untuk desain lengkap + rencana migrasi): Engine A
+> `CustomerCredit` (akrual: komisi referral, refund stockout) dan Engine B `VoucherRule` +
+> `VoucherRedemption` (aturan admin: voucher manual, promo terjadwal, diskon customer baru).
+> Item 3 (Voucher Berjadwal) menumpang Engine B. Semua pekerjaan P1 ada di sisi **storefront**
+> kecuali yang bertanda [Bridge].
 
 ### [Storefront] Item 2 + 1 — Referral & Loyalty Engine
 
 **Kondisi sekarang (gap):**
-- Tidak ada entitas Customer atau nomor HP di sistem manapun yang terobservasi.
-- Tidak ada mekanisme consent promo.
-- Tidak ada kode referral, voucher, atau akrual reward.
+- [x] Customer + ReferralCode + consent sudah ada (ST-2a-1, selesai sprint sebelumnya).
+- Belum ada engine kredit akrual (`CustomerCredit`), engine voucher (`VoucherRule`), atau payout.
+- `PromoCode` (stockout refund) dan `Voucher` (diskon admin) model lama tumpang-tindih secara semantik dan **overload `Transaction.promoCodeId`** (arti "kode dipakai" di checkout VS "kode diterbitkan" di `transactionStatus.ts` — bug nyata, lihat Tech Debt TD-8).
+- `lib/discount.ts` adalah dead code — nol caller, test-nya mock seluruh modul (TD-9).
 
 **Kondisi target — skema storefront (to-be):**
 
 ```
-Customer
-  id          CUID
-  phone       String  UNIQUE  -- wajib normalisasi E.164 sebelum simpan
-  name        String?
-  consentPromoAt  DateTime?   -- NULL = tidak boleh dibroadcast, tanpa pengecualian
-  createdAt   DateTime
+Customer                              -- [x] sudah ada
+  id, phone UNIQUE, name, consentPromoAt, createdAt
 
-ReferralCode
-  code        String  UNIQUE  -- 8 karakter, dibuat saat Customer dibuat
-  ownerId     String  -> Customer.id
-  active      Boolean
+ReferralCode                          -- [x] sudah ada
+  code UNIQUE (13 char), customerId -> Customer.id
 
-VoucherRule
-  id          CUID
-  kind        Enum: REFERRAL_NEW | REFERRAL_OLD | SCHEDULED | LOYALTY
-  discountType Enum: PERCENT | FIXED_IDR
-  value       Float
-  minSpend    Float   DEFAULT 0
-  validFrom   DateTime  -- UTC
-  validUntil  DateTime  -- WAJIB non-null untuk SCHEDULED
-  quotaTotal  Int?    -- null = tidak terbatas
+ProgramConfig                         -- singleton, admin-editable, pola sama dgn SupplierConfig
+  id
+  referralCommissionPct  Int     -- basis komisi: Transaction.finalAmount (bukan originalPrice)
+  referralCommissionCap  Int?    -- cap Rupiah per transaksi, opsional
+  refereeDiscountValue   Int     -- diskon tetap utk customer baru yg pakai referral code
+  accrualWindowDays      Int     DEFAULT 15  -- hard ceiling 15, validasi tolak input > 15
+  minPayoutAmount        Int     DEFAULT 20000
+  updatedBy / updatedAt
+
+CustomerCredit                        -- Engine A: ledger akrual
+  id
+  customerId      String?  -> Customer.id   -- nullable: refund stockout tanpa Customer match
+  claimCode       String?  UNIQUE           -- hanya utk STOCKOUT_REFUND
+  kind            Enum: STOCKOUT_REFUND | REFERRAL_COMMISSION
+  amount          Int                       -- selalu CASH utk REFERRAL_COMMISSION (D4)
+  appliedRatePct  Int?                      -- snapshot ProgramConfig.referralCommissionPct saat akrual
+  status          Enum: ACCRUED | PAYABLE | REDEEMED | PAID | VOID | EXPIRED
+  sourceTxnId     String?                   -- order pemicu
+  consumedTxnId   String?                   -- order yg memakai credit sbg diskon (STOCKOUT_REFUND)
+  referralCodeId  String?
+  payoutBatchId   String?  -> PayoutBatch.id
+  payableAt       DateTime?                 -- sourceTxn.paidAt + accrualWindowDays, dihitung saat akrual
+  expiresAt       DateTime?
+  createdAt / updatedAt
+  @@unique([kind, sourceTxnId])             -- idempotensi: satu order = satu credit per kind
+
+VoucherRule                           -- Engine B: aturan admin
+  id, code UNIQUE, name
+  kind            Enum: MANUAL | SCHEDULED | REFERRAL_NEW | LOYALTY
+  discountType    Enum: PERCENT | FIXED_IDR
+  value           Int
+  maxDiscount     Int?      -- wajib diisi admin utk PERCENT
+  minSpend        Int   DEFAULT 0
+  validFrom       DateTime  -- UTC
+  validUntil      DateTime? -- WAJIB non-null utk SCHEDULED
+  quotaTotal      Int?
   quotaPerCustomer Int DEFAULT 1
-  categoryId  String? -- opsional, filter per kategori (sambungan ke Item 5)
+  categoryId      String?
+  isActive        Boolean
+  usedCount       Int DEFAULT 0
 
 VoucherRedemption
-  id          CUID
-  ruleId      -> VoucherRule.id
-  customerId  -> Customer.id
-  orderId     String
-  redeemedAt  DateTime
-  @@unique([ruleId, customerId])  -- kunci anti-abuse: satu customer satu kali per rule
+  id, ruleId, customerId, transactionId, seq Int, redeemedAt
+  @@unique([ruleId, customerId, seq])  -- seq 1..quotaPerCustomer, tegakkan kuota >1 scr atomik
+  @@unique([ruleId, transactionId])    -- satu rule sekali per order
 
-ReferralReward
-  id          CUID
-  referrerId  -> Customer.id
-  refereeOrderId  String       -- order yang memicu reward
-  amount      Float
-  status      Enum: ACCRUED | PAYABLE | VOID | PAID
-  payoutBatchId  String?  -> PayoutBatch.id
+ReferralRedemption                    -- counter terpisah dari VoucherRedemption (B4: max 2x per kode)
+  id, referralCodeId, refereeCustomerId, transactionId, seq Int, redeemedAt
+  @@unique([referralCodeId, refereeCustomerId, seq])  -- seq 1..2
 
 PayoutBatch
-  id          CUID
-  period      String        -- contoh: "2026-10"
-  channel     Enum: GOPAY | OVO
-  totalAmount Float
-  status      Enum: DRAFT | APPROVED | PAID
-  approvedBy  String?       -- Telegram ID admin
-  approvedAt  DateTime?
-  createdAt   DateTime
+  id, period String, channel Enum: GOPAY | OVO | BANK_TRANSFER
+  totalAmount Int, status Enum: DRAFT | APPROVED | PAID
+  approvedBy String?, approvedAt DateTime?, createdAt DateTime
 ```
 
 **Guardrail yang menentukan program ini untung atau bocor:**
 
-- `phone` UNIQUE + normalisasi E.164 (`+628xxx`) **sebelum simpan**. Tanpa ini `0812` dan `+62812`
-  jadi dua orang berbeda dan self-referral terbuka.
-- Tolak redeem jika `referrer.phone == referee.phone` setelah normalisasi.
-- Reward naik ke `PAYABLE` hanya lewat cron job terjadwal, setelah order `COMPLETED` dan melewati
-  window refund. Reward saat order dibuat = bayar untuk order yang belum pasti.
-- Payout tetap **manual dengan dual-control**: sistem generate `PayoutBatch` + CSV, admin approve
-  via Telegram command/button, sistem tandai `PAID` beserta `approvedBy`. Jangan otomatiskan
-  transfer uang keluar di fase ini.
+- `phone` UNIQUE + normalisasi 628xxx tanpa `+` (format Saungwa) **sebelum simpan**.
+- **Self-referral:** tolak jika (a) `referrer.phone == referee.phone` setelah normalisasi — independen, hard reject — ATAU (b) kemiripan nama ternormalisasi ≥ 0.9 (Levenshtein) — independen, reject + flag admin. Dua kondisi OR, bukan AND: phone adalah UNIQUE jadi phone sama = orang yang sama secara definisi, nama tidak relevan lagi di jalur itu.
+- **Referral 1 tingkat saja** (B4): komisi hanya utk pemilik `ReferralCode` langsung, tidak berjenjang.
+- **Kuota referral code: max 2 redemption per (code, referee)** (B4), ditegakkan via `@@unique([referralCodeId, refereeCustomerId, seq])` dgn `seq` 1..2 — bukan `COUNT()` yang rawan race.
+- `CustomerCredit.status` naik ke `PAYABLE` hanya lewat cron job terjadwal, setelah order `COMPLETED` + `accrualWindowDays` (default 15, hard ceiling 15, admin-editable via `ProgramConfig`).
+- **Slot cron sudah penuh** (`sync-supplier-stock`, `reconcile`). Akrual **menumpang** `/api/cron/reconcile` sbg fungsi terpisah (`lib/promo/accrual.ts`), dipanggil setelah blok rekonsiliasi. Idempoten by design via `payableAt` yang dihitung saat create, bukan saat eksekusi — aman terhadap presisi cron ±59 menit maupun piggyback di cron lain.
+- `CustomerCredit.appliedRatePct` adalah **snapshot**, bukan live-join ke `ProgramConfig`. Admin mengubah persentase komisi tidak boleh mengubah nilai utang yang sudah terakrual.
+- **Payout komisi referral = cash only** (D4), tujuan transfer = **nomor HP referrer sendiri** (B2) — GoPay/OVO/Dana di Indonesia terikat ke nomor HP, jadi `Customer.phone` sudah cukup sebagai identitas rekening tanpa model/field baru.
+- `minPayoutAmount` = Rp 20.000 (B3). Credit `PAYABLE` di bawah ambang tetap `PAYABLE` dan ikut batch berikutnya sampai akumulasinya lewat ambang.
+- Payout **manual**: sistem generate `PayoutBatch` + CSV, admin transfer manual di luar sistem, lalu menandai batch `PAID` beserta `approvedBy` lewat admin UI.
 - `consentPromoAt` NULL = tidak boleh masuk broadcast list. Tanpa pengecualian.
-- `validUntil` WAJIB non-null untuk VoucherRule dengan kind `SCHEDULED`.
+- `validUntil` WAJIB non-null untuk `VoucherRule` dengan kind `SCHEDULED`.
+- Kode referral & kode voucher dicek lewat **field input yang sama** di checkout (B5) — resolusi server berurutan: `ReferralCode` → `VoucherRule.code`.
+
+**Migrasi:** 3 gelombang aditif, lihat `PROMO_ENGINE_DESIGN.md`. Gelombang 1 = tabel+kolom baru, nol downtime. Gelombang 2 = backfill (`vouchers`→`voucher_rules`, `promo_codes`→`customer_credits`, `Customer` dibackfill dari `transactions.customerPhone` historis dgn `consentPromoAt=NULL`) + cutover kode. Gelombang 3 (cleanup kolom/tabel lama) **di luar sprint ini**.
 
 **Pekerjaan storefront (v1.2-ST):**
 
-- [ ] ST-2a: Migrasi skema — semua model di atas.
-- [ ] ST-2b: Endpoint registrasi Customer (`POST /api/customers`) dengan validasi + normalisasi phone.
-- [ ] ST-2c: Generasi `ReferralCode` otomatis saat Customer dibuat.
-- [ ] ST-2d: Endpoint redeem voucher di checkout — cek anti-abuse, quota, window waktu.
-- [ ] ST-2e: Cron job akrual reward: ACCRUED -> PAYABLE setelah N hari order COMPLETED.
-- [ ] ST-2f: Command Telegram `/payout preview <period>` untuk generate PayoutBatch + CSV.
-- [ ] ST-2g: Button "Approve" di pesan Telegram yang menandai batch APPROVED + catat `approvedBy`.
-- [ ] ST-1a: Broadcast promo ke segmen Customer yang `consentPromoAt IS NOT NULL`.
-  Integrasi dengan WhatsApp Business API atau platform broadcast pilihan.
-- [ ] ST-1b: Halaman opt-in consent dengan timestamp yang dicatat.
+- [x] ST-2a-1: Migrasi skema dasar — `Customer` + `ReferralCode` + consent + phone normalization.
+- [x] ST-2a-2: Migrasi skema engine — `ProgramConfig`, `CustomerCredit`, `VoucherRule`, `VoucherRedemption`, `ReferralRedemption`, `PayoutBatch`; migrasi gelombang 1+2; perbaiki bug `promoCodeId` overload (TD-8); hapus `lib/discount.ts` dead code (TD-9); konsolidasi `/api/voucher/validate` + `/api/promo-codes/validate` → `/api/discount/validate`.
+- [x] ST-2b: Endpoint registrasi Customer (`POST /api/customers`) dengan validasi + normalisasi phone.
+- [x] ST-2c: Generasi `ReferralCode` otomatis saat Customer dibuat.
+- [x] ST-2c-2: Tampilkan `ReferralCode` + copy benefit ("komisi jual s.d. [ProgramConfig.referralCommissionPct]%") di `CustomerSuccessScreen.tsx`.
+- [x] ST-2d: Endpoint redeem di checkout — resolusi referral/voucher dari field sama (B5), guard berurutan (rule aktif → window UTC → minSpend → kuota total → kuota per-customer → self-referral).
+- [x] ST-2e: Fungsi akrual `CustomerCredit`: ACCRUED -> PAYABLE setelah `accrualWindowDays`, dipanggil dari `/api/cron/reconcile` (nebeng slot, lihat guardrail cron di atas).
+- [x] ST-2f: Admin UI generate `PayoutBatch` + CSV untuk periode tertentu (tujuan = nomor HP referrer; GoPay/OVO saja, transfer bank menunggu data rekening).
+- [ ] ST-2f-2: Tabel payout batch di `/admin/reports`, ditambahkan di bagian bawah halaman yang ada.
+- [ ] ST-2g: Tombol "Sudah Ditransfer" di admin UI yang menandai batch PAID + catat `approvedBy`.
+- [ ] ST-1a: Broadcast promo ke segmen Customer yang `consentPromoAt IS NOT NULL`. Integrasi dengan WhatsApp Business API atau platform broadcast pilihan. **Desain program broadcast ditunda ke sprint mendatang** — hanya daftar/listing yang masuk sprint ini (ST-1a-1).
+- [ ] ST-1a-1: Halaman admin `/admin/customers` — list Customer + status consent + referral code + jumlah/total order. Prasyarat utk ST-1a nanti.
+- [x] ST-1b: Checkbox consent di form checkout saat nomor WhatsApp diisi, dengan timestamp yang dicatat.
+- [ ] ST-1b-2: Checkbox consent default `true`; copy jelaskan bahwa mengisi no WA memberi consent utk riwayat pembelian, kode referral, dan info program marketing txsiber; peringatan inline (bukan hover-only, harus bekerja di sentuh/keyboard) saat di-uncheck bahwa customer tidak akan mendapat riwayat pembelian & benefit referral code; font size `text-xs` + warna `text-slate-400`.
+- [x] ST-1b-3: Perbaiki `GET /api/customer/orders` (TD-10) — `contains` match jadi match 8 digit dari depan (B6), tambah rate limit. Prasyarat sebelum data referral/payout tampil di halaman ini.
 
 **Pekerjaan bridge (v1.2-BR):**
 - Tidak ada perubahan wajib di bridge untuk P1. Bridge hanya supplier data, bukan customer data.
-- Opsional: command `/payout` di bot Telegram bridge sebagai shortcut ke storefront API
-  (nilai rendah, bisa diskip).
 
 **Acceptance criteria:**
-- Customer A pakai referral code Customer B: A dapat diskon, B dapat reward ACCRUED.
-- Self-referral (phone sama setelah normalisasi) ditolak.
-- Reward tidak pernah PAYABLE sebelum order COMPLETED + N hari.
+- Customer A pakai referral code Customer B: A dapat diskon (`VoucherRule` kind `REFERRAL_NEW`), B dapat `CustomerCredit` kind `REFERRAL_COMMISSION` status `ACCRUED`.
+- Self-referral ditolak lewat phone match ATAU name similarity ≥ 0.9, independen (OR).
+- Satu kode referral maksimal dipakai 2x oleh customer yang sama (`ReferralRedemption.seq` 1..2).
+- `CustomerCredit` tidak pernah `PAYABLE` sebelum order COMPLETED + `accrualWindowDays`.
+- Mengubah `ProgramConfig.referralCommissionPct` tidak mengubah `CustomerCredit` yang sudah terakrual.
 - Broadcast hanya terkirim ke customer dengan `consentPromoAt IS NOT NULL`.
-- CSV payout terbuat, admin approve via Telegram, status berubah ke APPROVED (transfer tetap manual).
+- CSV payout terbuat dari admin UI, admin transfer manual ke nomor HP referrer, lalu menandai batch PAID beserta `approvedBy`.
+- `/admin/reports` menampilkan tabel payout batch di bagian bawah halaman tanpa mengubah section yang ada.
 
 ---
 
@@ -606,6 +633,9 @@ Bangun CMS minimal di storefront dengan MDX atau rich-text editor.
 | TD-5 | `ProductMapping` model di schema tapi 0 referensi di `src/` (dead model). `vlProductId = "[UNKNOWN]"` di orchestrator. | MEDIUM | P0/v1.1 (BR-5a) |
 | TD-6 | `orchestrator.ts:42-52` `executePurchase()` stub kosong + import menganggur. | LOW | P2a (BR-P2a-1) |
 | TD-7 | Session middleware in-memory (`session.ts:20`). Restart bot = state AWAITING_EMAIL hilang. Cukup untuk admin tunggal, tapi dokumentasikan limitasinya di README. | LOW | Opsional |
+| TD-8 | `Transaction.promoCodeId` overloaded: ditulis baik oleh jalur "kode dipakai saat checkout" maupun jalur "kode diterbitkan sbg refund stockout" di `transactionStatus.ts`, saling menimpa. Memungkinkan reuse kode promo yang seharusnya sudah terpakai. | ✅ RESOLVED (ST-2a-2, 2026-10-11): kolom `Transaction.refundPromoCodeId` terpisah untuk kode refund terbit + backfill gelombang 2 | — |
+| TD-9 | `lib/discount.ts` dead code — nol caller di codebase (checkout query Prisma langsung). `__tests__/lib/discount.test.ts` memock seluruh modul yang diuji (`vi.mock('@/lib/discount')`), jadi 17 test-nya memvalidasi mock, bukan logika nyata. | ✅ RESOLVED (ST-2a-2, 2026-10-11): `lib/discount.ts` + 2 mock-only test dihapus; diganti test integrasi nyata `discount-validate.test.ts` | — |
+| TD-10 | `GET /api/customer/orders` memakai `customerPhone: { contains: sanitizedPhone }` tanpa auth/rate-limit — membocorkan order (termasuk `redeemUrl`) ke siapa pun yang menebak substring nomor HP. | TINGGI — kebocoran data order & kredensial redeem | P1 (ST-1b-3) |
 
 ---
 
@@ -618,7 +648,7 @@ jika tidak dijawab.
 |---|-------------------------------------------------------------------------|--------------|-----------------|
 | Q1 | Integrasi Google Drive yang "rusak" — kode tidak ditemukan di repo bridge. Di mana kode tersebut berada? (VPS script? Storefront?) Perlu diidentifikasi sebelum BR-8a bisa dirancang final. | P0 (BR-8a) | Admin/DevOps |
 | Q2 | Storefront VendingLink: framework apa, repo di mana? Semua task ST-* dalam roadmap ini perlu akses ke repo storefront untuk dieksekusi. | P0 (ST-5a) | Storefront maintainer |
-| Q3 | N hari window refund untuk ReferralReward ACCRUED -> PAYABLE? Ini keputusan bisnis, bukan teknis. | P1 (ST-2e) | Owner bisnis |
+| Q3 | ~~N hari window refund untuk ReferralReward ACCRUED -> PAYABLE?~~ **RESOLVED**: `accrualWindowDays` default 15 hari, hard ceiling 15, admin-editable via `ProgramConfig`. | P1 (ST-2e) | Owner bisnis |
 | Q4 | AGENT_MAX_SPEND_PER_REQUEST dan _PER_DAY — berapa angka yang tepat? Ditentukan bersamaan dengan eksperimen operasional P2a. | P2a (BR-P2a-3) | Owner bisnis |
 | Q5 | LLM mana yang akan digunakan untuk agentic adapter build? Self-hosted (Ollama + Qwen/CodeLlama) vs API komersial (Claude/GPT-4o)? Mempengaruhi biaya, latency, dan keamanan karena kode supplier dikirim ke LLM. | P2b (BR-P2b-6) | Admin/Bisnis |
 | Q6 | Item 7 (Shopee) dan Item 6 (USDT) — gate legal belum dibuka. Tidak ada effort engineering sebelum gate terbuka. | P3 | Owner bisnis + legal |

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { sanitizeString } from "@/lib/utils";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
+import { Prisma } from "@prisma/client";
 
 const log = createLogger({ module: "admin-vouchers" });
 
@@ -126,11 +127,12 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    const updatePayload: any = {
-      ...updateData,
+    const updatePayload: Prisma.VoucherUpdateInput = {
+      isActive: updateData.isActive,
+      quota: updateData.quota,
+      discountAmount: updateData.discountAmount,
       expiresAt: updateData.expiresAt ? new Date(updateData.expiresAt) : undefined,
     };
-    delete updatePayload.productIds; // handled separately
 
     if (parsed.data.productIds !== undefined) {
       updatePayload.applicableProducts = {

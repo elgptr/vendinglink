@@ -14,12 +14,12 @@ import {
   HardDrive,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Badge from "@/components/ui/Badge";
 import Card, { StatCard } from "@/components/ui/Card";
 import Spinner from "@/components/ui/Spinner";
 import Modal from "@/components/ui/Modal";
 import toast from "@/components/ui/Toast";
 import { formatRupiah, formatDate } from "@/lib/utils";
+import PayoutBatchPanel from "@/components/admin/PayoutBatchPanel";
 
 interface Transaction {
   id: string;
@@ -127,8 +127,8 @@ export default function ReportsPage() {
         throw new Error(data.error || "Gagal export ke GDrive");
       }
       toast.success(data.message || "Berhasil di-export ke Google Drive!");
-    } catch (error: any) {
-      toast.error(error.message || "Gagal export ke GDrive");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal export ke GDrive");
     }
     setExporting(false);
   };
@@ -142,7 +142,7 @@ export default function ReportsPage() {
         try {
           const errData = await res.json();
           if (errData.error) errMessage = errData.error;
-        } catch (_) {}
+        } catch {}
         throw new Error(errMessage);
       }
 
@@ -156,8 +156,8 @@ export default function ReportsPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success("CSV berhasil diunduh!");
-    } catch (error: any) {
-      toast.error(error.message || "Gagal mengekspor CSV");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal mengekspor CSV");
     }
     setExporting(false);
   };
@@ -439,6 +439,9 @@ export default function ReportsPage() {
           </>
         )}
       </Card>
+
+      {/* ST-2f: Referral payout batch generator (table & mark-paid land in ST-2f-2/2g) */}
+      <PayoutBatchPanel />
 
       {/* AI Insight Modal */}
       <Modal

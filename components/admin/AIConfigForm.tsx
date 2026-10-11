@@ -79,7 +79,7 @@ export default function AIConfigForm() {
         setApiKey(""); // Clear input setelah save
         await loadStatus();
       }
-    } catch (e) {
+    } catch {
       setMessage({ type: "error", text: "Server error" });
     } finally {
       setLoading(false);
@@ -114,7 +114,7 @@ export default function AIConfigForm() {
       } else {
         setMessage({ type: "error", text: data.message || data.error || "Koneksi gagal." });
       }
-    } catch (e) {
+    } catch {
       setMessage({ type: "error", text: "Server error saat melakukan test" });
     } finally {
       setTesting(false);

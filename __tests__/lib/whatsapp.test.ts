@@ -21,9 +21,9 @@ describe("normalizePhone", () => {
   });
 
   it("handles numbers with spaces and dashes", () => {
-    expect(normalizePhone("0822-542-03272")).toBe("6281234567890");
-    expect(normalizePhone("0822 542 03272")).toBe("6281234567890");
-    expect(normalizePhone("+62 822 542 03272")).toBe("6281234567890");
+    expect(normalizePhone("0822-542-03272")).toBe("6282254203272");
+    expect(normalizePhone("0822 542 03272")).toBe("6282254203272");
+    expect(normalizePhone("+62 822 542 03272")).toBe("6282254203272");
   });
 
   it("returns null for empty or non-string input", () => {

@@ -74,6 +74,7 @@ model Category {
   parent   Category? @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("CategoryTree")
   products Product[]
+  voucherRules VoucherRule[]
 
   @@index([parentId])
   @@map("categories")
@@ -153,7 +154,13 @@ model Transaction {
   stockStatus    String    @default("PENDING") // 'PENDING' | 'FULFILLED' | 'OUT_OF_STOCK'
   isSettled      Boolean   @default(false) // For agent debt tracking
   redeemUrl      String?
-  promoCodeId    String? // Set when stock ran out and a customer refund promo was issued
+  // Promo code APPLIED by the customer at checkout (discount semantics).
+  promoCodeId       String?
+  // Refund promo code ISSUED to the customer at settlement when stock ran out.
+  // TD-8 fix: previously overloaded onto promoCodeId, which overwrote the
+  // applied-code reference and allowed spent codes to be reused.
+  refundPromoCodeId String?
+  customerId        String?
   qrString       String?
   qrCodeUrl      String?
   snapToken      String?
@@ -164,7 +171,9 @@ model Transaction {
   product   Product    @relation(fields: [productId], references: [id])
   agent     User?      @relation(fields: [agentId], references: [id])
   voucher   Voucher?   @relation(fields: [voucherId], references: [id])
-  promoCode PromoCode? @relation(fields: [promoCodeId], references: [id])
+  promoCode       PromoCode? @relation("AppliedPromoCode", fields: [promoCodeId], references: [id])
+  refundPromoCode PromoCode? @relation("RefundPromoCode", fields: [refundPromoCodeId], references: [id])
+  customer        Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   // Index: admin reports filter — status + paidAt covers the most common query
   @@index([status, paidAt])
@@ -174,7 +183,41 @@ model Transaction {
   @@index([customerPhone, status])
   // Index: product sales analytics — productId + status
   @@index([productId, status])
+  // Index: customer relationship — customerId + status
+  @@index([customerId, status])
   @@map("transactions")
+}
+
+model Customer {
+  id             String    @id @default(cuid())
+  phone          String    @unique
+  name           String?
+  consentPromoAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  referralCode        ReferralCode?
+  transactions        Transaction[]
+  credits             CustomerCredit[]
+  voucherRedemptions  VoucherRedemption[]
+  referralRedemptions ReferralRedemption[]
+
+  @@map("customers")
+}
+
+model ReferralCode {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  credits     CustomerCredit[]
+  redemptions ReferralRedemption[]
+
+  @@map("referral_codes")
 }
 
 model AIConfiguration {
@@ -207,9 +250,161 @@ model PromoCode {
   createdAt DateTime  @default(now())
 
   // Relations
-  transactions Transaction[]
+  appliedTransactions Transaction[] @relation("AppliedPromoCode")
+  refundTransactions  Transaction[] @relation("RefundPromoCode")
 
   @@map("promo_codes")
+}
+
+// ── Promo & referral engine (P1 ST-2a-2, migration wave 1) ──────────────────
+// Two engines share the "credit" ledger: Engine A (referral commission +
+// stockout refund) writes CustomerCredit rows; Engine B (admin voucher rules)
+// is enforced through VoucherRule + VoucherRedemption. Full design and
+// guardrails: docs/initiatives/ROADMAP.md §5 Item 2.
+
+// Singleton, admin-editable program configuration (same pattern as
+// SupplierConfig). Read via lib/programConfig.ts getProgramConfig().
+model ProgramConfig {
+  id String @id @default(cuid())
+
+  // Referral commission as % of the referee order's finalAmount.
+  // NOTE: 5 is a placeholder seed default — confirm with the business owner.
+  referralCommissionPct Int @default(5)
+  // Optional absolute cap (Rp) per commission credit. NULL = uncapped.
+  referralCommissionCap Int?
+  // Flat discount (Rp) a NEW customer gets when redeeming a referral code.
+  refereeDiscountValue  Int @default(0)
+  // Days after order completion before ACCRUED → PAYABLE (Q3: default 15,
+  // hard ceiling 15 — admin validation must reject values > 15).
+  accrualWindowDays     Int @default(15)
+  // Minimum accumulated PAYABLE amount (Rp) before a payout batch is created.
+  minPayoutAmount       Int @default(20000)
+
+  updatedBy String? // Admin username who last updated
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("program_configs")
+}
+
+// Engine A ledger: referral commissions & stockout refunds.
+model CustomerCredit {
+  id         String  @id @default(cuid())
+  customerId String?
+  // Random 13-char claim code for redeemable credits (e.g. stockout refunds).
+  claimCode  String? @unique
+  kind       String // 'STOCKOUT_REFUND' | 'REFERRAL_COMMISSION'
+  amount     Int
+  // Snapshot of ProgramConfig.referralCommissionPct at accrual time — never
+  // live-joined, so admin config changes don't rewrite existing debt.
+  appliedRatePct Int?
+  status         String @default("ACCRUED") // 'ACCRUED' | 'PAYABLE' | 'REDEEMED' | 'PAID' | 'VOID' | 'EXPIRED'
+  sourceTxnId    String? // Transaction.id that generated the credit
+  consumedTxnId  String? // Transaction.id where the credit was redeemed
+  referralCodeId String?
+  payoutBatchId  String?
+  // sourceTxn.paidAt + ProgramConfig.accrualWindowDays, computed at accrual
+  // time (idempotent regardless of cron precision).
+  payableAt DateTime?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  referralCode ReferralCode? @relation(fields: [referralCodeId], references: [id], onDelete: SetNull)
+  payoutBatch  PayoutBatch?  @relation(fields: [payoutBatchId], references: [id], onDelete: SetNull)
+
+  // Idempotency: one order generates at most one credit per kind.
+  @@unique([kind, sourceTxnId])
+  @@index([customerId, status])
+  @@index([status, payableAt])
+  @@index([payoutBatchId])
+  @@map("customer_credits")
+}
+
+// Engine B: admin-managed discount rules.
+model VoucherRule {
+  id   String @id @default(cuid())
+  code String @unique
+  name String
+  kind String @default("MANUAL") // 'MANUAL' | 'SCHEDULED' | 'REFERRAL_NEW' | 'LOYALTY'
+  discountType String @default("FIXED_IDR") // 'PERCENT' | 'FIXED_IDR'
+  value        Int
+  // Required when discountType = 'PERCENT' (validated in admin UI).
+  maxDiscount Int?
+  minSpend    Int  @default(0)
+  // All windows stored & evaluated in UTC. validUntil is REQUIRED for
+  // kind = 'SCHEDULED' (validated in admin UI, ST-3a).
+  validFrom  DateTime
+  validUntil DateTime?
+  quotaTotal       Int?
+  quotaPerCustomer Int @default(1)
+  categoryId       String?
+  isActive         Boolean @default(true)
+  usedCount        Int @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  category    Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  redemptions VoucherRedemption[]
+
+  @@map("voucher_rules")
+}
+
+// One redemption row per (rule, customer, seq) — quotaPerCustomer > 1 is
+// enforced atomically via the unique constraint, not a racy COUNT().
+model VoucherRedemption {
+  id            String   @id @default(cuid())
+  ruleId        String
+  customerId    String
+  // Transaction.id where the rule was applied (plain column, no FK — one rule
+  // can be used at most once per order via the unique constraint below).
+  transactionId String
+  seq           Int      @default(1) // 1..quotaPerCustomer
+  redeemedAt    DateTime @default(now())
+
+  rule     VoucherRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  customer Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, customerId, seq])
+  @@unique([ruleId, transactionId])
+  @@map("voucher_redemptions")
+}
+
+// Separate counter from VoucherRedemption (B4: max 2 redemptions per
+// (referral code, referee), enforced via seq 1..2).
+model ReferralRedemption {
+  id                String   @id @default(cuid())
+  referralCodeId    String
+  refereeCustomerId String
+  transactionId     String
+  seq               Int      @default(1) // 1..2
+  redeemedAt        DateTime @default(now())
+
+  referralCode    ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
+  refereeCustomer Customer     @relation(fields: [refereeCustomerId], references: [id], onDelete: Cascade)
+
+  @@unique([referralCodeId, refereeCustomerId, seq])
+  @@map("referral_redemptions")
+}
+
+// Manual payout workflow: system generates batch + CSV, admin transfers
+// manually to the referrer's own phone number (B2/D4: cash only, e-wallets are
+// phone-bound in Indonesia), then marks the batch PAID with approvedBy.
+model PayoutBatch {
+  id          String  @id @default(cuid())
+  period      String // e.g. '2026-10'
+  channel     String @default("GOPAY") // GoPay / OVO; bank requires a separate account destination
+  totalAmount Int    @default(0)
+  status      String @default("DRAFT") // 'DRAFT' | 'APPROVED' | 'PAID'
+  approvedBy  String? // Admin username
+  approvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  credits CustomerCredit[]
+
+  @@unique([period, channel])
+  @@map("payout_batches")
 }
 
 // ── Supplier integration config ─────────────────────────────────────────────

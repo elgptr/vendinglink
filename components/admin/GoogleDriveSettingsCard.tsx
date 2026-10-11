@@ -52,7 +52,7 @@ export default function GoogleDriveSettingsCard() {
       } else {
         setMessage({ type: "error", text: result.error || "Gagal menyimpan konfigurasi" });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan" });
     } finally {
       setSaving(false);

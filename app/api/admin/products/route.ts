@@ -21,6 +21,7 @@ const productSchema = z.object({
   isActive: z.boolean().optional(),
   supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).optional(),
   supplierProductId: z.string().max(200).optional().nullable(),
+  categoryId: z.string().optional().nullable(),
 });
 
 const updateSchema = z.object({
@@ -36,6 +37,7 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
   supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).optional(),
   supplierProductId: z.string().max(200).optional().nullable(),
+  categoryId: z.string().optional().nullable(),
 });
 
 async function requireAdmin() {
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
           ? sanitizeString(parsed.data.guideText)
           : null,
         isActive: parsed.data.isActive ?? true,
+        categoryId: parsed.data.categoryId || null,
       },
     });
 
@@ -132,7 +135,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, description, guideImageUrl, guideText, originalPrice, showOriginalPrice, supplierMode, supplierProductId, ...rest } = parsed.data;
+    const { id, description, guideImageUrl, guideText, originalPrice, showOriginalPrice, supplierMode, supplierProductId, categoryId, ...rest } = parsed.data;
     const updateData: Record<string, unknown> = { ...rest };
     if (originalPrice !== undefined) {
       updateData.originalPrice = originalPrice || null;
@@ -154,6 +157,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (supplierProductId !== undefined) {
       updateData.supplierProductId = supplierProductId || null;
+    }
+    if (categoryId !== undefined) {
+      updateData.categoryId = categoryId || null;
     }
     const product = await prisma.product.update({
       where: { id },

@@ -12,6 +12,16 @@ import type {
   SupplierHealth,
 } from "./types";
 
+interface RezekiApiProduct {
+  availability?: string;
+  stock?: number;
+  id?: string | number;
+  product_id?: string | number;
+  name?: string;
+  price_idr?: number | string;
+  price?: number | string;
+}
+
 const TIMEOUT_MS = 45_000; // /v1/order hits upstream supplier and can be slow
 
 function getApiKey(): string {
@@ -73,7 +83,7 @@ export class RezekiSupplier implements ISupplier {
     const data = await res.json();
     const products = Array.isArray(data.products) ? data.products : (Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []));
 
-    return products.map((p: any) => {
+    return products.map((p: RezekiApiProduct) => {
       const inStock = p.availability === "in_stock";
       const stock = inStock ? (typeof p.stock === "number" && p.stock > 0 ? p.stock : 999) : 0;
       return {
@@ -196,7 +206,7 @@ export class RezekiSupplier implements ISupplier {
         totalAmount: raw.balance?.balance_deducted || 0,
       };
     } catch (err) {
-      console.error("[rezeki] order error", { productId: supplierProductId, baseUrl: getBaseUrl(), hasKey: !!process.env.REZEKI_API_KEY, err: err instanceof Error ? { name: err.name, message: err.message, cause: String((err as any).cause ?? "") } : String(err) });
+      console.error("[rezeki] order error", { productId: supplierProductId, baseUrl: getBaseUrl(), hasKey: !!process.env.REZEKI_API_KEY, err: err instanceof Error ? { name: err.name, message: err.message, cause: String(err.cause ?? "") } : String(err) });
       const isTimeout = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
       return {
         success: false,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { encryptAPIKey, decryptAPIKey } from "@/lib/encryption";
+import { encryptAPIKey } from "@/lib/encryption";
 import { z } from "zod";
 
 const updateConfigSchema = z.object({

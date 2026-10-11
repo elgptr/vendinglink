@@ -13,7 +13,7 @@ export async function resolveBridgeProduct(
   supplierProductId: string
 ) {
   // 1. Try resolving via the new SupplierProductMapping table
-  let mapping = await prisma.supplierProductMapping.findUnique({
+  const mapping = await prisma.supplierProductMapping.findUnique({
     where: {
       supplierCode_supplierProductId: { supplierCode, supplierProductId }
     },

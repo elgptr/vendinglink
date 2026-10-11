@@ -16,6 +16,7 @@
  */
 
 import { createLogger } from "@/lib/logger";
+import { normalizePhone } from "@/lib/phone";
 
 const log = createLogger({ module: "whatsapp" });
 
@@ -54,28 +55,8 @@ export interface WhatsAppSendResult {
  * Input:  "082254203272", "+6282254203272", "6282254203272"
  * Output: "6282254203272" (always starts with 62, no + prefix)
  */
-export function normalizePhone(phone: string): string | null {
-  if (!phone || typeof phone !== "string") return null;
+export { normalizePhone };
 
-  let cleaned = phone.replace(/[\s\-()]/g, "").trim();
-
-  // Remove leading + if present
-  if (cleaned.startsWith("+")) {
-    cleaned = cleaned.slice(1);
-  }
-
-  // Convert 08xx → 628xx (Indonesian local format)
-  if (cleaned.startsWith("08")) {
-    cleaned = "62" + cleaned.slice(1);
-  }
-
-  // Validate final format: must start with 62 and have 10-13 digits total
-  if (!/^62\d{9,12}$/.test(cleaned)) {
-    return null;
-  }
-
-  return cleaned;
-}
 // ─── Message Builder ──────────────────────────────────────────────────────────
 
 /**

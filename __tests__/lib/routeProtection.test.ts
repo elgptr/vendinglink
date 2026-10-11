@@ -54,7 +54,7 @@ describe("resolveRouteProtection", () => {
       ["/api/customer"],
       ["/api/customer/order/snap-token"],
       ["/api/checkout/customer"],
-      ["/api/promo-codes/validate"],
+      ["/api/discount/validate"],
       ["/api/csrf"],
       ["/api/public/sync-stock"],
       ["/api/cron/sync-supplier-stock"],
@@ -104,7 +104,7 @@ describe("unauthenticated fallback", () => {
       ["/admin/agents", "/admin/agents"],
       ["/agent/catalog", "/agent/catalog"],
       ["/api/order/status", "/api/order/status"],
-      ["/api/voucher/validate", "/api/voucher/validate"],
+      ["/api/checkout/agent", "/api/checkout/agent"],
     ])("%s → redirect /login?callbackUrl", (pathname, expectedCb) => {
       const d = resolveRouteProtection(pathname, noSession);
       isRedirectTo(d, "/login", { callbackUrl: expectedCb });
@@ -213,7 +213,7 @@ describe("unauthenticated fallback", () => {
     it.each([
       ["/api/order/status", agentApproved],
       ["/api/order/status", adminSession],
-      ["/api/voucher/validate", agentApproved],
+      ["/api/discount/validate", agentApproved],
       ["/detail/abc", agentApproved],
     ])("%s → next (session: %s)", (path, session) => {
       expect(resolveRouteProtection(path, session)).toEqual({ type: "next" });
