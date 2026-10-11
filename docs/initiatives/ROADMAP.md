@@ -334,7 +334,7 @@ PayoutBatch
 - [x] ST-2f-2: Tabel payout batch di `/admin/reports`, ditambahkan di bagian bawah halaman yang ada.
 - [x] ST-2g: Tombol "Sudah Ditransfer" di admin UI yang menandai batch dan credit PAID + catat `approvedBy`.
 - [ ] ST-1a: Broadcast promo ke segmen Customer yang `consentPromoAt IS NOT NULL`. Integrasi dengan WhatsApp Business API atau platform broadcast pilihan. **Desain program broadcast ditunda ke sprint mendatang** — hanya daftar/listing yang masuk sprint ini (ST-1a-1).
-- [ ] ST-1a-1: Halaman admin `/admin/customers` — list Customer + status consent + referral code + jumlah/total order. Prasyarat utk ST-1a nanti.
+- [x] ST-1a-1: Halaman admin `/admin/customers` — list Customer + status consent + referral code + jumlah/total order. Prasyarat utk ST-1a nanti.
 - [x] ST-1b: Checkbox consent di form checkout saat nomor WhatsApp diisi, dengan timestamp yang dicatat.
 - [ ] ST-1b-2: Checkbox consent default `true`; copy jelaskan bahwa mengisi no WA memberi consent utk riwayat pembelian, kode referral, dan info program marketing txsiber; peringatan inline (bukan hover-only, harus bekerja di sentuh/keyboard) saat di-uncheck bahwa customer tidak akan mendapat riwayat pembelian & benefit referral code; font size `text-xs` + warna `text-slate-400`.
 - [x] ST-1b-3: Perbaiki `GET /api/customer/orders` (TD-10) — `contains` match jadi match 8 digit dari depan (B6), tambah rate limit. Prasyarat sebelum data referral/payout tampil di halaman ini.
