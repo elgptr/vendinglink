@@ -447,19 +447,36 @@ model ProductRequest {
 enum ProductRequestStatus {
   SEARCHING FOUND NOT_FOUND CONFIRMED PURCHASED EXPIRED
 }
+
+model AgentOperationalConfig {
+  id                 String    @id @default("default")
+  maxSpendPerRequest Float     @default(500000)
+  maxSpendPerDay     Float     @default(5000000)
+  minBalanceFloor    Float     @default(200000)
+  priceDeltaAlertPct Float     @default(20)
+  highValueThreshold Float     @default(1000000)
+  isAgentEnabled     Boolean   @default(true)
+  updatedBy          String?   -- admin username atau 'hermes-agent'
+  approvedAt         DateTime?
+  updatedAt          DateTime  @updatedAt
+}
 ```
 
-**Guardrail belanja otonom (env vars baru di `src/config/env.ts`):**
+**Guardrail belanja otonom (2-Layer Architecture):**
 
-```
-AGENT_ENABLED=true
-AGENT_MAX_SPEND_PER_REQUEST=500000   -- Rp 500rb per request
-AGENT_MAX_SPEND_PER_DAY=5000000     -- Rp 5jt agregat per hari
-AGENT_MIN_BALANCE_FLOOR=200000      -- Saldo tidak boleh di bawah ini
-AGENT_PRICE_DELTA_ALERT_PCT=20      -- Lonjakan >20% -> eskalasi admin
-AGENT_ALLOWED_SUPPLIER_CODES=RZK   -- CSV allowlist
-AGENT_HIGH_VALUE_THRESHOLD=1000000 -- Di atas ini -> konfirmasi manual
-```
+1. **Layer 1: Absolute Hard Boundaries (`src/config/env.ts`):**
+   Ceiling mutlak yang tidak dapat di-override oleh database, LLM, maupun tombol Telegram untuk mencegah kebangkrutan/kebocoran dana akibat anomali logic:
+   ```
+   AGENT_ENABLED=true
+   AGENT_HARD_MAX_SPEND_PER_REQUEST=1000000 -- Hard ceiling Rp 1jt per request
+   AGENT_HARD_MAX_SPEND_PER_DAY=10000000    -- Hard ceiling Rp 10jt per hari
+   AGENT_HARD_MIN_BALANCE_FLOOR=100000      -- Saldo mutlak tidak boleh di bawah Rp 100rb
+   AGENT_ALLOWED_SUPPLIER_CODES=RZK        -- CSV allowlist
+   ```
+2. **Layer 2: Dynamic Operational Config (`AgentOperationalConfig` di DB):**
+   Nilai operasional adaptif yang dievaluasi setiap transaksi (default fallback dari seed env).
+3. **Layer 3: Hermes Agent Analytics & Telegram HITL:**
+   Hermes Agent (berjalan di background worker/VPS terpisah) menganalisis kecepatan transaksi, tren produk paling dicari, dan saldo supplier via `getBalance()`. Hermes merumuskan rekomendasi limit harian baru dan mengirim Telegram alert interaktif dengan inline button approval (`[✅ Setujui]` / `[❌ Tolak]`). Approval admin langsung memperbarui `AgentOperationalConfig` secara instan tanpa restart container/redeploy.
 
 Urutan evaluasi (sebelum order): AGENT_ENABLED > allowlist > per-request cap >
 daily cap > balance floor > price delta > high value threshold.
@@ -468,13 +485,13 @@ daily cap > balance floor > price delta > high value threshold.
 **Pekerjaan bridge P2a:**
 
 - [ ] BR-P2a-1: Cleanup `orchestrator.ts` — hapus stub dan import menganggur.
-- [ ] BR-P2a-2: Migrasi schema `ProductRequest` + enum ke `schema.base.prisma`.
-- [ ] BR-P2a-3: Env vars guardrail ke `src/config/env.ts` + `.env.example`.
+- [ ] BR-P2a-2: Migrasi schema `ProductRequest` + `AgentOperationalConfig` + enum ke `schema.base.prisma`.
+- [ ] BR-P2a-3: Env vars hard ceiling guardrail ke `src/config/env.ts` + `.env.example`.
 - [ ] BR-P2a-4: `POST /api/v1/requests` — Zod, rate-limit, Bearer auth.
 - [ ] BR-P2a-5: `POST /api/v1/requests/:id/confirm`.
-- [ ] BR-P2a-6: `productSearchQueue` + worker — parallel, timeout, guardrail, status update.
-- [ ] BR-P2a-7: Balance monitor — cron 30 menit, alert Telegram di bawah floor.
-- [ ] BR-P2a-8: `/agent pause` + `/agent resume` di parser + router.
+- [ ] BR-P2a-6: `productSearchQueue` + worker — parallel, timeout, dynamic guardrail evaluation, status update.
+- [ ] BR-P2a-7: Balance monitor + metrics exporter — cron 30 menit, alert Telegram di bawah floor, feed metrics untuk Hermes analytics.
+- [ ] BR-P2a-8: Telegram bot handler: `/agent pause`, `/agent resume`, dan callback query listener untuk inline button approval dynamic guardrail.
 - [ ] BR-P2a-9: `/balance all` — cek semua supplier aktif.
 - [ ] BR-P2a-10: Notif ke storefront `POST {VL_URL}/api/bridge/webhook/request-update`
   — revisi `docs/openapi.yaml` + `VENDINGLINK_WEBHOOK_SPEC.md`.
@@ -482,7 +499,7 @@ daily cap > balance floor > price delta > high value threshold.
 
 **Pekerjaan storefront P2a:**
 
-- [ ] ST-P2a-1: Tombol "Request Produk" di katalog.
+- [ ] ST-P2a-1: Tombol "Request Produk ini" di product card yang kosong pada halaman katalog.
 - [ ] ST-P2a-2: `POST /api/bridge/webhook/request-update` — terima notif bridge.
 - [ ] ST-P2a-3: Forward notif ke customer (WA/push).
 - [ ] ST-P2a-4: Tombol konfirmasi beli yang trigger `confirm` ke bridge.
@@ -512,13 +529,17 @@ Admin UI Storefront: Manajemen Supplier
     v
     POST /api/v1/suppliers  (bridge)
     Simpan Supplier(PENDING_VALIDATION)
-    Worker: dry-run getProductList + getBalance
+    Worker: dry-run getProductList + getBalance (GenericRestAdapter)
     |
     +-- OK   -> status ACTIVE, notif Telegram
-    +-- FAIL -> panggil LLM agent (feature-flagged)
-                Output: kandidat adapter TypeScript -> DRAFT PR (BUKAN hot-load)
-                Notif Telegram: link PR untuk review
-                Setelah merge + rebuild -> supplier aktif
+    +-- FAIL -> Redaction/Sanitizer (masking token & credentials)
+                -> Enqueue job ke Hermes Agent Runner (VPS/Worker mandiri di luar Vercel/Bridge)
+                -> Hermes panggil Commercial LLM (Claude 3.5 Sonnet / GPT-4o)
+                -> Generate `SupplierAdapter.ts` + Vitest mock test di sandbox
+                -> Jalankan `npm test` di isolated container
+                -> Lulus test -> Push branch & Open GitHub DRAFT PR
+                -> Notif Telegram: link Draft PR untuk review developer
+                -> Developer review & merge PR -> CI/CD rebuild -> status ACTIVE
 ```
 
 **Skema baru di `prisma/schema.base.prisma`:**
@@ -540,10 +561,11 @@ enum SupplierStatus {
 }
 ```
 
-**Batasan keamanan agentic adapter (MUTLAK):**
-LLM output tidak pernah di-eval atau hot-load di runtime. Output berupa TypeScript file
-yang masuk sebagai **draft PR**, di-review developer, di-merge, baru rebuild Docker.
-PR wajib lulus `tsc --noEmit` dan dry-run test sebelum merge.
+**Batasan keamanan & isolasi agentic adapter (MUTLAK):**
+1. **Isolated Worker (Zero Blast Radius):** Hermes Agent berjalan di VPS/worker terpisah di luar Vercel (Storefront) dan Bridge transaksi. Kegagalan agent tidak mempengaruhi operasional customer.
+2. **Data Redaction:** Sebelum prompt/doc supplier dikirim ke LLM API, layer Sanitizer otomatis memotong/me-masking seluruh secret, signature key, dan password menjadi dummy `<MOCK_SECRET>`.
+3. **No Hot-Reloading:** LLM output tidak pernah di-eval atau hot-load di runtime. Output berupa TypeScript file yang masuk sebagai **GitHub Draft PR**, di-review developer, di-merge, baru rebuild Docker.
+4. **Automated Verification:** PR wajib lulus `tsc --noEmit` dan Vitest dry-run test di sandbox sebelum PR dibuat.
 
 **Pekerjaan bridge P2b:**
 
@@ -552,7 +574,7 @@ PR wajib lulus `tsc --noEmit` dan dry-run test sebelum merge.
 - [ ] BR-P2b-3: Update `SupplierFactory` — load dari tabel `Supplier` (DB), RZK hardcode sebagai fallback.
 - [ ] BR-P2b-4: `POST /api/v1/suppliers` + `PATCH /api/v1/suppliers/:code` dengan Bearer auth.
 - [ ] BR-P2b-5: Validation worker — dry-run saat supplier baru didaftarkan.
-- [ ] BR-P2b-6: LLM integration (feature-flagged `AGENT_ADAPTER_BUILD_ENABLED`) — draft PR + notif link.
+- [ ] BR-P2b-6: Hermes Agent adapter builder pipeline (feature-flagged `AGENT_ADAPTER_BUILD_ENABLED`) — sanitizer layer, sandbox Vitest runner, GitHub API Draft PR creator, notif link PR ke Telegram.
 - [ ] BR-P2b-7: Command `/suppliers` — list semua supplier dan statusnya.
 - [ ] BR-P2b-8: `SUPPLIER_RZK_*` di `env.ts` jadi deprecated (baca tapi tidak required, backward-compat).
 
@@ -653,8 +675,8 @@ jika tidak dijawab.
 | Q1 | Integrasi Google Drive yang "rusak" — kode tidak ditemukan di repo bridge. Di mana kode tersebut berada? (VPS script? Storefront?) Perlu diidentifikasi sebelum BR-8a bisa dirancang final. | P0 (BR-8a) | Admin/DevOps |
 | Q2 | Storefront VendingLink: framework apa, repo di mana? Semua task ST-* dalam roadmap ini perlu akses ke repo storefront untuk dieksekusi. | P0 (ST-5a) | Storefront maintainer |
 | Q3 | ~~N hari window refund untuk ReferralReward ACCRUED -> PAYABLE?~~ **RESOLVED**: `accrualWindowDays` default 15 hari, hard ceiling 15, admin-editable via `ProgramConfig`. | P1 (ST-2e) | Owner bisnis |
-| Q4 | AGENT_MAX_SPEND_PER_REQUEST dan _PER_DAY — berapa angka yang tepat? Ditentukan bersamaan dengan eksperimen operasional P2a. | P2a (BR-P2a-3) | Owner bisnis |
-| Q5 | LLM mana yang akan digunakan untuk agentic adapter build? Self-hosted (Ollama + Qwen/CodeLlama) vs API komersial (Claude/GPT-4o)? Mempengaruhi biaya, latency, dan keamanan karena kode supplier dikirim ke LLM. | P2b (BR-P2b-6) | Admin/Bisnis |
+| Q4 | ~~AGENT_MAX_SPEND_PER_REQUEST dan _PER_DAY — berapa angka yang tepat?~~ **RESOLVED**: Menggunakan **Dynamic Guardrail via Hermes Agent** yang tersimpan di DB `AgentOperationalConfig` (default Rp 500rb/req, Rp 5jt/hari). Hermes menganalisis pola saldo/demand & mengirim rekomendasi approval interaktif ke Telegram Admin. Nilai di `env.ts` bertindak sebagai *Absolute Hard Boundary*. | P2a (BR-P2a-3) | Owner bisnis |
+| Q5 | ~~LLM mana yang akan digunakan untuk agentic adapter build?~~ **RESOLVED**: Menggunakan **API Komersial (Claude 3.5 Sonnet / GPT-4o)** via **Hermes Agent Runner di VPS/worker terpisah** (di luar Vercel/Bridge). Biaya sangat rendah (<$5/bln karena frekuensi rendah). Keamanan kredensial dijamin lewat **Data Redaction layer**. Output wajib berupa **GitHub Draft PR + Vitest PASS**, tanpa runtime hot-load. | P2b (BR-P2b-6) | Admin/Bisnis |
 | Q6 | Item 7 (Shopee) dan Item 6 (USDT) — gate legal belum dibuka. Tidak ada effort engineering sebelum gate terbuka. | P3 | Owner bisnis + legal |
 
 ---

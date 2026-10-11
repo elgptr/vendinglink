@@ -19,10 +19,14 @@ const securityHeaders = [
     value:
       "default-src 'self'; " +
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.sandbox.midtrans.com https://app.midtrans.com; " +
-      "style-src 'self' 'unsafe-inline' https://app.sandbox.midtrans.com https://app.midtrans.com; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://app.sandbox.midtrans.com https://app.midtrans.com; " +
       "img-src 'self' data: blob: https://pasteimg.com; " +
-      "font-src 'self' data:; " +
-      "connect-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com; " +
+      "font-src 'self' data: https://fonts.gstatic.com; " +
+      `connect-src 'self' https://app.sandbox.midtrans.com https://app.midtrans.com${
+        process.env.NODE_ENV !== "production"
+          ? " https://*.ngrok-free.dev https://*.ngrok-free.app wss://*.ngrok-free.dev wss://*.ngrok-free.app ws: wss:"
+          : ""
+      }; ` +
       "frame-src https://app.sandbox.midtrans.com https://app.midtrans.com; " +
       "object-src 'none'; base-uri 'self'; form-action 'self'",
   },
@@ -30,6 +34,13 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: [
+    "reforest-probable-triage.ngrok-free.dev",
+    "*.ngrok-free.dev",
+    "*.ngrok-free.app",
+    "*.ngrok.app",
+    "*.ngrok.io",
+  ],
   serverExternalPackages: ["bcryptjs"],
   typescript: {
     ignoreBuildErrors: true,

@@ -54,6 +54,9 @@ const PUBLIC_ROUTES = [
   "/api/request-product",
   "/api/cron",
   "/api/bridge",
+  "/api/promos",
+  "/icon",
+  "/apple-icon",
 ];
 
 // Used (like proxy.ts's `pathname.startsWith("/api/")`) to distinguish API

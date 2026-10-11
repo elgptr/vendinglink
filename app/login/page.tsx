@@ -39,8 +39,12 @@ function LoginContent() {
         toast.error("Login gagal. Periksa kembali kredensial Anda.");
       } else {
         toast.success("Login berhasil! Mengalihkan...");
-        router.push("/");
-        router.refresh();
+        const callback = searchParams.get("callbackUrl");
+        const destination =
+          callback && callback.startsWith("/") && !callback.startsWith("//")
+            ? callback
+            : "/admin/inventory";
+        window.location.href = destination;
       }
     } catch {
       setError("Terjadi kesalahan. Silakan coba lagi.");
