@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
-import { GET } from "@/app/api/customer/orders/route";
+import { GET, POST } from "@/app/api/customer/orders/route";
 import {
   createMockProduct,
   createMockTransaction,
@@ -52,11 +52,27 @@ describe("api/customer/orders (ST-1b-3 / TD-10)", () => {
     await prisma.$disconnect();
   });
 
+  async function optionsFor(phone: string, answerId: string) {
+    await prisma.customer.create({ data: { phone: `62${phone.slice(1)}`, consentPromoAt: new Date() } });
+    const answer = await prisma.product.findUniqueOrThrow({ where: { id: answerId } });
+    for (let i = 0; i < 4; i++) {
+      await createMockProduct(prisma, { name: `Decoy ${i} for ${answer.name}` });
+    }
+  }
+
+  function postRequest(phone: string, productId: string, orderId: string) {
+    ipCounter++;
+    return new NextRequest("http://localhost:3000/api/customer/orders", {
+      method: "POST", headers: { "x-forwarded-for": `10.8.0.${ipCounter}` },
+      body: JSON.stringify({ phone, productId, orderId }),
+    });
+  }
+
   it("400s on missing phone", async () => {
     const res = await GET(getRequest(null));
     expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toContain("wajib diisi");
+    expect(data.error).toContain("tidak valid");
   });
 
   it("400s on invalid phone (previously matched any substring via `contains`)", async () => {
@@ -68,25 +84,29 @@ describe("api/customer/orders (ST-1b-3 / TD-10)", () => {
     expect(data.error).toContain("tidak valid");
   });
 
-  it("finds PAID orders via the same number in 08xx, 628xx, and +628xx form", async () => {
+  it("requires receipt and last product before exposing PAID orders for 08/62/+62", async () => {
     const phone = uniquePhone();
     const subscriber = `62${phone.slice(1)}`;
     const product = await createMockProduct(prisma);
-    await createMockTransaction(prisma, {
+    const transaction = await createMockTransaction(prisma, {
       productId: product.id,
       status: "PAID",
       customerPhone: phone, // raw 08xx, as stored at checkout
       paidAt: new Date(),
       finalAmount: 50000,
     });
+    await optionsFor(phone, product.id);
 
     for (const variant of [phone, subscriber, `+${subscriber}`]) {
       const res = await GET(getRequest(variant));
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.orders).toHaveLength(1);
-      expect(data.orders[0].finalAmount).toBe(50000);
-      expect(data.orders[0].productName).toBe(product.name);
+      expect(data.options).toHaveLength(5);
+      expect(data.options).toContainEqual({ id: product.id, name: product.name });
+      expect(JSON.stringify(data)).not.toContain(transaction.orderId);
+      const verified = await POST(postRequest(variant, product.id, transaction.orderId));
+      expect(verified.status).toBe(200);
+      expect((await verified.json()).orders[0].finalAmount).toBe(50000);
     }
   });
 
@@ -101,10 +121,10 @@ describe("api/customer/orders (ST-1b-3 / TD-10)", () => {
       paidAt: new Date(),
     });
 
+    await optionsFor(phone, product.id);
     const res = await GET(getRequest(phone));
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.orders.length).toBeGreaterThanOrEqual(1);
+    expect((await res.json()).options).toHaveLength(5);
   });
 
   it("does not return orders of other customers (8-digit fixed prefix)", async () => {
@@ -128,15 +148,13 @@ describe("api/customer/orders (ST-1b-3 / TD-10)", () => {
     });
 
     const res = await GET(getRequest(phoneA));
-    expect(res.status).toBe(200);
-    const data = await res.json();
+    expect(res.status).toBe(404);
     const otherOrders = await prisma.transaction.findMany({
       where: { customerPhone: phoneB },
       select: { orderId: true },
     });
     const otherIds = otherOrders.map((t) => t.orderId);
-    const returnedIds = (data.orders as Array<{ orderId: string }>).map((o) => o.orderId);
-    expect(returnedIds.filter((id) => otherIds.includes(id))).toHaveLength(0);
+    expect(JSON.stringify(await res.json())).not.toContain(otherIds[0]);
   });
 
   it("only returns PAID orders", async () => {
@@ -149,9 +167,7 @@ describe("api/customer/orders (ST-1b-3 / TD-10)", () => {
     });
 
     const res = await GET(getRequest(phone));
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.orders).toHaveLength(0);
+    expect(res.status).toBe(404);
   });
 
   it("returns 429 after 10 lookups per minute per IP", async () => {
@@ -171,5 +187,25 @@ describe("api/customer/orders (ST-1b-3 / TD-10)", () => {
     expect(limited.status).toBe(429);
     const data = await limited.json();
     expect(data.error).toContain("Terlalu banyak");
+  });
+
+  it("does not reveal orders without consent, with too few decoys, or with wrong receipt", async () => {
+    const phone = uniquePhone();
+    const product = await createMockProduct(prisma);
+    const transaction = await createMockTransaction(prisma, {
+      productId: product.id, status: "PAID", customerPhone: phone, paidAt: new Date(), redeemUrl: "secret-key",
+    });
+    const customer = await prisma.customer.create({ data: { phone: `62${phone.slice(1)}` } });
+    expect((await GET(getRequest(phone))).status).toBe(404);
+    expect((await POST(postRequest(phone, product.id, transaction.orderId))).status).toBe(404);
+    await prisma.customer.update({ where: { id: customer.id }, data: { consentPromoAt: new Date() } });
+    const challenge = await GET(getRequest(phone));
+    if (challenge.status === 200) {
+      const data = await challenge.json();
+      expect(data.options).toHaveLength(5);
+      expect(JSON.stringify(data)).not.toContain("secret-key");
+    } else expect(challenge.status).toBe(404);
+    expect((await POST(postRequest(phone, product.id, "wrong-receipt"))).status).toBe(404);
+    expect((await POST(postRequest(phone, "wrong-product", transaction.orderId))).status).toBe(404);
   });
 });

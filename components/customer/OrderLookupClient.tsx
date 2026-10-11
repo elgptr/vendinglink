@@ -19,6 +19,10 @@ interface OrderData {
 
 export default function OrderLookupClient() {
   const [phone, setPhone] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [productId, setProductId] = useState("");
+  const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [orders, setOrders] = useState<OrderData[]>([]);
@@ -29,20 +33,41 @@ export default function OrderLookupClient() {
 
     setLoading(true);
     setHasSearched(false);
+    setOptions([]);
+    setOrders([]);
+    setError("");
 
     try {
       const res = await fetch(`/api/customer/orders?phone=${encodeURIComponent(phone)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data.orders || []);
-      } else {
-        setOrders([]);
-      }
+      if (!res.ok) throw new Error("Verifikasi tidak tersedia. Periksa nomor atau hubungi admin.");
+      const data = await res.json();
+      setOptions(data.options);
     } catch {
-      setOrders([]);
+      setError("Verifikasi tidak tersedia. Periksa nomor atau hubungi admin.");
     } finally {
       setLoading(false);
+      setHasSearched(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/customer/orders", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, orderId: orderId.trim(), productId }),
+      });
+      if (!res.ok) throw new Error("Verifikasi gagal. Periksa jawaban dan ID pesanan Anda.");
+      const data = await res.json();
+      setOrders(data.orders);
       setHasSearched(true);
+      setOptions([]);
+    } catch {
+      setError("Verifikasi gagal. Periksa jawaban dan ID pesanan Anda.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,6 +96,20 @@ export default function OrderLookupClient() {
           Cari Pesanan
         </Button>
       </form>
+
+      {options.length === 5 && (
+        <form onSubmit={handleVerify} className="space-y-4 mb-10">
+          <label htmlFor="last-product" className="block text-slate-200">Produk apa yang terakhir Anda beli?</label>
+          <select id="last-product" required value={productId} onChange={(e) => setProductId(e.target.value)} className="w-full rounded-lg bg-surface-card border border-surface-border text-white p-3">
+            <option value="">Pilih produk</option>
+            {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+          </select>
+          <label htmlFor="receipt-order-id" className="block text-slate-200">ID pesanan dari bukti pembelian</label>
+          <Input id="receipt-order-id" required value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ID pesanan" />
+          <Button type="submit" loading={loading}>Verifikasi Pesanan</Button>
+        </form>
+      )}
+      {error && <p role="alert" className="text-amber-400 mb-6">{error}</p>}
 
       {hasSearched && orders.length === 0 && (
         <Card className="p-10 text-center bg-surface-card/50">

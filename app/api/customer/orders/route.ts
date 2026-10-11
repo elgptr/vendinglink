@@ -1,93 +1,116 @@
+import { randomInt } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { createRateLimiter } from "@/lib/rateLimit";
-import { createLogger } from "@/lib/logger";
 
-const log = createLogger({ module: "customer-orders" });
+export const dynamic = "force-dynamic";
 
-// Public order-lookup endpoint — looked up by phone number with no account/session,
-// so it must be rate limited to slow down phone-number brute forcing (TD-10).
-const orderLookupLimiter = createRateLimiter(10, 60 * 1000); // 10 attempts / min / IP
+// A five-way knowledge question alone is not authentication. The buyer also
+// needs the unguessable order ID from their purchase confirmation.
+const lookupLimiter = createRateLimiter(10, 60_000);
+const failure = () => NextResponse.json({ error: "Verifikasi tidak berhasil" }, { status: 404 });
 
-// Number of digits (from the start of the normalized subscriber number, i.e. after
-// the "62" country code) required to match. Matching on a short/arbitrary substring
-// of the raw phone (the previous `contains: sanitizedPhone` behavior) let anyone
-// enumerate a handful of digits and pull back any customer's paid orders, including
-// `redeemUrl` — see Tech Debt TD-10. Fixed length still allows some ambiguity across
-// numbers that share the same first 8 digits, but closes the "nilai makin pendek,
-// makin mudah ditebak" brute force gap while remaining tolerant of the mixed
-// 08xx / 628xx / +628xx formats that exist in historical `Transaction.customerPhone`
-// data (that column is NOT normalized at write time, only `Customer.phone` is).
-const PHONE_PREFIX_MATCH_LENGTH = 8;
+function limited(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || request.headers.get("x-real-ip") || "anonymous";
+  return !lookupLimiter.check(ip).allowed;
+}
 
-export async function GET(req: NextRequest) {
-  try {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("x-real-ip") ||
-      "anonymous";
+async function eligibleOrder(phone: string) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) return null;
+  const customer = await prisma.customer.findUnique({
+    where: { phone: normalized }, select: { id: true, consentPromoAt: true },
+  });
+  if (!customer?.consentPromoAt) return null;
+  // Historical orders may contain 08, 62 or +62. Never use substring matches;
+  // customerId is authoritative where present, and normalize legacy rows.
+  const candidates = await prisma.transaction.findMany({
+    where: {
+      status: "PAID",
+      OR: [
+        { customerId: customer.id },
+        { customerId: null, customerPhone: { in: [normalized, `+${normalized}`, `0${normalized.slice(2)}`] } },
+      ],
+    },
+    select: { id: true, orderId: true, productId: true, paidAt: true, createdAt: true },
+    orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    take: 1,
+  });
+  return { normalized, customer, last: candidates[0] ?? null };
+}
 
-    if (!orderLookupLimiter.check(ip).allowed) {
-      log.warn("Order lookup rate limited", { ip });
-      return NextResponse.json(
-        { error: "Terlalu banyak percobaan. Silakan coba lagi nanti." },
-        { status: 429 }
-      );
-    }
+export async function GET(request: NextRequest) {
+  if (limited(request)) return NextResponse.json({ error: "Terlalu banyak percobaan" }, { status: 429 });
+  const phone = new URL(request.url).searchParams.get("phone");
+  if (!phone || !normalizePhone(phone)) return NextResponse.json({ error: "Nomor WhatsApp tidak valid" }, { status: 400 });
+  const eligible = await eligibleOrder(phone);
+  if (!eligible?.last) return failure();
 
-    const { searchParams } = new URL(req.url);
-    const phone = searchParams.get("phone");
-
-    if (!phone || phone.trim() === "") {
-      return NextResponse.json({ error: "Nomor WhatsApp wajib diisi" }, { status: 400 });
-    }
-
-    // Normalize to 628xxxxxxxxxx first so "0812...", "62812...", "+62812..." all
-    // resolve to the same subscriber-number core before taking the match prefix.
-    const normalized = normalizePhone(phone);
-    if (!normalized) {
-      return NextResponse.json({ error: "Nomor WhatsApp tidak valid" }, { status: 400 });
-    }
-
-    // Strip the "62" country code so the prefix is anchored to the subscriber
-    // number itself (e.g. "6282254203272" -> "82254203272" -> "82254203").
-    const subscriberNumber = normalized.slice(2);
-    if (subscriberNumber.length < PHONE_PREFIX_MATCH_LENGTH) {
-      return NextResponse.json({ error: "Nomor WhatsApp tidak valid" }, { status: 400 });
-    }
-    const phonePrefix = subscriberNumber.slice(0, PHONE_PREFIX_MATCH_LENGTH);
-
-    const orders = await prisma.transaction.findMany({
-      where: {
-        customerPhone: { contains: phonePrefix },
-        status: "PAID",
-      },
-      include: {
-        product: { select: { name: true, type: true, guideImageUrl: true, guideText: true } }
-      },
-      orderBy: { paidAt: "desc" },
-      take: 20
-    });
-
-
-    const formattedOrders = orders.map(order => ({
-      orderId: order.orderId,
-      productName: order.product.name,
-      productType: order.product.type,
-      redeemUrl: order.redeemUrl,
-      guideImageUrl: order.product.guideImageUrl,
-      guideText: order.product.guideText,
-      finalAmount: order.finalAmount,
-      paidAt: order.paidAt,
-      stockStatus: order.stockStatus,
-      refundPromoCodeId: order.refundPromoCodeId
-    }));
-
-    return NextResponse.json({ orders: formattedOrders });
-  } catch (error) {
-    log.error("Order lookup failed", { error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json({ error: "Terjadi kesalahan server" }, { status: 500 });
+  // Rank decoys by fulfilled sales; exclude the correct product, inactive
+  // entries and duplicate names (indistinguishable answers). No filler/repeats.
+  const products = await prisma.product.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, _count: { select: { transactions: { where: { status: "PAID", stockStatus: "FULFILLED" } } } } },
+  });
+  const answer = products.find((product) => product.id === eligible.last?.productId);
+  if (!answer) return failure();
+  const names = new Set([answer.name.trim().toLocaleLowerCase()]);
+  const decoys = products.filter((product) => product.id !== answer.id)
+    .sort((a, b) => b._count.transactions - a._count.transactions || a.id.localeCompare(b.id))
+    .filter((product) => {
+      const name = product.name.trim().toLocaleLowerCase();
+      if (names.has(name)) return false;
+      names.add(name);
+      return true;
+    }).slice(0, 4);
+  if (decoys.length < 4) return failure();
+  const options = [answer, ...decoys].map(({ id, name }) => ({ id, name }));
+  // Fisher-Yates using CSPRNG; do not bias the correct answer's position.
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [options[i], options[j]] = [options[j], options[i]];
   }
+  return NextResponse.json({ options }, { headers: { "Cache-Control": "no-store" } });
+}
+
+export async function POST(request: NextRequest) {
+  if (limited(request)) return NextResponse.json({ error: "Terlalu banyak percobaan" }, { status: 429 });
+  let body: unknown;
+  try { body = await request.json(); } catch { return failure(); }
+  if (!body || typeof body !== "object") return failure();
+  const { phone, productId, orderId } = body as Record<string, unknown>;
+  if (typeof phone !== "string" || typeof productId !== "string" || typeof orderId !== "string"
+      || phone.length > 20 || productId.length > 100 || orderId.length > 100) return failure();
+  const eligible = await eligibleOrder(phone);
+  if (!eligible?.last || eligible.last.productId !== productId) return failure();
+
+  // The receipt's order ID must belong to this same phone/customer. Order
+  // details and redeem credentials are released only after BOTH checks.
+  const proof = await prisma.transaction.findUnique({ where: { orderId },
+    select: { customerId: true, customerPhone: true, status: true },
+  });
+  if (!proof || proof.status !== "PAID" || (
+    proof.customerId !== eligible.customer.id &&
+    (proof.customerId !== null || normalizePhone(proof.customerPhone ?? "") !== eligible.normalized)
+  )) return failure();
+
+  const orders = await prisma.transaction.findMany({
+    where: {
+      status: "PAID",
+      OR: [
+        { customerId: eligible.customer.id },
+        { customerId: null, customerPhone: { in: [eligible.normalized, `+${eligible.normalized}`, `0${eligible.normalized.slice(2)}`] } },
+      ],
+    },
+    select: { orderId: true, redeemUrl: true, finalAmount: true, paidAt: true, stockStatus: true,
+      product: { select: { name: true, type: true } } },
+    orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }], take: 20,
+  });
+  return NextResponse.json({ orders: orders.map((order) => ({
+    orderId: order.orderId, productName: order.product.name, productType: order.product.type,
+    redeemUrl: order.stockStatus === "FULFILLED" ? order.redeemUrl : null,
+    finalAmount: order.finalAmount, paidAt: order.paidAt, stockStatus: order.stockStatus,
+  })) }, { headers: { "Cache-Control": "no-store" } });
 }
