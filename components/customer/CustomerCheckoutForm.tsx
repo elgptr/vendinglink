@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { formatRupiah } from "@/lib/utils";
 import toast from "@/components/ui/Toast";
+import ConsentPromoCheckbox from "@/components/customer/ConsentPromoCheckbox";
 
 interface CustomerCheckoutFormProps {
   productId: string;
@@ -183,37 +184,7 @@ export default function CustomerCheckoutForm({
       />
 
       {customerPhone.trim() && (
-        <div className="space-y-2">
-          <label
-            htmlFor="customer-consent-promo"
-            className="flex items-start gap-3 cursor-pointer"
-          >
-            <input
-              id="customer-consent-promo"
-              type="checkbox"
-              aria-describedby="customer-consent-promo-warning"
-              checked={consentPromo}
-              onChange={(e) => setConsentPromo(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-surface-border text-brand-500 focus:ring-brand-500/50 bg-surface-card cursor-pointer"
-            />
-            <span className="text-xs text-slate-400">
-              Dengan mengisi nomor WhatsApp saya menyetujui data saya disimpan untuk
-              riwayat pembelian, mendapatkan kode referral pribadi, dan menerima info
-              program marketing dari txsiber — termasuk melalui WhatsApp.
-            </span>
-          </label>
-          {!consentPromo && (
-            <p
-              id="customer-consent-promo-warning"
-              role="status"
-              aria-live="polite"
-              className="text-xs text-slate-400 pl-7"
-            >
-              Jika tidak dicentang, pesanan tetap diproses tetapi Anda tidak akan mendapat
-              riwayat pembelian dan benefit kode referral.
-            </p>
-          )}
-        </div>
+        <ConsentPromoCheckbox checked={consentPromo} onChange={setConsentPromo} />
       )}
 
       {/* Promo code (auto-issued when a previous order ran out of stock) */}
