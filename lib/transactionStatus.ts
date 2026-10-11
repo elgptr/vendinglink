@@ -4,6 +4,7 @@ import { generatePromoCode } from "@/lib/utils";
 import { sendPaymentNotification, type WhatsAppPaymentData } from "@/lib/whatsapp";
 import { rezekiSupplier } from "@/lib/suppliers";
 import { accrueReferralCommission } from "@/lib/promo/accrual";
+import { releasePendingRedemptions } from "@/lib/promo/releasePending";
 import { createLogger } from "@/lib/logger";
 import { Prisma } from "@prisma/client";
 
@@ -202,6 +203,7 @@ export async function applyMidtransStatusUpdate(
         where: { orderId },
         data: { status: "EXPIRED" },
       });
+      await releasePendingRedemptions(tx, transaction.id);
       return { updated: true, transaction: updated };
     }
 
@@ -235,6 +237,7 @@ export async function applyMidtransStatusUpdate(
           });
         }
 
+        await releasePendingRedemptions(tx, transaction.id);
         return { updated: true, transaction: cancelled };
       }
 

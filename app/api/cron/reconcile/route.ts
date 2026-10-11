@@ -4,6 +4,7 @@ import { getMidtransStatus } from "@/lib/midtrans";
 import { getKaseraPaymentStatus } from "@/lib/kasera";
 import { applyMidtransStatusUpdate } from "@/lib/transactionStatus";
 import { promoteAccruedCreditsToPayable } from "@/lib/promo/accrual";
+import { releasePendingRedemptions } from "@/lib/promo/releasePending";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "cron-reconcile" });
@@ -82,11 +83,17 @@ export async function GET(request: NextRequest) {
 
           if (!isPaid) {
             // Mark as EXPIRED locally
-            await prisma.transaction.update({
-              where: { orderId: tx.orderId },
-              data: { status: "EXPIRED" },
+            const expired = await prisma.$transaction(async (db) => {
+              const changed = await db.transaction.updateMany({
+                where: { orderId: tx.orderId, status: "PENDING" },
+                data: { status: "EXPIRED" },
+              });
+              if (!changed.count) return false;
+              const order = await db.transaction.findUniqueOrThrow({ where: { orderId: tx.orderId }, select: { id: true } });
+              await releasePendingRedemptions(db, order.id);
+              return true;
             });
-            expiredCount++;
+            if (expired) expiredCount++;
           }
         } catch (err) {
           log.error(`Failed to reconcile tx ${tx.orderId}`, {
