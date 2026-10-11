@@ -38,6 +38,7 @@ const navItems: NavItem[] = [
   { href: "/admin/categories", icon: FolderOpen, label: "Kategori" },
   { href: "/admin/supplier", icon: Truck, label: "Manajemen Supplier" },
   { href: "/admin/vouchers", icon: Ticket, label: "Voucher" },
+  { href: "/admin/voucher-rules", icon: Ticket, label: "Promo Berjadwal" },
   { href: "/admin/agents", icon: Users, label: "Manajemen Agen" },
   { href: "/admin/customers", icon: Users, label: "Pelanggan" },
   { href: "/admin/reports", icon: BarChart3, label: "Laporan Penjualan" },

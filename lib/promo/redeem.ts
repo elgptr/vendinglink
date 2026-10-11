@@ -106,7 +106,7 @@ function checkRuleGuards(
   // All windows are stored and evaluated in UTC (Date comparisons are
   // timezone-safe because JS Dates are absolute instants).
   if (rule.validFrom > now) return "Kode promo belum berlaku";
-  if (rule.validUntil && rule.validUntil < now)
+  if (rule.validUntil && rule.validUntil <= now)
     return "Kode promo sudah kedaluwarsa";
   if (amount < rule.minSpend)
     return `Minimal belanja ${formatRupiah(rule.minSpend)} untuk menggunakan kode ini`;
@@ -336,6 +336,9 @@ async function incrementRuleUsage(
     UPDATE voucher_rules
     SET "usedCount" = "usedCount" + 1, "updatedAt" = NOW()
     WHERE id = ${ruleId}
+      AND "isActive" = true
+      AND "validFrom" <= NOW()
+      AND ("validUntil" IS NULL OR "validUntil" > NOW())
       AND ("quotaTotal" IS NULL OR "usedCount" < "quotaTotal")
   `;
   if (affected === 0) {
