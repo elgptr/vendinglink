@@ -1,9 +1,9 @@
 # Panduan Kontribusi Storefront — Integrasi dengan VendingLink Bridge
 
 **Dokumen:** `docs/initiatives/STOREFRONT_INTEGRATION_GUIDE.md`
-**Diperbarui:** 2026-10-10
+**Diperbarui:** 2026-10-11
 **Audience:** Developer storefront yang mengerjakan sprint P1 (Promo Engine) dan P2 (Agentic Purchasing & Dynamic Supplier).
-**Sumber kebenaran kontrak:** `docs/openapi.yaml` dan `VENDINGLINK_WEBHOOK_SPEC.md` di repo bridge.
+**Sumber kebenaran kontrak saat ini:** route handler, Prisma schema dan tes di repo storefront. `docs/openapi.yaml` dan `VENDINGLINK_WEBHOOK_SPEC.md` di repo bridge harus dicocokkan lintas repo sebelum klaim kompatibel.
 
 ---
 
@@ -12,11 +12,12 @@
 1. [Prinsip Pemisahan Tanggung Jawab](#1-prinsip-pemisahan-tanggung-jawab)
 2. [Autentikasi & Keamanan](#2-autentikasi--keamanan)
 3. [Kontrak Saat Ini (Bridge → Storefront)](#3-kontrak-saat-ini-bridge--storefront)
-4. [P1 — Promo Engine: Persyaratan Sisi Storefront](#4-p1--promo-engine-persyaratan-sisi-storefront)
+4. [P1 — Kontrak yang Berlaku](#4-p1--kontrak-yang-berlaku)
 5. [P2a — Agentic Purchasing: Persyaratan Sisi Storefront](#5-p2a--agentic-purchasing-persyaratan-sisi-storefront)
 6. [P2b — Dynamic Supplier: Persyaratan Sisi Storefront](#6-p2b--dynamic-supplier-persyaratan-sisi-storefront)
 7. [Tabel Kontrak Baru](#7-tabel-kontrak-baru)
 8. [Checklist Sebelum Merge](#8-checklist-sebelum-merge)
+9. [Lampiran kontrak P1 legacy](#lampiran-kontrak-p1-legacy-arsip-jangan-implementasikan)
 
 ---
 
@@ -46,17 +47,17 @@ Semua komunikasi antara storefront dan bridge menggunakan pola yang sama:
 
 ```
 Authorization: Bearer <BRIDGE_SECRET_KEY>
-Idempotency-Key: <uuid-v4>
+Idempotency-Key: <transaction_id>
 Content-Type: application/json
 ```
 
 **`BRIDGE_SECRET_KEY`** adalah secret bersama. Simpan di environment variable,
 jangan hardcode atau masukkan ke version control.
 
-**`Idempotency-Key`** wajib unik per operasi bisnis. Generate UUID v4 di storefront
-dan simpan bersama record order/request. Jika storefront retry karena timeout, kirim
-ulang dengan Idempotency-Key yang **sama** — bridge akan mengembalikan hasil sebelumnya
-tanpa membuat transaksi baru.
+**Untuk webhook stok saat ini**, `Idempotency-Key` jika dikirim harus sama dengan
+`transaction_id` dalam payload; penerima memakai `transaction_id` untuk dedupe.
+Kontrak P2 request-to-bridge belum diterapkan di repo ini; aturan UUID/retry P2
+harus dikonfirmasi dengan maintainer bridge sebelum digunakan.
 
 **Rate limiting:** Bridge menerapkan rate limit per IP dan global. Implementasikan
 exponential backoff saat menerima HTTP 429.
@@ -70,146 +71,40 @@ Bridge mengirim satu jenis webhook ke storefront saat transaksi selesai:
 ```
 POST {STOREFRONT_URL}/api/bridge/webhook/stock/topup
 Authorization: Bearer BRIDGE_SECRET_KEY
-Idempotency-Key: BRG-YYYYMMDD-XXXXXX
+Idempotency-Key: <transaction_id payload>
 ```
 
-Spec lengkap payload ada di `VENDINGLINK_WEBHOOK_SPEC.md`. Storefront wajib:
-- Membalas HTTP 200 dalam **10 detik**. Bridge akan retry jika timeout.
+Payload aktual: `{transaction_id, product_id, supplier_code, supplier_product_id, added_qty, items, source:"BRIDGE_BOT"}` (`items.length === added_qty`). Spesifikasi bridge `VENDINGLINK_WEBHOOK_SPEC.md` harus diuji silang; storefront:
+- Bridge harus menguji timeout/retry di staging; batas waktu 10 detik belum dijamin oleh handler.
 - Memproses idempotently — request dengan Idempotency-Key yang sama tidak boleh diproses dua kali.
-- Mengembalikan HTTP 200 meski sudah pernah diproses sebelumnya (jangan 409).
+- **Perilaku aktual:** topup baru HTTP 201; `transaction_id` yang sudah `COMPLETED` atau `PROCESSING` HTTP 409. Header dengan nilai berbeda dari `transaction_id` HTTP 400. Jangan anggap retry 409 sebagai gagal stok baru; verifikasi status event. Perubahan menuju 200 pada replay membutuhkan kesepakatan lintas repo dan perubahan tes bersama.
 
 ---
 
-## 4. P1 — Promo Engine: Persyaratan Sisi Storefront
+## 4. P1 — Kontrak yang Berlaku
 
-**Bridge tidak perlu diubah untuk P1.** Seluruh implementasi P1 ada di storefront.
+**Mengapa diganti:** rancangan lama di lampiran memakai `+62`, kode referral 8 karakter,
+`ReferralReward`, order `COMPLETED`, dan approval Telegram. Implementasi menggunakan
+nomor `628…` tanpa plus, kode referral 13 karakter, `CustomerCredit`, status
+`PAID` + `stockStatus=FULFILLED`, dan approval manual di admin UI. Menggunakan
+proposal lama akan mengakibatkan data tak cocok dan salah menghitung komisi.
 
-### 4.1 Skema Database Storefront
+| Kontrak | Implementasi storefront |
+|---|---|
+| Pelanggan | `Customer.phone` UNIQUE, `normalizePhone()` menghasilkan `628…`; `consentPromoAt=NULL` tidak dapat membuka riwayat maupun benefit referral di API pelanggan; admin tetap melihat transaksi. Pencabutan opt-in lama memerlukan verifikasi kepemilikan terpisah. |
+| Pencarian riwayat | `GET /api/customer/orders?phone=…` hanya mengembalikan 5 pilihan produk (produk PAID terakhir + 4 pengecoh populer unik); jika tidak cukup opsi, 404. `POST /api/customer/orders` menerima `{phone, productId, orderId}` dan baru merilis riwayat setelah jawaban dan bukti order cocok. Pembatasan per-IP 10/menit (in-memory, perlu limiter bersama untuk deployment multi-instance). |
+| Referral & komisi | `ReferralCode` 13 karakter; `ReferralRedemption.seq` maks 2/customer. Komisi `CustomerCredit` hanya diakru untuk order PAID/FULFILLED, menunggu `payableAt` lewat cron `/api/cron/reconcile` (wajib `CRON_SECRET`). Stockout yang belum dibatch di-VOID; PAID historis memerlukan rekonsiliasi manual. |
+| Voucher | `VoucherRule` (bukan `Voucher` legacy), `VoucherRedemption` dan `ReferralRedemption`; `POST /api/checkout/customer` menerima `discountCode`, validasi aktif/window UTC/minSpend/kategori/kuota. Kuota terpesan pada checkout PENDING dan dilepas ketika status EXPIRED/CANCELLED. |
+| Berjadwal | Admin `/admin/voucher-rules` dan `/api/admin/voucher-rules` CRUD SCHEDULED; `validUntil` wajib dan lebih besar dari `validFrom`, semua timestamp ISO dengan zona waktu (disimpan sebagai UTC). DELETE menonaktifkan agar riwayat tetap ada. Publik `GET /api/promos/active` mengembalikan maksimum 10 rule aktif dalam window dengan kuota tersisa, tanpa secret/PII; pop-up katalog polling 30 detik, checkout tetap memvalidasi server-side. |
+| Broadcast | ST-1a masih ditunda; hanya listing admin segmen consent yang ada. Tidak ada pengiriman broadcast otomatis. |
 
-```
-Customer
-  id              CUID
-  phone           String  UNIQUE       -- E.164, normalisasi SEBELUM simpan
-  name            String?
-  consentPromoAt  DateTime?            -- NULL = tidak boleh masuk broadcast
-  createdAt       DateTime
-
-ReferralCode
-  code            String  UNIQUE       -- 8 karakter, auto-generate saat Customer dibuat
-  ownerId         -> Customer.id
-  active          Boolean
-
-VoucherRule
-  id              CUID
-  kind            Enum: REFERRAL_NEW | REFERRAL_OLD | SCHEDULED | LOYALTY
-  discountType    Enum: PERCENT | FIXED_IDR
-  value           Float
-  minSpend        Float                -- default 0
-  validFrom       DateTime             -- UTC
-  validUntil      DateTime             -- WAJIB non-null untuk kind SCHEDULED
-  quotaTotal      Int?                 -- null = tidak terbatas
-  quotaPerCustomer Int                 -- default 1
-  categoryId      String?
-
-VoucherRedemption
-  id              CUID
-  ruleId          -> VoucherRule.id
-  customerId      -> Customer.id
-  orderId         String
-  redeemedAt      DateTime
-  @@unique([ruleId, customerId])       -- satu customer satu kali per rule
-
-ReferralReward
-  id              CUID
-  referrerId      -> Customer.id
-  refereeOrderId  String
-  amount          Float
-  status          Enum: ACCRUED | PAYABLE | VOID | PAID
-  payoutBatchId   String?
-
-PayoutBatch
-  id              CUID
-  period          String               -- contoh: "2026-10"
-  channel         Enum: GOPAY | OVO
-  totalAmount     Float
-  status          Enum: DRAFT | APPROVED | PAID
-  approvedBy      String?              -- Telegram ID admin
-  approvedAt      DateTime?
-  createdAt       DateTime
-```
-
-### 4.2 Guardrail Wajib (Non-Negotiable)
-
-**1. Normalisasi nomor HP ke E.164 sebelum simpan.**
-```typescript
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('0'))   return '+62' + digits.slice(1);
-  if (digits.startsWith('62'))  return '+' + digits;
-  if (digits.startsWith('+62')) return raw.replace(/\s/g, '');
-  throw new Error('Format nomor HP tidak dikenali');
-}
-```
-Tanpa normalisasi, `0812xxx` dan `+62812xxx` jadi dua entitas berbeda.
-
-**2. Tolak self-referral di server-side.**
-```typescript
-if (normalizePhone(referee.phone) === normalizePhone(referrer.phone)) {
-  throw new Error('Self-referral tidak diizinkan');
-}
-```
-
-**3. Reward hanya PAYABLE setelah order COMPLETED + window refund.**
-```typescript
-await db.referralReward.updateMany({
-  where: {
-    status: 'ACCRUED',
-    order: {
-      status: 'COMPLETED',
-      completedAt: { lt: subDays(new Date(), REFUND_WINDOW_DAYS) },
-    },
-  },
-  data: { status: 'PAYABLE' },
-});
-```
-
-**4. Payout tetap manual dengan dual-control.**
-Sistem hanya men-generate `PayoutBatch` + CSV. Transfer uang dilakukan manual
-oleh admin setelah menyetujui batch. Catat `approvedBy` dan `approvedAt` untuk
-audit trail.
-
-### 4.3 Aturan Broadcast
-
-- Hanya kirim broadcast ke customer dengan `consentPromoAt IS NOT NULL`.
-- Simpan jenis consent dan timestamp (untuk kepatuhan WhatsApp Business API).
-
-### 4.4 Aturan Waktu Voucher
-
-- Semua `validFrom` dan `validUntil` disimpan dan dievaluasi dalam **UTC**.
-- Render ke `Asia/Jakarta` hanya di layer presentasi.
-- `validUntil` WAJIB non-null untuk `VoucherRule` kind `SCHEDULED`.
-- Validasi di server-side — tolak redeem jika `NOW() > validUntil`.
-
-### 4.5 Task Storefront P1
-
-| Task | Deskripsi |
-|------|-----------|
-| ST-2a | Migrasi skema semua model di 4.1 |
-| ST-2b | `POST /api/customers` — normalisasi + validasi phone |
-| ST-2c | Auto-generate `ReferralCode` saat Customer dibuat |
-| ST-2d | Redeem voucher di checkout — cek anti-abuse, quota, window (server-side) |
-| ST-2e | Cron job akrual: ACCRUED → PAYABLE setelah order COMPLETED + N hari |
-| ST-2f | Generate `PayoutBatch` + CSV dari Telegram command/button |
-| ST-2g | Tombol Approve di Telegram — set APPROVED, catat `approvedBy` |
-| ST-1a | Broadcast promo via WhatsApp Business API ke segmen consent |
-| ST-1b | Halaman opt-in consent dengan timestamp |
-| ST-3a | UI admin buat `VoucherRule` kind `SCHEDULED` — wajib isi `validUntil` |
-| ST-3b | `GET /api/promos/active` — kembalikan rules aktif saat ini |
-| ST-3c | Pop-up promo frontend — panggil endpoint saat halaman dimuat |
-| ST-3d | Validasi server-side redeem terhadap window waktu |
+**Batas integrasi:** P1 tidak mengirim nomor pelanggan, referral code, promo, atau
+credit ke bridge. Untuk kategori promo, storefront harus punya `Product.categoryId`
+yang benar. Lihat `P1_BRIDGE_HANDOFF_SPEC.md` untuk tes lintas repo yang masih perlu
+dijalankan. API P2 di bagian berikut merupakan **rencana**, bukan klaim endpoint
+tersebut sudah tersedia di storefront.
 
 ---
-
 
 ## 5. P2a — Agentic Purchasing: Persyaratan Sisi Storefront
 
@@ -367,13 +262,13 @@ Setiap perubahan kontrak wajib diupdate di `docs/openapi.yaml` dan `VENDINGLINK_
 ## 8. Checklist Sebelum Merge
 
 ### P1 (Promo Engine)
-- [ ] Nomor HP dinormalisasi ke E.164 sebelum simpan.
-- [ ] Self-referral ditolak di server-side.
-- [ ] Reward tidak PAYABLE sebelum order COMPLETED + window refund.
-- [ ] `validUntil` tidak null untuk `VoucherRule` kind `SCHEDULED`.
-- [ ] Redeem divalidasi di server-side (bukan hanya frontend).
-- [ ] Broadcast hanya ke customer dengan `consentPromoAt IS NOT NULL`.
-- [ ] Transfer payout tetap manual — sistem hanya generate CSV + approval.
+- [x] Nomor HP dinormalisasi ke `628…` tanpa `+` sebelum simpan.
+- [x] Self-referral ditolak di server-side.
+- [x] Komisi tidak PAYABLE sebelum order PAID/FULFILLED + window akrual; stockout VOID.
+- [x] `validUntil` wajib untuk `VoucherRule` kind `SCHEDULED` lewat admin API.
+- [x] Redeem divalidasi di server-side (bukan hanya frontend).
+- [ ] Broadcast belum diimplementasi; bila dibuat, hanya ke `consentPromoAt IS NOT NULL`.
+- [x] Transfer payout manual melalui admin UI dan CSV.
 
 ### P2a (Agentic Purchasing)
 - [ ] `customerRef` adalah opaque ID, bukan PII.
@@ -391,6 +286,142 @@ Setiap perubahan kontrak wajib diupdate di `docs/openapi.yaml` dan `VENDINGLINK_
 - [ ] Tidak ada PII customer yang dikirim ke bridge selain `customerRef`.
 
 ---
+
+## Lampiran: Kontrak P1 legacy (arsip, jangan implementasikan)
+
+Bagian ini dipindah dari posisi utama karena merupakan proposal awal dan berbeda dari skema/API yang telah berjalan. Rujuk bagian 4 untuk implementasi saat ini. Semua status/tugas di bawah adalah **historis**, bukan checklist baru.
+
+### Proposal historis: P1 — Promo Engine (bukan kontrak aktif)
+
+**Bridge tidak perlu diubah untuk P1.** Seluruh implementasi P1 ada di storefront.
+
+### 4.1 Skema Database Storefront
+
+```
+Customer
+  id              CUID
+  phone           String  UNIQUE       -- E.164, normalisasi SEBELUM simpan
+  name            String?
+  consentPromoAt  DateTime?            -- NULL = tidak boleh masuk broadcast
+  createdAt       DateTime
+
+ReferralCode
+  code            String  UNIQUE       -- 8 karakter, auto-generate saat Customer dibuat
+  ownerId         -> Customer.id
+  active          Boolean
+
+VoucherRule
+  id              CUID
+  kind            Enum: REFERRAL_NEW | REFERRAL_OLD | SCHEDULED | LOYALTY
+  discountType    Enum: PERCENT | FIXED_IDR
+  value           Float
+  minSpend        Float                -- default 0
+  validFrom       DateTime             -- UTC
+  validUntil      DateTime             -- WAJIB non-null untuk kind SCHEDULED
+  quotaTotal      Int?                 -- null = tidak terbatas
+  quotaPerCustomer Int                 -- default 1
+  categoryId      String?
+
+VoucherRedemption
+  id              CUID
+  ruleId          -> VoucherRule.id
+  customerId      -> Customer.id
+  orderId         String
+  redeemedAt      DateTime
+  @@unique([ruleId, customerId])       -- satu customer satu kali per rule
+
+ReferralReward
+  id              CUID
+  referrerId      -> Customer.id
+  refereeOrderId  String
+  amount          Float
+  status          Enum: ACCRUED | PAYABLE | VOID | PAID
+  payoutBatchId   String?
+
+PayoutBatch
+  id              CUID
+  period          String               -- contoh: "2026-10"
+  channel         Enum: GOPAY | OVO
+  totalAmount     Float
+  status          Enum: DRAFT | APPROVED | PAID
+  approvedBy      String?              -- Telegram ID admin
+  approvedAt      DateTime?
+  createdAt       DateTime
+```
+
+### 4.2 Guardrail Wajib (Non-Negotiable)
+
+**1. Normalisasi nomor HP ke E.164 sebelum simpan.**
+```typescript
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('0'))   return '+62' + digits.slice(1);
+  if (digits.startsWith('62'))  return '+' + digits;
+  if (digits.startsWith('+62')) return raw.replace(/\s/g, '');
+  throw new Error('Format nomor HP tidak dikenali');
+}
+```
+Tanpa normalisasi, `0812xxx` dan `+62812xxx` jadi dua entitas berbeda.
+
+**2. Tolak self-referral di server-side.**
+```typescript
+if (normalizePhone(referee.phone) === normalizePhone(referrer.phone)) {
+  throw new Error('Self-referral tidak diizinkan');
+}
+```
+
+**3. Reward hanya PAYABLE setelah order COMPLETED + window refund.**
+```typescript
+await db.referralReward.updateMany({
+  where: {
+    status: 'ACCRUED',
+    order: {
+      status: 'COMPLETED',
+      completedAt: { lt: subDays(new Date(), REFUND_WINDOW_DAYS) },
+    },
+  },
+  data: { status: 'PAYABLE' },
+});
+```
+
+**4. Payout tetap manual dengan dual-control.**
+Sistem hanya men-generate `PayoutBatch` + CSV. Transfer uang dilakukan manual
+oleh admin setelah menyetujui batch. Catat `approvedBy` dan `approvedAt` untuk
+audit trail.
+
+### 4.3 Aturan Broadcast
+
+- Hanya kirim broadcast ke customer dengan `consentPromoAt IS NOT NULL`.
+- Simpan jenis consent dan timestamp (untuk kepatuhan WhatsApp Business API).
+
+### 4.4 Aturan Waktu Voucher
+
+- Semua `validFrom` dan `validUntil` disimpan dan dievaluasi dalam **UTC**.
+- Render ke `Asia/Jakarta` hanya di layer presentasi.
+- `validUntil` WAJIB non-null untuk `VoucherRule` kind `SCHEDULED`.
+- Validasi di server-side — tolak redeem jika `NOW() > validUntil`.
+
+### 4.5 Task Storefront P1
+
+| Task | Deskripsi |
+|------|-----------|
+| ST-2a | Migrasi skema semua model di 4.1 |
+| ST-2b | `POST /api/customers` — normalisasi + validasi phone |
+| ST-2c | Auto-generate `ReferralCode` saat Customer dibuat |
+| ST-2d | Redeem voucher di checkout — cek anti-abuse, quota, window (server-side) |
+| ST-2e | Cron job akrual: ACCRUED → PAYABLE setelah order COMPLETED + N hari |
+| ST-2f | Generate `PayoutBatch` + CSV dari Telegram command/button |
+| ST-2g | Tombol Approve di Telegram — set APPROVED, catat `approvedBy` |
+| ST-1a | Broadcast promo via WhatsApp Business API ke segmen consent |
+| ST-1b | Halaman opt-in consent dengan timestamp |
+| ST-3a | UI admin buat `VoucherRule` kind `SCHEDULED` — wajib isi `validUntil` |
+| ST-3b | `GET /api/promos/active` — kembalikan rules aktif saat ini |
+| ST-3c | Pop-up promo frontend — panggil endpoint saat halaman dimuat |
+| ST-3d | Validasi server-side redeem terhadap window waktu |
+
+---
+
+
 
 *Pertanyaan atau ambiguitas kontrak: koordinasikan dengan bridge maintainer sebelum mulai implementasi, bukan setelah.*
 

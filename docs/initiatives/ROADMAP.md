@@ -309,7 +309,7 @@ PayoutBatch
 - **Self-referral:** tolak jika (a) `referrer.phone == referee.phone` setelah normalisasi — independen, hard reject — ATAU (b) kemiripan nama ternormalisasi ≥ 0.9 (Levenshtein) — independen, reject + flag admin. Dua kondisi OR, bukan AND: phone adalah UNIQUE jadi phone sama = orang yang sama secara definisi, nama tidak relevan lagi di jalur itu.
 - **Referral 1 tingkat saja** (B4): komisi hanya utk pemilik `ReferralCode` langsung, tidak berjenjang.
 - **Kuota referral code: max 2 redemption per (code, referee)** (B4), ditegakkan via `@@unique([referralCodeId, refereeCustomerId, seq])` dgn `seq` 1..2 — bukan `COUNT()` yang rawan race.
-- `CustomerCredit.status` naik ke `PAYABLE` hanya lewat cron job terjadwal, setelah order `COMPLETED` + `accrualWindowDays` (default 15, hard ceiling 15, admin-editable via `ProgramConfig`).
+- `CustomerCredit.status` naik ke `PAYABLE` hanya lewat cron job terjadwal, setelah order `PAID` + `stockStatus=FULFILLED` + `accrualWindowDays` (default 15, hard ceiling 15, admin-editable via `ProgramConfig`). Stockout tidak mendapat komisi; credit historis belum dibatch di-VOID sebelum payout.
 - **Slot cron sudah penuh** (`sync-supplier-stock`, `reconcile`). Akrual **menumpang** `/api/cron/reconcile` sbg fungsi terpisah (`lib/promo/accrual.ts`), dipanggil setelah blok rekonsiliasi. Idempoten by design via `payableAt` yang dihitung saat create, bukan saat eksekusi — aman terhadap presisi cron ±59 menit maupun piggyback di cron lain.
 - `CustomerCredit.appliedRatePct` adalah **snapshot**, bukan live-join ke `ProgramConfig`. Admin mengubah persentase komisi tidak boleh mengubah nilai utang yang sudah terakrual.
 - **Payout komisi referral = cash only** (D4), tujuan transfer = **nomor HP referrer sendiri** (B2) — GoPay/OVO/Dana di Indonesia terikat ke nomor HP, jadi `Customer.phone` sudah cukup sebagai identitas rekening tanpa model/field baru.
@@ -337,7 +337,12 @@ PayoutBatch
 - [x] ST-1a-1: Halaman admin `/admin/customers` — list Customer + status consent + referral code + jumlah/total order. Prasyarat utk ST-1a nanti.
 - [x] ST-1b: Checkbox consent di form checkout saat nomor WhatsApp diisi, dengan timestamp yang dicatat.
 - [x] ST-1b-2: Checkbox consent default `true`; copy jelaskan bahwa mengisi no WA memberi consent utk riwayat pembelian, kode referral, dan info program marketing txsiber; peringatan inline (bukan hover-only, harus bekerja di sentuh/keyboard) saat di-uncheck bahwa customer tidak akan mendapat riwayat pembelian & benefit referral code; font size `text-xs` + warna `text-slate-400`.
-- [x] ST-1b-3: Perbaiki `GET /api/customer/orders` (TD-10) — `contains` match jadi match 8 digit dari depan (B6), tambah rate limit. Prasyarat sebelum data referral/payout tampil di halaman ini.
+- [x] ST-1b-3 / TD-10: Gantikan pencarian prefix 8 digit yang masih membocorkan `redeemUrl`. GET hanya mengembalikan challenge lima produk untuk nomor dengan consent dan order PAID; POST memerlukan produk PAID terakhir + order ID bukti pembelian untuk membuka riwayat. Nomor legacy 08/62/+62 harus cocok utuh. Jika empat pengecoh tidak ada, fail closed; limiter 10/menit/IP. **Catatan:** in-memory limiter bukan lintas instance; perlu shared limiter sebelum skala horizontal.
+- [x] ST-1b-4: Customer `consentPromoAt=NULL` tidak menerima riwayat atau referral benefit via endpoint customer; transaksi tetap tersimpan/admin-visible. Opt-out checkout untuk nomor lama tidak boleh mencabut consent lewat nomor saja (tanpa bukti kepemilikan).
+- [ ] ST-1b-5: Alur pencabutan consent pelanggan lama yang terverifikasi (mis. proof-of-possession); setelah verifikasi, hapus `consentPromoAt` tanpa menghapus transaksi historis.
+- [x] ST-2d-2: Reservasi kuota untuk PENDING tidak dipersingkat untuk toko volume rendah; lepas voucher/referral secara atomik dan idempoten saat EXPIRED/CANCELLED; validasi window UTC juga saat reservasi dalam DB.
+- [x] ST-2e-2: Order OUT_OF_STOCK tidak mengakru komisi, credit lama ACCRUED/PAYABLE yang belum dibatch menjadi VOID; credit sudah PAID butuh rekonsiliasi manual.
+- [x] ST-2e-3: `/api/cron/reconcile` fail closed bila `CRON_SECRET` tidak diatur; secret server-side saja.
 
 **Pekerjaan bridge (v1.2-BR):**
 - Tidak ada perubahan wajib di bridge untuk P1. Bridge hanya supplier data, bukan customer data.
@@ -357,8 +362,7 @@ PayoutBatch
 ### [Storefront] Item 3 — Voucher Berjadwal & Pop-up
 
 **Kondisi sekarang (gap):**
-- Belum ada engine voucher (dibangun di Item 2+1 di atas).
-- Tidak ada sistem notifikasi pop-up time-based di storefront.
+- Engine `VoucherRule` dari Item 2 telah ada; CRUD SCHEDULED dan pop-up time-based selesai.
 
 **Kondisi target (to-be):**
 - VoucherRule dengan `kind = SCHEDULED` + `validFrom`/`validUntil` UTC yang ketat.
@@ -367,11 +371,11 @@ PayoutBatch
 
 **Pekerjaan storefront (v1.2-ST lanjutan):**
 
-- [ ] ST-3a: UI admin buat VoucherRule dengan kind `SCHEDULED` — wajib input `validUntil`.
-- [ ] ST-3b: API endpoint untuk storefront frontend cek active promos:
+- [x] ST-3a: UI admin `/admin/voucher-rules` + API CRUD SCHEDULED — wajib input `validUntil` (hapus = nonaktif, agar redemption historis tidak hilang).
+- [x] ST-3b: API endpoint untuk storefront frontend cek active promos:
   `GET /api/promos/active` — kembalikan rules yang aktif sekarang.
-- [ ] ST-3c: Komponen pop-up di frontend yang memanggil endpoint di atas saat halaman dimuat.
-- [ ] ST-3d: Validasi server-side: tolak redeem jika `NOW() > validUntil` meski frontend bypass.
+- [x] ST-3c: Komponen pop-up di frontend yang memanggil endpoint di atas saat halaman dimuat dan refresh berkala 30 detik.
+- [x] ST-3d: Validasi server-side: tolak redeem jika `NOW() >= validUntil` meski frontend bypass; pemeriksaan ulang ketika reservasi kuota.
   Semua window waktu disimpan dan dievaluasi dalam UTC.
 
 **Acceptance criteria:**
@@ -635,7 +639,7 @@ Bangun CMS minimal di storefront dengan MDX atau rich-text editor.
 | TD-7 | Session middleware in-memory (`session.ts:20`). Restart bot = state AWAITING_EMAIL hilang. Cukup untuk admin tunggal, tapi dokumentasikan limitasinya di README. | LOW | Opsional |
 | TD-8 | `Transaction.promoCodeId` overloaded: ditulis baik oleh jalur "kode dipakai saat checkout" maupun jalur "kode diterbitkan sbg refund stockout" di `transactionStatus.ts`, saling menimpa. Memungkinkan reuse kode promo yang seharusnya sudah terpakai. | ✅ RESOLVED (ST-2a-2, 2026-10-11): kolom `Transaction.refundPromoCodeId` terpisah untuk kode refund terbit + backfill gelombang 2 | — |
 | TD-9 | `lib/discount.ts` dead code — nol caller di codebase (checkout query Prisma langsung). `__tests__/lib/discount.test.ts` memock seluruh modul yang diuji (`vi.mock('@/lib/discount')`), jadi 17 test-nya memvalidasi mock, bukan logika nyata. | ✅ RESOLVED (ST-2a-2, 2026-10-11): `lib/discount.ts` + 2 mock-only test dihapus; diganti test integrasi nyata `discount-validate.test.ts` | — |
-| TD-10 | `GET /api/customer/orders` memakai `customerPhone: { contains: sanitizedPhone }` tanpa auth/rate-limit — membocorkan order (termasuk `redeemUrl`) ke siapa pun yang menebak substring nomor HP. | TINGGI — kebocoran data order & kredensial redeem | P1 (ST-1b-3) |
+| TD-10 | `GET /api/customer/orders` dulu memakai `customerPhone: { contains: sanitizedPhone }` dan mengembalikan `redeemUrl` tanpa bukti pembelian. | ✅ RESOLVED (2026-10-11): GET hanya challenge 5 opsi setelah consent; POST meminta jawaban produk terakhir + order ID milik nomor yang sama, pembatasan 10/menit/IP; tidak ada lookup substring. Shared rate limiter untuk multi-instance masih follow-up. | P1 (ST-1b-3) |
 
 ---
 
