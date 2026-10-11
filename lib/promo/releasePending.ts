@@ -12,7 +12,12 @@ export async function releasePendingRedemptions(tx: Prisma.TransactionClient, tr
     await tx.voucherRule.update({ where: { id: row.ruleId }, data: { usedCount: { decrement: 1 } } });
   }
   const referrals = await tx.referralRedemption.findMany({
-    where: { transactionId }, select: { id: true },
+    where: { transactionId }, select: { id: true, ruleId: true },
   });
-  for (const row of referrals) await tx.referralRedemption.delete({ where: { id: row.id } });
+  for (const row of referrals) {
+    await tx.referralRedemption.delete({ where: { id: row.id } });
+    if (row.ruleId) {
+      await tx.voucherRule.update({ where: { id: row.ruleId }, data: { usedCount: { decrement: 1 } } });
+    }
+  }
 }

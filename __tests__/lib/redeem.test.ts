@@ -474,6 +474,7 @@ describe("lib/promo/redeem (ST-2d)", () => {
         orderBy: { seq: "asc" },
       });
       expect(rows.map((r) => r.seq)).toEqual([1, 2]);
+      expect(rows.map((r) => r.ruleId)).toEqual([referralRuleId, referralRuleId]);
 
       // Governing rule's usedCount tracked both redemptions
       const rule = await prisma.voucherRule.findUniqueOrThrow({

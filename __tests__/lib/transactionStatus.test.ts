@@ -70,12 +70,12 @@ describe("transactionStatus.ts — applyMidtransStatusUpdate", () => {
     const owner = await prisma.customer.create({ data: { phone: "628991234567", referralCode: { create: { code: "EXPIRE-OWNER" } } }, include: { referralCode: true } });
     const buyer = await prisma.customer.create({ data: { phone: "628991234568" } });
     const rule = await prisma.voucherRule.create({ data: {
-      code: "EXPIRE-RULE", name: "Expiring reservation", validFrom: new Date(0), value: 1000, usedCount: 1,
+      code: "EXPIRE-RULE", name: "Expiring reservation", validFrom: new Date(0), value: 1000, usedCount: 2,
     } });
     const transaction = await createMockTransaction(prisma, { productId: product.id, customerId: buyer.id, status: "PENDING" });
     await prisma.voucherRedemption.create({ data: { ruleId: rule.id, customerId: buyer.id, transactionId: transaction.id } });
-    await prisma.referralRedemption.create({ data: { referralCodeId: owner.referralCode!.id, refereeCustomerId: buyer.id, transactionId: transaction.id } });
-    expect((await prisma.voucherRule.findUniqueOrThrow({ where: { id: rule.id } })).usedCount).toBe(1);
+    await prisma.referralRedemption.create({ data: { referralCodeId: owner.referralCode!.id, refereeCustomerId: buyer.id, transactionId: transaction.id, ruleId: rule.id } });
+    expect((await prisma.voucherRule.findUniqueOrThrow({ where: { id: rule.id } })).usedCount).toBe(2);
     expect((await applyMidtransStatusUpdate(transaction.orderId, "pending")).updated).toBe(false);
     expect(await prisma.voucherRedemption.count({ where: { transactionId: transaction.id } })).toBe(1);
     expect((await applyMidtransStatusUpdate(transaction.orderId, "expire")).updated).toBe(true);

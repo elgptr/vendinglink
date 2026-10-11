@@ -347,6 +347,7 @@ model VoucherRule {
 
   category    Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   redemptions VoucherRedemption[]
+  referralRedemptions ReferralRedemption[]
 
   @@map("voucher_rules")
 }
@@ -378,13 +379,16 @@ model ReferralRedemption {
   referralCodeId    String
   refereeCustomerId String
   transactionId     String
+  ruleId            String?
   seq               Int      @default(1) // 1..2
   redeemedAt        DateTime @default(now())
 
   referralCode    ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
   refereeCustomer Customer     @relation(fields: [refereeCustomerId], references: [id], onDelete: Cascade)
+  rule            VoucherRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
 
   @@unique([referralCodeId, refereeCustomerId, seq])
+  @@index([ruleId])
   @@map("referral_redemptions")
 }
 

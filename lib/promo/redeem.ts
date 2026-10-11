@@ -361,14 +361,15 @@ async function claimReferralSeq(
   tx: Prisma.TransactionClient,
   referralCodeId: string,
   refereeCustomerId: string,
-  transactionId: string
+  transactionId: string,
+  ruleId: string | null
 ): Promise<void> {
   try {
     const rows = await tx.$queryRaw<{ id: string }[]>`
       INSERT INTO referral_redemptions
-        (id, "referralCodeId", "refereeCustomerId", "transactionId", seq, "redeemedAt")
+        (id, "referralCodeId", "refereeCustomerId", "transactionId", "ruleId", seq, "redeemedAt")
       SELECT gen_random_uuid()::text, ${referralCodeId}, ${refereeCustomerId},
-             ${transactionId}, s.seq, NOW()
+              ${transactionId}, ${ruleId}, s.seq, NOW()
       FROM generate_series(1, ${REFERRAL_MAX_REDEMPTIONS_PER_REFEREE}) AS s(seq)
       WHERE NOT EXISTS (
         SELECT 1 FROM referral_redemptions r
@@ -436,7 +437,8 @@ export async function recordRedemption(
       tx,
       resolution.referralCodeId,
       customerId,
-      transactionId
+      transactionId,
+      resolution.ruleId
     );
     if (resolution.ruleId) {
       await incrementRuleUsage(tx, resolution.ruleId);
