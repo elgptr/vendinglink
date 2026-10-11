@@ -51,7 +51,7 @@ function currentPeriod(): string {
 
 /**
  * ST-2f/2f-2: Generate referral payout batches and list historical batches.
- * Marking a transfer as PAID remains ST-2g.
+ * Admin confirms the manual transfer before marking a batch paid (ST-2g).
  */
 export default function PayoutBatchPanel() {
   const [period, setPeriod] = useState(currentPeriod());
@@ -60,6 +60,7 @@ export default function PayoutBatchPanel() {
   const [result, setResult] = useState<GenerateResponse | null>(null);
   const [batches, setBatches] = useState<PayoutBatchRow[]>([]);
   const [loadingBatches, setLoadingBatches] = useState(true);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   const fetchBatches = useCallback(async () => {
     setLoadingBatches(true);
@@ -108,6 +109,24 @@ export default function PayoutBatchPanel() {
     }
   }
 
+  async function handleMarkPaid(batch: PayoutBatchRow) {
+    if (!window.confirm(`Konfirmasi transfer manual ${formatRupiah(batch.totalAmount)} untuk batch ${batch.period} (${batch.channel}) sudah selesai? Tindakan ini tidak dapat dibatalkan.`)) return;
+    setPayingId(batch.id);
+    try {
+      const res = await fetch(`/api/admin/payout-batches/${encodeURIComponent(batch.id)}/paid`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Gagal menandai batch dibayar");
+      }
+      toast.success("Batch dan credit sudah ditandai PAID");
+      await fetchBatches();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal menandai batch dibayar");
+    } finally {
+      setPayingId(null);
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -119,7 +138,7 @@ export default function PayoutBatchPanel() {
       <p className="text-sm text-slate-400 mb-4">
         Generate batch payout komisi referral (credit PAYABLE di atas ambang
         minimum). Tujuan transfer = nomor HP referrer; unduh CSV untuk proses
-        manual. Penandaan &quot;Sudah Ditransfer&quot; menyusul.
+        manual. Setelah transfer berhasil, konfirmasi lewat tombol di riwayat.
       </p>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -229,6 +248,7 @@ export default function PayoutBatchPanel() {
                 <th className="py-2 pr-4 font-medium text-right">Credit</th>
                 <th className="py-2 pr-4 font-medium text-right">Total</th>
                 <th className="py-2 font-medium text-right">CSV</th>
+                <th className="py-2 font-medium text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -248,6 +268,14 @@ export default function PayoutBatchPanel() {
                     >
                       Unduh
                     </a>
+                  </td>
+                  <td className="py-2 text-right">
+                    {batch.status === "DRAFT" && (
+                      <Button size="sm" variant="success" loading={payingId === batch.id}
+                        disabled={payingId !== null} onClick={() => handleMarkPaid(batch)}>
+                        Sudah Ditransfer
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}
