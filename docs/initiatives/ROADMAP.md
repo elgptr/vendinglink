@@ -569,19 +569,19 @@ enum SupplierStatus {
 
 **Pekerjaan bridge P2b:**
 
-- [ ] BR-P2b-1: Migrasi schema `Supplier` + enum ke `schema.base.prisma`.
+- [x] BR-P2b-1: Migrasi schema `Supplier` + enum ke `schema.base.prisma`.
 - [ ] BR-P2b-2: `GenericRestAdapter` — `ISupplierAdapter` berbasis descriptor JSON.
 - [ ] BR-P2b-3: Update `SupplierFactory` — load dari tabel `Supplier` (DB), RZK hardcode sebagai fallback.
 - [ ] BR-P2b-4: `POST /api/v1/suppliers` + `PATCH /api/v1/suppliers/:code` dengan Bearer auth.
 - [ ] BR-P2b-5: Validation worker — dry-run saat supplier baru didaftarkan.
 - [ ] BR-P2b-6: Hermes Agent adapter builder pipeline (feature-flagged `AGENT_ADAPTER_BUILD_ENABLED`) — sanitizer layer, sandbox Vitest runner, GitHub API Draft PR creator, notif link PR ke Telegram.
 - [ ] BR-P2b-7: Command `/suppliers` — list semua supplier dan statusnya.
-- [ ] BR-P2b-8: `SUPPLIER_RZK_*` di `env.ts` jadi deprecated (baca tapi tidak required, backward-compat).
+- [x] BR-P2b-8: `SUPPLIER_RZK_*` di `env.ts` jadi deprecated (baca tapi tidak required, backward-compat).
 
 **Pekerjaan storefront P2b:**
 
 - [ ] ST-P2b-1: UI Manajemen Supplier — form tambah, upload descriptor, lihat status validasi.
-- [ ] ST-P2b-2: Tentukan ownership enkripsi credentials (storefront atau bridge) dan dokumentasikan.
+- [x] ST-P2b-2: Tentukan ownership enkripsi credentials (storefront atau bridge) dan dokumentasikan.
 
 **Acceptance criteria P2b:**
 - Tambah supplier baru dari UI tanpa deploy ulang (untuk supplier dengan descriptor valid).
