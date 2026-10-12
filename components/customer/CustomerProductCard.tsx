@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ShoppingCart, Package } from "lucide-react";
+import { ShoppingCart, Package, Sparkles } from "lucide-react";
 import { cn, formatRupiah } from "@/lib/utils";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import RequestProductModal from "./RequestProductModal";
 
 interface CustomerProductCardProps {
   product: {
@@ -15,6 +17,7 @@ interface CustomerProductCardProps {
     showOriginalPrice: boolean;
     description: string | null;
     stockCount: number;
+    categorySlug?: string | null;
   };
   index?: number;
   /** Tailwind border class applied on hover to match the category accent. */
@@ -32,6 +35,7 @@ export default function CustomerProductCard({
   featured = false,
   className,
 }: CustomerProductCardProps) {
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const inStock = product.stockCount > 0;
   const isLowStock = inStock && product.stockCount <= 5;
   const hasDiscount = product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price;
@@ -140,19 +144,31 @@ export default function CustomerProductCard({
                 </Button>
               </div>
             ) : (
-              <Button
-                id={`customer-buy-btn-${product.id}-disabled`}
-                className="w-full relative z-30"
-                variant="secondary"
-                disabled
-                onClick={(e) => e.stopPropagation()}
-              >
-                Stok Habis
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  id={`customer-request-btn-${product.id}`}
+                  className="w-full relative z-30 font-semibold text-brand-400 border-brand-500/30 hover:border-brand-400 hover:bg-brand-500/10 shadow-none transition-all"
+                  variant="outline"
+                  icon={<Sparkles size={16} />}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsRequestModalOpen(true);
+                  }}
+                >
+                  Request Produk ini
+                </Button>
+              </div>
             )}
           </div>
         </div>
       </Card>
+
+      <RequestProductModal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        product={product}
+      />
     </Link>
   );
 }

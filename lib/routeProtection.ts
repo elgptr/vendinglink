@@ -55,6 +55,7 @@ const PUBLIC_ROUTES = [
   "/api/cron",
   "/api/bridge",
   "/api/promos",
+  "/request-confirm",
   "/icon",
   "/apple-icon",
 ];

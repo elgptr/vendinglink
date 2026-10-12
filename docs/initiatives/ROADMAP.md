@@ -62,13 +62,13 @@ Setiap perubahan kontrak wajib direvisi di kedua dokumen sebelum implementasi.
 
 ## 2. Versi & Status Roadmap
 
-| Versi | Nama                                      | Status             | Sprint Target |
-|-------|-------------------------------------------|--------------------|---------------|
-| v1.0  | Foundation                                | CLOSED · VERIFIED  | Selesai       |
-| v1.1  | Ketahanan Data & Fondasi Katalog (P0)     | IN PROGRESS        | Sprint 1      |
-| v1.2  | Program Promo & Loyalitas (P1)            | PLANNED            | Sprint 2-3    |
-| v2.0  | Agentic Purchasing & Supplier Dinamis (P2)| PLANNED            | Sprint 4-6    |
-| v3.x  | Long-Term / P3                            | OPTIONAL · GATED   | TBD           |
+| Versi | Nama                                      | Status                      | Sprint Target |
+|-------|-------------------------------------------|-----------------------------|---------------|
+| v1.0  | Foundation                                | CLOSED · VERIFIED           | Selesai       |
+| v1.1  | Ketahanan Data & Fondasi Katalog (P0)     | CLOSED · VERIFIED           | Sprint 1      |
+| v1.2  | Program Promo & Loyalitas (P1)            | CLOSED · VERIFIED           | Sprint 2      |
+| v2.0  | Agentic Purchasing & Supplier Dinamis (P2)| IN PROGRESS (P2a VERIFIED)  | Sprint 3 (P2a)|
+| v3.x  | Long-Term / P3                            | OPTIONAL · GATED            | TBD           |
 
 ---
 
@@ -484,25 +484,25 @@ daily cap > balance floor > price delta > high value threshold.
 
 **Pekerjaan bridge P2a:**
 
-- [ ] BR-P2a-1: Cleanup `orchestrator.ts` — hapus stub dan import menganggur.
-- [ ] BR-P2a-2: Migrasi schema `ProductRequest` + `AgentOperationalConfig` + enum ke `schema.base.prisma`.
-- [ ] BR-P2a-3: Env vars hard ceiling guardrail ke `src/config/env.ts` + `.env.example`.
-- [ ] BR-P2a-4: `POST /api/v1/requests` — Zod, rate-limit, Bearer auth.
-- [ ] BR-P2a-5: `POST /api/v1/requests/:id/confirm`.
-- [ ] BR-P2a-6: `productSearchQueue` + worker — parallel, timeout, dynamic guardrail evaluation, status update.
-- [ ] BR-P2a-7: Balance monitor + metrics exporter — cron 30 menit, alert Telegram di bawah floor, feed metrics untuk Hermes analytics.
-- [ ] BR-P2a-8: Telegram bot handler: `/agent pause`, `/agent resume`, dan callback query listener untuk inline button approval dynamic guardrail.
-- [ ] BR-P2a-9: `/balance all` — cek semua supplier aktif.
-- [ ] BR-P2a-10: Notif ke storefront `POST {VL_URL}/api/bridge/webhook/request-update`
+- [x] BR-P2a-1: Cleanup `orchestrator.ts` — hapus stub dan import menganggur.
+- [x] BR-P2a-2: Migrasi schema `ProductRequest` + `AgentOperationalConfig` + enum ke `schema.base.prisma`.
+- [x] BR-P2a-3: Env vars hard ceiling guardrail ke `src/config/env.ts` + `.env.example`.
+- [x] BR-P2a-4: `POST /api/v1/requests` — Zod, rate-limit, Bearer auth.
+- [x] BR-P2a-5: `POST /api/v1/requests/:id/confirm`.
+- [x] BR-P2a-6: `productSearchQueue` + worker — parallel, timeout, dynamic guardrail evaluation, status update.
+- [x] BR-P2a-7: Balance monitor + metrics exporter — cron 30 menit, alert Telegram di bawah floor, feed metrics untuk Hermes analytics.
+- [x] BR-P2a-8: Telegram bot handler: `/agent pause`, `/agent resume`, dan callback query listener untuk inline button approval dynamic guardrail.
+- [x] BR-P2a-9: `/balance all` — cek semua supplier aktif.
+- [x] BR-P2a-10: Notif ke storefront `POST {VL_URL}/api/bridge/webhook/request-update`
   — revisi `docs/openapi.yaml` + `VENDINGLINK_WEBHOOK_SPEC.md`.
-- [ ] BR-P2a-11: Test coverage guardrail (Vitest + nock). **Wajib lulus sebelum deploy.**
+- [x] BR-P2a-11: Test coverage guardrail (Vitest + nock). **Wajib lulus sebelum deploy.**
 
 **Pekerjaan storefront P2a:**
 
-- [ ] ST-P2a-1: Tombol "Request Produk ini" di product card yang kosong pada halaman katalog.
-- [ ] ST-P2a-2: `POST /api/bridge/webhook/request-update` — terima notif bridge.
-- [ ] ST-P2a-3: Forward notif ke customer (WA/push).
-- [ ] ST-P2a-4: Tombol konfirmasi beli yang trigger `confirm` ke bridge.
+- [x] ST-P2a-1: Tombol "Request Produk ini" di product card yang kosong pada halaman katalog (`CustomerProductCard.tsx` + `RequestProductModal.tsx` + `POST /api/customer/product-requests`).
+- [x] ST-P2a-2: `POST /api/bridge/webhook/request-update` — terima notif bridge (`app/api/bridge/webhook/request-update/route.ts`).
+- [x] ST-P2a-3: Forward notif ke customer (WA/push) (`lib/whatsapp.ts`: `sendProductFoundNotification` & `sendProductStatusNotification`).
+- [x] ST-P2a-4: Tombol konfirmasi beli yang trigger `confirm` ke bridge (`POST /api/customer/product-requests/:id/confirm` & `/request-confirm/[id]`).
 
 **SLA:** fase 1 = "secepatnya". Fase 2 setelah 2 minggu stabil = umumkan "maks 3 menit".
 
@@ -597,7 +597,7 @@ enum SupplierStatus {
 
 **Rekomendasi arsitektur:** Telegraph sebagai pihak ketiga tanpa SLA dan tanpa kontrol SEO
 sebaiknya jadi opsi supplementary (publish dari CMS ke Telegraph), bukan sumber kebenaran.
-Bangun CMS minimal di storefront dengan MDX atau rich-text editor.
+Bangun CMS minimal di storefront dengan MDX atau rich-text editor yang mirip telegraph.
 
 **Pekerjaan storefront:**
 

@@ -417,3 +417,87 @@ export async function sendBridgeNewProductAlert(
   const result = await sendViaSaungwa(normalizedPhone, message);
   return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
 }
+
+// ─── P2a Product Request Notifications ─────────────────────────────────────
+
+export interface ProductFoundNotificationData {
+  customerPhone: string;
+  productName: string;
+  quotedPrice: number;
+  confirmationUrl: string;
+}
+
+export async function sendProductFoundNotification(
+  data: ProductFoundNotificationData
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const normalizedPhone = normalizePhone(data.customerPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid customer phone", mode };
+
+  const formattedPrice = `Rp ${data.quotedPrice.toLocaleString("id-ID")}`;
+  const message = [
+    `*Kabar Baik! Produk Ditemukan* 🎉`,
+    ``,
+    `Produk yang Anda minta:`,
+    `*${data.productName}*`,
+    `Penawaran Harga: *${formattedPrice}*`,
+    ``,
+    `Stok terbatas dari supplier. Segera klik link di bawah untuk konfirmasi pesanan Anda:`,
+    data.confirmationUrl,
+    ``,
+    `_Link konfirmasi berlaku terbatas. Terima kasih telah menggunakan VendingLink!_`,
+  ].join("\n");
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendProductFoundNotification", {
+      to: normalizedPhone,
+      productName: data.productName,
+      quotedPrice: data.quotedPrice,
+    });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+export async function sendProductStatusNotification(
+  customerPhone: string,
+  productName: string,
+  status: "NOT_FOUND" | "REJECTED",
+  reason?: string
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const normalizedPhone = normalizePhone(customerPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid customer phone", mode };
+
+  let message = "";
+  if (status === "NOT_FOUND") {
+    message = [
+      `*Pemberitahuan Permintaan Produk* 📦`,
+      ``,
+      `Mohon maaf, produk *${productName}* saat ini belum berhasil ditemukan di jaringan supplier rekanan kami.`,
+      `Kami akan terus memperbarui katalog secara berkala. Terima kasih atas ketertarikan Anda!`,
+    ].join("\n");
+  } else {
+    message = [
+      `*Pemberitahuan Permintaan Produk* ⚠️`,
+      ``,
+      `Permintaan produk *${productName}* belum dapat diproses saat ini.`,
+      reason ? `Alasan: ${reason}` : `Melebihi batas anggaran atau plafon belanja operasional.`,
+      `Silakan ajukan permintaan kembali dengan varian atau anggaran yang berbeda.`,
+    ].join("\n");
+  }
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendProductStatusNotification", {
+      to: normalizedPhone,
+      productName,
+      status,
+    });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}

@@ -57,6 +57,7 @@ model Product {
   transactions       Transaction[]
   mappings           SupplierProductMapping[]
   applicableVouchers Voucher[]     @relation("VoucherProducts")
+  customerRequests   CustomerProductRequest[]
 
   // ── Category (P0 ST-5a) ──────────────────────────────────────────────────
   categoryId String?
@@ -456,4 +457,32 @@ model BridgeInboundEvent {
   
   @@index([status, createdAt])
   @@map("bridge_inbound_events")
+}
+
+model CustomerProductRequest {
+  id                String    @id @default(cuid())
+  bridgeRequestId   String?   @unique
+  customerPhone     String
+  customerRef       String
+  productId         String?
+  productName       String
+  categorySlug      String?
+  maxBudget         Float?
+  status            String    @default("SEARCHING") // SEARCHING | FOUND | NOT_FOUND | REJECTED | CONFIRMED | PURCHASED | EXPIRED
+  quotedPrice       Float?
+  foundSupplierCode String?
+  foundProductId    String?
+  rejectionReason   String?
+  transactionId     String?
+  notifiedAt        DateTime?
+  confirmedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  product           Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([customerPhone])
+  @@index([customerRef])
+  @@map("customer_product_requests")
 }
