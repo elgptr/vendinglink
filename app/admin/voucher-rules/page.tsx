@@ -12,6 +12,9 @@ import {
   Trash2,
   ChevronRight,
   Info,
+  LayoutTemplate,
+  BadgePercent,
+  Link as LinkIcon,
 } from "lucide-react";
 
 type Rule = {
@@ -30,6 +33,7 @@ type Rule = {
   isActive: boolean;
   usedCount: number;
   bannerImageUrl?: string | null;
+  bannerType?: "FULL_STRIP" | "BADGE_COMPOSED" | null;
   bannerText?: string | null;
   bannerCtaText?: string | null;
   bannerCtaUrl?: string | null;
@@ -49,9 +53,10 @@ const empty = {
   categoryId: null as string | null,
   isActive: true,
   bannerImageUrl: null as string | null,
+  bannerType: "FULL_STRIP" as "FULL_STRIP" | "BADGE_COMPOSED",
   bannerText: null as string | null,
   bannerCtaText: null as string | null,
-  bannerCtaUrl: null as string | null,
+  bannerCtaUrl: "/customer#catalog" as string | null,
 };
 
 function localInput(iso: string) {
@@ -122,14 +127,29 @@ export default function VoucherRulesPage() {
       URL.revokeObjectURL(objectUrl);
 
       let type: "success" | "warning" = "success";
-      let msg = `Dimensi ideal: ${w} × ${h} px (Rasio ${ratio}:1). Sangat cocok untuk top banner!`;
+      let msg = "";
 
-      if (h > 200) {
-        type = "warning";
-        msg = `Perhatian dimensi: Gambar berukuran ${w} × ${h} px. Tinggi melebihi 200px dan mungkin terlalu tebal di layar pelanggan. Rekomendasi tinggi 60–100 px.`;
-      } else if (w / h < 2.5) {
-        type = "warning";
-        msg = `Perhatian rasio: Rasio gambar (${ratio}:1) terlalu kotak. Banner atas dianjurkan memiliki rasio lebar (minimal 3:1 untuk badge, atau 12:1 untuk strip penuh).`;
+      if (form.bannerType === "FULL_STRIP") {
+        if (h > 150) {
+          type = "warning";
+          msg = `Perhatian dimensi: Gambar strip berukuran ${w} × ${h} px. Tinggi melebihi 150px dan mungkin agak tebal di layar pelanggan. Rekomendasi tinggi 60–100 px.`;
+        } else if (w / h < 6) {
+          type = "warning";
+          msg = `Perhatian rasio: Rasio gambar (${ratio}:1) agak pendek untuk banner strip penuh. Direkomendasikan rasio melebar (12:1 s/d 20:1, misal 1200 × 80 px).`;
+        } else {
+          msg = `Dimensi sangat ideal untuk Banner Full Strip: ${w} × ${h} px (Rasio ${ratio}:1)!`;
+        }
+      } else {
+        // BADGE_COMPOSED mode
+        if (h > 200) {
+          type = "warning";
+          msg = `Perhatian dimensi: Gambar berukuran ${w} × ${h} px. Tinggi melebihi 200px dan mungkin terlalu tebal untuk badge. Rekomendasi tinggi 60–90 px.`;
+        } else if (w / h < 2) {
+          type = "warning";
+          msg = `Perhatian rasio: Rasio gambar (${ratio}:1) terlalu kotak. Badge disarankan memiliki rasio lebar (minimal 3:1).`;
+        } else {
+          msg = `Dimensi ideal untuk badge: ${w} × ${h} px (Rasio ${ratio}:1)!`;
+        }
       }
 
       setValidationInfo({
@@ -186,6 +206,15 @@ export default function VoucherRulesPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setMessage("");
+
+    // Enforce mandatory CTA Target URL for FULL_STRIP mode if image is provided
+    if (form.bannerType === "FULL_STRIP" && form.bannerImageUrl) {
+      if (!form.bannerCtaUrl || !form.bannerCtaUrl.trim()) {
+        setMessage("CTA Target URL wajib diisi jika menggunakan Banner Horizontal Penuh (Full Strip) agar banner dapat diklik pelanggan.");
+        return;
+      }
+    }
+
     const body = {
       ...form,
       ...(editing ? { id: editing } : {}),
@@ -198,7 +227,8 @@ export default function VoucherRulesPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      setMessage("Gagal menyimpan. Periksa kode, waktu, kategori, kuota, atau konfigurasi banner.");
+      const err = await res.json().catch(() => ({}));
+      setMessage(err.error || "Gagal menyimpan. Periksa kode, waktu, kategori, kuota, atau konfigurasi banner.");
       return;
     }
     setMessage("Aturan voucher dan banner tersimpan dengan sukses.");
@@ -213,7 +243,7 @@ export default function VoucherRulesPage() {
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight">Promo &amp; Voucher Berjadwal</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Kelola program promosi berjadwal dan konfigurasikan banner dinamis atas layar (ala DataCamp) yang tampil di semua halaman pelanggan.
+          Kelola program promosi berjadwal dan konfigurasikan banner dinamis atas layar (ala DataCamp atau Full Strip) yang tampil di semua halaman pelanggan.
         </p>
       </div>
 
@@ -382,7 +412,7 @@ export default function VoucherRulesPage() {
           </div>
         </div>
 
-        {/* ── Rumah Konfigurasi Banner (DataCamp Dynamic Top Banner) ── */}
+        {/* ── Rumah Konfigurasi Banner (Full Strip & DataCamp Dynamic Top Banner) ── */}
         <div className="mt-8 rounded-2xl border border-purple-500/30 bg-purple-950/20 p-5 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-500/20 pb-4">
             <div className="flex items-center gap-2.5">
@@ -390,9 +420,9 @@ export default function VoucherRulesPage() {
                 <Sparkles size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-white text-base">Konfigurasi Banner Dinamis (Gaya DataCamp)</h3>
+                <h3 className="font-bold text-white text-base">Konfigurasi Banner Promosi Atas Layar</h3>
                 <p className="text-xs text-purple-300/80">
-                  Banner atas layar interaktif dengan tombol tutup (✕) &amp; aksi yang tampil di semua halaman customer.
+                  Banner atas layar interaktif dengan tombol tutup (✕) yang tampil di semua halaman pelanggan.
                 </p>
               </div>
             </div>
@@ -401,42 +431,143 @@ export default function VoucherRulesPage() {
             </span>
           </div>
 
-          {/* UX Guidance / Petunjuk Ukuran & Format Gambar */}
-          <div className="rounded-xl border border-purple-500/30 bg-purple-900/20 p-4 space-y-2.5 text-xs text-purple-200">
+          {/* Banner Presentation Mode Switcher */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+              Pilih Tipe Tampilan Banner:
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Option A: FULL STRIP */}
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, bannerType: "FULL_STRIP" })}
+                className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all ${
+                  form.bannerType === "FULL_STRIP"
+                    ? "border-emerald-500/60 bg-emerald-950/30 text-white shadow-md shadow-emerald-900/20 ring-1 ring-emerald-500/40"
+                    : "border-surface-border bg-surface/50 text-slate-400 hover:border-purple-400/30 hover:bg-surface"
+                }`}
+              >
+                <div
+                  className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
+                    form.bannerType === "FULL_STRIP"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-surface text-slate-400"
+                  }`}
+                >
+                  <LayoutTemplate size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">1. Banner Horizontal Penuh (Full Strip)</span>
+                    {form.bannerType === "FULL_STRIP" && (
+                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.2 text-[10px] font-bold text-emerald-400">
+                        Aktif
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-300">
+                    Upload 1 file banner horizontal utuh (desain teks &amp; tombol sudah menyatu dalam gambar). Hanya membutuhkan <strong>CTA Target URL</strong>.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option B: BADGE COMPOSED */}
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, bannerType: "BADGE_COMPOSED" })}
+                className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all ${
+                  form.bannerType === "BADGE_COMPOSED"
+                    ? "border-purple-500/60 bg-purple-950/40 text-white shadow-md shadow-purple-900/20 ring-1 ring-purple-500/40"
+                    : "border-surface-border bg-surface/50 text-slate-400 hover:border-purple-400/30 hover:bg-surface"
+                }`}
+              >
+                <div
+                  className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
+                    form.bannerType === "BADGE_COMPOSED"
+                      ? "bg-purple-500/20 text-purple-300"
+                      : "bg-surface text-slate-400"
+                  }`}
+                >
+                  <BadgePercent size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">2. Komposisi Dinamis (DataCamp Style)</span>
+                    {form.bannerType === "BADGE_COMPOSED" && (
+                      <span className="rounded bg-purple-500/20 px-1.5 py-0.2 text-[10px] font-bold text-purple-400">
+                        Aktif
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-300">
+                    Upload gambar badge/logo promo, sistem otomatis menyusun teks promo dan tombol aksi di sampingnya.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Contextual UX Guidance / Petunjuk Ukuran & Format Gambar */}
+          <div className="rounded-xl border border-purple-500/30 bg-purple-900/20 p-4 space-y-2 text-xs text-purple-200">
             <div className="flex items-center gap-2 font-semibold text-purple-100">
               <Info size={16} className="text-purple-400 flex-shrink-0" />
-              <span>Petunjuk Ukuran &amp; Format Gambar Banner:</span>
+              <span>
+                {form.bannerType === "FULL_STRIP"
+                  ? "Petunjuk Ukuran Banner Horizontal Penuh (Full Strip):"
+                  : "Petunjuk Ukuran Grafis Badge Promo (DataCamp Style):"}
+              </span>
             </div>
-            <ul className="list-disc pl-5 space-y-1 text-slate-300">
-              <li>
-                <strong>Grafis Badge / Logo Promo (Rekomendasi Gaya DataCamp):</strong> Ukuran ideal{" "}
-                <span className="text-emerald-300 font-mono font-bold">240 × 80 px</span> s/d{" "}
-                <span className="text-emerald-300 font-mono font-bold">320 × 90 px</span> (Rasio 3:1 s/d 4:1) dengan latar transparan (PNG/WEBP).
-              </li>
-              <li>
-                <strong>Banner Horizontal Penuh (Full Strip):</strong> Ukuran ideal{" "}
-                <span className="text-emerald-300 font-mono font-bold">1200 × 80 px</span> s/d{" "}
-                <span className="text-emerald-300 font-mono font-bold">1920 × 90 px</span> (Tinggi 60–100 px agar tidak menutupi isi halaman).
-              </li>
-              <li>
-                <strong>Ketentuan File &amp; Validasi:</strong> Format yang didukung{" "}
-                <span className="text-white font-semibold">PNG, JPG, WEBP</span>. Maksimal ukuran file{" "}
-                <span className="text-white font-semibold">2 MB</span>.
-              </li>
-            </ul>
+
+            {form.bannerType === "FULL_STRIP" ? (
+              <ul className="list-disc pl-5 space-y-1 text-slate-300">
+                <li>
+                  <strong>Ukuran Ideal:</strong>{" "}
+                  <span className="text-emerald-300 font-mono font-bold">1200 × 80 px</span> s/d{" "}
+                  <span className="text-emerald-300 font-mono font-bold">1920 × 90 px</span> (Rasio lebar 15:1 s/d 20:1, tinggi 60–100 px agar tidak menutupi isi halaman).
+                </li>
+                <li>
+                  <strong>Ketentuan Desain:</strong> Desain gambar sudah mencakup seluruh grafis promosi, teks promo, dan tombol visual dalam 1 file utuh.
+                </li>
+                <li>
+                  <strong>Aturan Input:</strong> Teks Khusus Banner &amp; Teks Tombol Aksi bersifat{" "}
+                  <span className="text-amber-300 font-semibold">OPSIONAL</span>. Yang{" "}
+                  <span className="text-emerald-400 font-bold underline">MANDATORY (WAJIB)</span> adalah{" "}
+                  <strong>CTA Target URL</strong> agar banner dapat diklik pelanggan.
+                </li>
+              </ul>
+            ) : (
+              <ul className="list-disc pl-5 space-y-1 text-slate-300">
+                <li>
+                  <strong>Ukuran Ideal Badge/Logo:</strong>{" "}
+                  <span className="text-emerald-300 font-mono font-bold">240 × 80 px</span> s/d{" "}
+                  <span className="text-emerald-300 font-mono font-bold">320 × 90 px</span> (Rasio 3:1 s/d 4:1) berlatar belakang transparan (PNG/WEBP).
+                </li>
+                <li>
+                  <strong>Tampilan:</strong> Teks promosi dan tombol aksi dinamis akan dirangkai otomatis di sebelah kanan badge.
+                </li>
+              </ul>
+            )}
           </div>
 
           {/* File Upload / Image Attachment & Input Validation */}
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-slate-200">
-              Unggah / Lampirkan Gambar Banner
+              {form.bannerType === "FULL_STRIP"
+                ? "Unggah File Banner Horizontal Penuh (1 File Strip)"
+                : "Unggah File Badge Promo (Opsional)"}
             </label>
 
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
               {/* File picker button */}
               <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-dashed border-purple-400/50 bg-purple-950/40 px-5 py-3 hover:bg-purple-900/40 hover:border-purple-300 transition-colors text-purple-200 text-sm font-medium">
                 <Upload size={18} className="text-purple-300" />
-                <span>{uploading ? "Mengunggah gambar..." : "Pilih File Gambar Banner"}</span>
+                <span>
+                  {uploading
+                    ? "Mengunggah gambar..."
+                    : form.bannerType === "FULL_STRIP"
+                    ? "Pilih File Banner Full Strip"
+                    : "Pilih File Gambar Badge"}
+                </span>
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
@@ -487,105 +618,184 @@ export default function VoucherRulesPage() {
             )}
           </div>
 
-          {/* Optional Banner Text, CTA, & URL Customization */}
+          {/* Banner Text, CTA, & URL Inputs */}
           <div className="grid gap-4 sm:grid-cols-3 pt-2">
+            {/* CTA Target URL */}
             <label className="space-y-1 text-xs font-medium text-slate-300">
-              <span>Teks Khusus Banner (Opsional)</span>
+              <span className="flex items-center gap-1.5">
+                <LinkIcon size={13} className="text-emerald-400" />
+                <span className="font-bold">CTA Target URL</span>
+                {form.bannerType === "FULL_STRIP" ? (
+                  <span className="text-emerald-400 font-bold">(Wajib Diisi)</span>
+                ) : (
+                  <span className="text-slate-400">(Default: /customer#catalog)</span>
+                )}
+              </span>
               <input
-                placeholder="Contoh: 50% Off Khusus Minggu Ini!"
+                required={form.bannerType === "FULL_STRIP" && Boolean(form.bannerImageUrl)}
+                placeholder="/customer#catalog"
+                value={form.bannerCtaUrl ?? ""}
+                onChange={(e) => setForm({ ...form, bannerCtaUrl: e.target.value || null })}
+                className={`w-full rounded-lg border bg-surface p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none ${
+                  form.bannerType === "FULL_STRIP" && !form.bannerCtaUrl
+                    ? "border-amber-500/60 focus:border-amber-400 ring-1 ring-amber-500/30"
+                    : "border-surface-border focus:border-purple-500"
+                }`}
+              />
+              <span className="text-[11px] text-slate-400 block">
+                {form.bannerType === "FULL_STRIP"
+                  ? "Seluruh banner Full Strip akan mengarahkan pelanggan ke tautan ini."
+                  : "Halaman tujuan saat tombol aksi diklik."}
+              </span>
+            </label>
+
+            {/* Optional Banner Text */}
+            <label className="space-y-1 text-xs font-medium text-slate-300">
+              <span className="flex items-center gap-1.5">
+                <span>Teks Khusus Banner</span>
+                <span className="text-slate-400">(Opsional)</span>
+              </span>
+              <input
+                placeholder={
+                  form.bannerType === "FULL_STRIP"
+                    ? "Opsional (desain sudah di gambar)"
+                    : "Contoh: 50% Off Khusus Minggu Ini!"
+                }
                 value={form.bannerText ?? ""}
                 onChange={(e) => setForm({ ...form, bannerText: e.target.value || null })}
                 className="w-full rounded-lg border border-surface-border bg-surface p-2.5 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none"
               />
-              <span className="text-[11px] text-slate-400 block">Kosong = nama promo otomatis.</span>
+              <span className="text-[11px] text-slate-400 block">
+                {form.bannerType === "FULL_STRIP"
+                  ? "Bisa dikosongkan untuk banner full strip."
+                  : "Kosong = sistem membuat teks otomatis."}
+              </span>
             </label>
 
+            {/* Optional CTA Button Text */}
             <label className="space-y-1 text-xs font-medium text-slate-300">
-              <span>Teks Tombol Aksi (CTA)</span>
+              <span className="flex items-center gap-1.5">
+                <span>Teks Tombol Aksi (CTA)</span>
+                <span className="text-slate-400">(Opsional)</span>
+              </span>
               <input
-                placeholder="Gunakan Kode (default)"
+                placeholder={
+                  form.bannerType === "FULL_STRIP"
+                    ? "Opsional (tombol sudah di gambar)"
+                    : "Gunakan Kode (default)"
+                }
                 value={form.bannerCtaText ?? ""}
                 onChange={(e) => setForm({ ...form, bannerCtaText: e.target.value || null })}
                 className="w-full rounded-lg border border-surface-border bg-surface p-2.5 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none"
               />
-              <span className="text-[11px] text-slate-400 block">Contoh: Beli Sekarang, Klaim.</span>
-            </label>
-
-            <label className="space-y-1 text-xs font-medium text-slate-300">
-              <span>Tautan Aksi (CTA Target URL)</span>
-              <input
-                placeholder="/customer#catalog (default)"
-                value={form.bannerCtaUrl ?? ""}
-                onChange={(e) => setForm({ ...form, bannerCtaUrl: e.target.value || null })}
-                className="w-full rounded-lg border border-surface-border bg-surface p-2.5 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none"
-              />
-              <span className="text-[11px] text-slate-400 block">Tujuan link saat tombol diklik.</span>
+              <span className="text-[11px] text-slate-400 block">
+                {form.bannerType === "FULL_STRIP"
+                  ? "Bisa dikosongkan untuk banner full strip."
+                  : "Contoh: Beli Sekarang, Klaim."}
+              </span>
             </label>
           </div>
 
-          {/* Interactive Live DataCamp-Style Preview Box */}
+          {/* Interactive Live Preview Box (Dynamically switches between FULL_STRIP and BADGE_COMPOSED) */}
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-purple-300">
-                Pratinjau Nyata Tampilan Pelanggan (DataCamp Style):
+                {form.bannerType === "FULL_STRIP"
+                  ? "Pratinjau Banner Horizontal Penuh (Full Strip):"
+                  : "Pratinjau Komposisi Dinamis (DataCamp Style):"}
               </span>
               <span className="text-[11px] text-slate-400">Tampil di bagian atas semua halaman pelanggan</span>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-purple-500/40 bg-gradient-to-r from-[#140432] via-[#240a50] to-[#3e0f6f] p-3 text-white shadow-xl">
-              <div className="flex items-center justify-between gap-3">
-                {/* Left side preview */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="flex h-5 w-5 items-center justify-center rounded text-purple-300/80 hover:bg-white/10">
-                    <X size={14} />
-                  </span>
+            {form.bannerType === "FULL_STRIP" ? (
+              /* Preview for FULL_STRIP mode */
+              <div className="relative overflow-hidden rounded-xl border border-purple-500/40 bg-[#0f0326] shadow-xl">
+                {/* Floating close demonstration */}
+                <span className="absolute top-2 right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/90 shadow">
+                  <X size={13} />
+                </span>
 
-                  {form.bannerImageUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
+                {form.bannerImageUrl ? (
+                  <div
+                    className="cursor-pointer group text-center"
+                    title={`Mengarahkan ke: ${form.bannerCtaUrl || "/customer#catalog"}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={form.bannerImageUrl}
-                      alt="Preview Banner"
-                      className="h-8 max-w-[160px] object-contain drop-shadow"
+                      alt="Preview Full Strip"
+                      className="w-full h-auto max-h-[85px] sm:max-h-[96px] object-cover sm:object-contain mx-auto transition-opacity hover:opacity-95"
                     />
-                  ) : (
-                    <div className="flex items-center gap-1.5 rounded-lg border border-purple-400/30 bg-purple-950/80 px-2 py-0.5 text-xs font-extrabold text-purple-200">
-                      <span className="text-emerald-400">⚡</span>
-                      <span>
-                        {form.discountType === "PERCENT"
-                          ? `${form.value}% OFF`
-                          : `DISKON Rp ${form.value.toLocaleString("id-ID")}`}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Center text preview */}
-                <div className="min-w-0 flex-1 text-center text-xs sm:text-sm font-medium text-slate-100 truncate">
-                  {form.bannerText ? (
-                    <span>{form.bannerText}</span>
-                  ) : (
-                    <span>
-                      <strong className="text-white">{form.name || "Nama Promosi"}</strong> — Gunakan kode{" "}
-                      <span className="font-extrabold text-emerald-300 underline">
-                        {form.code || "KODE_VOUCHER"}
-                      </span>{" "}
-                      saat checkout!
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-7 px-4 text-center space-y-1">
+                    <LayoutTemplate size={28} className="text-purple-400/60 mb-1" />
+                    <p className="text-xs font-bold text-purple-200">
+                      Pratinjau Banner Horizontal Penuh
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-md">
+                      Pilih file gambar banner (rekomendasi 1200 × 80 px) untuk melihat pratinjau strip utuh di sini.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Preview for BADGE_COMPOSED mode */
+              <div className="overflow-hidden rounded-xl border border-purple-500/40 bg-gradient-to-r from-[#140432] via-[#240a50] to-[#3e0f6f] p-3 text-white shadow-xl">
+                <div className="flex items-center justify-between gap-3">
+                  {/* Left side preview */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="flex h-5 w-5 items-center justify-center rounded text-purple-300/80 hover:bg-white/10">
+                      <X size={14} />
                     </span>
-                  )}
-                </div>
 
-                {/* Right button preview */}
-                <div className="flex-shrink-0">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 rounded-full bg-emerald-500 px-3.5 py-1 text-xs font-bold text-slate-950 shadow-md hover:bg-emerald-400"
-                  >
-                    <span>{form.bannerCtaText || "Gunakan Kode"}</span>
-                    <ChevronRight size={13} className="stroke-[3]" />
-                  </button>
+                    {form.bannerImageUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={form.bannerImageUrl}
+                        alt="Preview Badge"
+                        className="h-8 max-w-[160px] object-contain drop-shadow"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-1.5 rounded-lg border border-purple-400/30 bg-purple-950/80 px-2 py-0.5 text-xs font-extrabold text-purple-200">
+                        <span className="text-emerald-400">⚡</span>
+                        <span>
+                          {form.discountType === "PERCENT"
+                            ? `${form.value}% OFF`
+                            : `DISKON Rp ${form.value.toLocaleString("id-ID")}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Center text preview */}
+                  <div className="min-w-0 flex-1 text-center text-xs sm:text-sm font-medium text-slate-100 truncate">
+                    {form.bannerText ? (
+                      <span>{form.bannerText}</span>
+                    ) : (
+                      <span>
+                        <strong className="text-white">{form.name || "Nama Promosi"}</strong> — Gunakan kode{" "}
+                        <span className="font-extrabold text-emerald-300 underline">
+                          {form.code || "KODE_VOUCHER"}
+                        </span>{" "}
+                        saat checkout!
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right button preview */}
+                  <div className="flex-shrink-0">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 rounded-full bg-emerald-500 px-3.5 py-1 text-xs font-bold text-slate-950 shadow-md hover:bg-emerald-400"
+                    >
+                      <span>{form.bannerCtaText || "Gunakan Kode"}</span>
+                      <ChevronRight size={13} className="stroke-[3]" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -640,11 +850,19 @@ export default function VoucherRulesPage() {
                     >
                       {rule.isActive ? "Aktif" : "Nonaktif"}
                     </span>
+
                     {rule.bannerImageUrl ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-[11px] font-semibold text-purple-300 border border-purple-500/40">
-                        <ImageIcon size={11} />
-                        <span>Banner Terpasang</span>
-                      </span>
+                      rule.bannerType === "FULL_STRIP" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300 border border-emerald-500/40">
+                          <LayoutTemplate size={11} />
+                          <span>Banner Full Strip</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-purple-300 border border-purple-500/40">
+                          <ImageIcon size={11} />
+                          <span>Badge DataCamp</span>
+                        </span>
+                      )
                     ) : (
                       <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400">
                         Top Bar Dinamis
@@ -667,14 +885,15 @@ export default function VoucherRulesPage() {
                         validFrom: localInput(rule.validFrom),
                         validUntil: localInput(rule.validUntil),
                         bannerImageUrl: rule.bannerImageUrl ?? null,
+                        bannerType: (rule.bannerType as "FULL_STRIP" | "BADGE_COMPOSED") || "FULL_STRIP",
                         bannerText: rule.bannerText ?? null,
                         bannerCtaText: rule.bannerCtaText ?? null,
-                        bannerCtaUrl: rule.bannerCtaUrl ?? null,
+                        bannerCtaUrl: rule.bannerCtaUrl ?? "/customer#catalog",
                       });
                       if (rule.bannerImageUrl) {
                         setValidationInfo({
                           type: "success",
-                          message: "Gambar banner terpasang untuk promo ini.",
+                          message: `Gambar banner (${rule.bannerType === "FULL_STRIP" ? "Full Strip" : "Badge"}) terpasang untuk promo ini.`,
                         });
                       } else {
                         setValidationInfo(null);

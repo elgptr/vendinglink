@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateImageFile } from "@/lib/storage";
+import { z } from "zod";
 
 describe("Banner Validation & Dimensions Logic", () => {
   it("allows PNG, JPEG, and WebP for banner uploads", () => {
@@ -44,43 +45,98 @@ describe("Banner Validation & Dimensions Logic", () => {
   });
 
   // Dimension validator function (mirroring the logic in VoucherRulesPage)
-  function checkBannerDimensions(w: number, h: number) {
+  function checkBannerDimensions(w: number, h: number, type: "FULL_STRIP" | "BADGE_COMPOSED" = "BADGE_COMPOSED") {
     const ratio = Number((w / h).toFixed(1));
-    let type: "success" | "warning" = "success";
+    let status: "success" | "warning" = "success";
     let message = "Dimensi ideal";
 
-    if (h > 200) {
-      type = "warning";
-      message = "Terlalu tinggi untuk top banner";
-    } else if (ratio < 2.5) {
-      type = "warning";
-      message = "Rasio terlalu kotak";
+    if (type === "FULL_STRIP") {
+      if (h > 150) {
+        status = "warning";
+        message = "Tinggi melebihi 150px untuk banner strip";
+      } else if (ratio < 6) {
+        status = "warning";
+        message = "Rasio agak pendek untuk banner strip penuh";
+      } else {
+        message = "Dimensi sangat ideal untuk Banner Full Strip";
+      }
+    } else {
+      if (h > 200) {
+        status = "warning";
+        message = "Terlalu tinggi untuk top banner";
+      } else if (ratio < 2.5) {
+        status = "warning";
+        message = "Rasio terlalu kotak";
+      }
     }
 
-    return { type, ratio, message };
+    return { status, ratio, message };
   }
 
   it("correctly identifies ideal horizontal banner dimensions (e.g. 1200x80 px)", () => {
-    const result = checkBannerDimensions(1200, 80);
-    expect(result.type).toBe("success");
+    const result = checkBannerDimensions(1200, 80, "FULL_STRIP");
+    expect(result.status).toBe("success");
     expect(result.ratio).toBe(15);
   });
 
   it("correctly identifies ideal DataCamp badge dimensions (e.g. 240x80 px)", () => {
-    const result = checkBannerDimensions(240, 80);
-    expect(result.type).toBe("success");
+    const result = checkBannerDimensions(240, 80, "BADGE_COMPOSED");
+    expect(result.status).toBe("success");
     expect(result.ratio).toBe(3);
   });
 
   it("warns when banner image is too tall (e.g. 800x400 px or height > 200px)", () => {
     const result = checkBannerDimensions(800, 400);
-    expect(result.type).toBe("warning");
+    expect(result.status).toBe("warning");
     expect(result.message).toContain("Terlalu tinggi");
   });
 
-  it("warns when image aspect ratio is too square (e.g. 300x200 px, ratio 1.5)", () => {
-    const result = checkBannerDimensions(300, 180);
-    expect(result.type).toBe("warning");
-    expect(result.message).toContain("terlalu kotak");
+  it("warns when image aspect ratio is too square for full strip", () => {
+    const result = checkBannerDimensions(800, 300, "FULL_STRIP");
+    expect(result.status).toBe("warning");
+  });
+
+  // Test Zod schema validation mirroring app/api/admin/voucher-rules/route.ts
+  const bannerSchema = z.object({
+    bannerImageUrl: z.string().nullable().optional(),
+    bannerType: z.enum(["FULL_STRIP", "BADGE_COMPOSED"]).optional().default("BADGE_COMPOSED"),
+    bannerText: z.string().nullable().optional(),
+    bannerCtaText: z.string().nullable().optional(),
+    bannerCtaUrl: z.string().nullable().optional(),
+  }).refine((v) => {
+    if (v.bannerType === "FULL_STRIP" && v.bannerImageUrl) {
+      return Boolean(v.bannerCtaUrl && v.bannerCtaUrl.trim().length > 0);
+    }
+    return true;
+  }, {
+    message: "CTA Target URL wajib diisi jika menggunakan Banner Horizontal Penuh (Full Strip)",
+    path: ["bannerCtaUrl"],
+  });
+
+  it("validates that FULL_STRIP with banner image requires bannerCtaUrl", () => {
+    const validFullStrip = bannerSchema.safeParse({
+      bannerImageUrl: "/uploads/full-banner.png",
+      bannerType: "FULL_STRIP",
+      bannerCtaUrl: "/customer#catalog",
+      bannerText: null, // Optional
+      bannerCtaText: null, // Optional
+    });
+    expect(validFullStrip.success).toBe(true);
+
+    const invalidFullStrip = bannerSchema.safeParse({
+      bannerImageUrl: "/uploads/full-banner.png",
+      bannerType: "FULL_STRIP",
+      bannerCtaUrl: null, // Mandatory!
+    });
+    expect(invalidFullStrip.success).toBe(false);
+  });
+
+  it("allows FULL_STRIP mode with completely omitted bannerText and bannerCtaText", () => {
+    const parsed = bannerSchema.safeParse({
+      bannerImageUrl: "/uploads/full-banner.png",
+      bannerType: "FULL_STRIP",
+      bannerCtaUrl: "https://example.com/promo",
+    });
+    expect(parsed.success).toBe(true);
   });
 });

@@ -20,6 +20,7 @@ const fields = z.object({
   categoryId: z.string().nullable(),
   isActive: z.boolean(),
   bannerImageUrl: z.string().nullable().optional(),
+  bannerType: z.enum(["FULL_STRIP", "BADGE_COMPOSED"]).optional().default("BADGE_COMPOSED"),
   bannerText: z.string().nullable().optional(),
   bannerCtaText: z.string().nullable().optional(),
   bannerCtaUrl: z.string().nullable().optional(),
@@ -27,6 +28,14 @@ const fields = z.object({
   message: "Akhir promo harus setelah awal promo", path: ["validUntil"],
 }).refine((v) => v.discountType !== "PERCENT" || (v.value <= 100 && v.maxDiscount !== null), {
   message: "Persentase maksimal 100 dan wajib memiliki batas diskon", path: ["maxDiscount"],
+}).refine((v) => {
+  if (v.bannerType === "FULL_STRIP" && v.bannerImageUrl) {
+    return Boolean(v.bannerCtaUrl && v.bannerCtaUrl.trim().length > 0);
+  }
+  return true;
+}, {
+  message: "CTA Target URL wajib diisi jika menggunakan Banner Horizontal Penuh (Full Strip)",
+  path: ["bannerCtaUrl"],
 });
 
 const bad = () => NextResponse.json({ error: "Data aturan voucher tidak valid" }, { status: 400 });

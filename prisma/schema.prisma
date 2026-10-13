@@ -347,6 +347,7 @@ model VoucherRule {
   updatedAt        DateTime @updatedAt
 
   bannerImageUrl   String?
+  bannerType       String   @default("BADGE_COMPOSED") // 'FULL_STRIP' | 'BADGE_COMPOSED'
   bannerText       String?
   bannerCtaText    String?
   bannerCtaUrl     String?

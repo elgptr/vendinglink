@@ -15,6 +15,7 @@ type ActivePromo = {
   validFrom: string;
   validUntil: string;
   bannerImageUrl?: string | null;
+  bannerType?: "FULL_STRIP" | "BADGE_COMPOSED" | null;
   bannerText?: string | null;
   bannerCtaText?: string | null;
   bannerCtaUrl?: string | null;
@@ -63,7 +64,8 @@ export default function CustomerTopBanner() {
 
   if (!promo) return null;
 
-  const handleDismiss = () => {
+  const handleDismiss = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setDismissed((prev) => [...prev, promo.id]);
     try {
       window.sessionStorage.setItem(`vl_banner_dismissed_${promo.id}`, "1");
@@ -96,6 +98,44 @@ export default function CustomerTopBanner() {
     }
   };
 
+  // ── Mode 1: Full Strip Panoramic Banner ─────────────────────────────────────
+  if (promo.bannerType === "FULL_STRIP" && promo.bannerImageUrl) {
+    return (
+      <div
+        role="banner"
+        aria-label="Promosi Berjalan"
+        className="relative z-40 w-full overflow-hidden border-b border-purple-500/30 bg-[#0f0326] shadow-lg transition-all duration-300"
+      >
+        {/* Floating Close Button in top right */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          aria-label="Tutup banner promo"
+          className="absolute top-2 right-2 sm:right-4 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 hover:bg-black/90 text-white shadow-md transition-all backdrop-blur-sm"
+        >
+          <X size={14} />
+        </button>
+
+        {/* Full Clickable Strip Banner (navigates to mandatory bannerCtaUrl) */}
+        <div
+          onClick={handleCtaClick}
+          className="cursor-pointer block w-full relative group transition-opacity hover:opacity-95"
+          title="Klik untuk melihat promo"
+        >
+          <div className="w-full max-w-7xl mx-auto flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={promo.bannerImageUrl}
+              alt={promo.name || "Promo Banner"}
+              className="w-full h-auto max-h-[85px] sm:max-h-[100px] object-cover sm:object-contain mx-auto"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mode 2: DataCamp Dynamic Composition (Badge + Text + CTA Button) ────────
   const discountBadgeText =
     promo.discountType === "PERCENT"
       ? `${promo.value}% OFF`
