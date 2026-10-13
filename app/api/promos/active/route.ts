@@ -9,7 +9,8 @@ export async function GET() {
     where: { kind: "SCHEDULED", isActive: true, validFrom: { lte: now }, validUntil: { gt: now } },
     select: { id: true, name: true, code: true, discountType: true, value: true,
       maxDiscount: true, minSpend: true, categoryId: true, validFrom: true, validUntil: true,
-      quotaTotal: true, usedCount: true },
+      quotaTotal: true, usedCount: true,
+      bannerImageUrl: true, bannerText: true, bannerCtaText: true, bannerCtaUrl: true },
     orderBy: { validFrom: "desc" }, take: 50,
   });
   const promos = rules.filter((rule) => rule.quotaTotal === null || rule.usedCount < rule.quotaTotal)

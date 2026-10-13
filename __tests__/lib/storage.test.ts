@@ -76,6 +76,15 @@ describe("lib/storage.ts", () => {
       expect(result.valid).toBe(true);
     });
 
+    it("should accept valid WebP file", () => {
+      const result = validateImageFile({
+        name: "test.webp",
+        size: 1024 * 300,
+        type: "image/webp",
+      });
+      expect(result.valid).toBe(true);
+    });
+
     it("should reject unsupported MIME type (PDF)", () => {
       const result = validateImageFile({
         name: "document.pdf",

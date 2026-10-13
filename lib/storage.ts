@@ -15,7 +15,7 @@ import { createHash } from "crypto";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg"];
+const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 /**
  * Ensure upload directory exists
@@ -63,7 +63,7 @@ export function validateImageFile(file: {
   if (!ALLOWED_MIME_TYPES.includes(file.type)) {
     return {
       valid: false,
-      error: `Tipe file tidak didukung. Hanya PNG dan JPEG yang diizinkan.`,
+      error: `Tipe file tidak didukung. Hanya PNG, JPEG, dan WEBP yang diizinkan.`,
     };
   }
 

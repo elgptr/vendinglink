@@ -10,7 +10,6 @@ import TrustStrip from "@/components/customer/TrustStrip";
 import Testimonials from "@/components/customer/Testimonials";
 import Footer from "@/components/customer/Footer";
 import RequestProductCTA from "@/components/customer/RequestProductCTA";
-import ActivePromoPopup from "@/components/customer/ActivePromoPopup";
 
 // Stock count changes every time a purchase happens — never prerender this
 // page statically at build time, always fetch fresh data per request.
@@ -76,7 +75,6 @@ export default async function CustomerCatalogPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <ActivePromoPopup />
       <main className="customer-container pt-8 pb-16 flex-1 space-y-16">
         {/* Hero Section */}
         <HeroBanner />

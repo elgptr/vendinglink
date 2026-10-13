@@ -346,6 +346,11 @@ model VoucherRule {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  bannerImageUrl   String?
+  bannerText       String?
+  bannerCtaText    String?
+  bannerCtaUrl     String?
+
   category    Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   redemptions VoucherRedemption[]
   referralRedemptions ReferralRedemption[]

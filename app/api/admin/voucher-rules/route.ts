@@ -19,6 +19,10 @@ const fields = z.object({
   quotaPerCustomer: z.number().int().positive().max(100),
   categoryId: z.string().nullable(),
   isActive: z.boolean(),
+  bannerImageUrl: z.string().nullable().optional(),
+  bannerText: z.string().nullable().optional(),
+  bannerCtaText: z.string().nullable().optional(),
+  bannerCtaUrl: z.string().nullable().optional(),
 }).strict().refine((v) => new Date(v.validUntil) > new Date(v.validFrom), {
   message: "Akhir promo harus setelah awal promo", path: ["validUntil"],
 }).refine((v) => v.discountType !== "PERCENT" || (v.value <= 100 && v.maxDiscount !== null), {

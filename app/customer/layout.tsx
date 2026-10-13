@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Zap, LogIn } from "lucide-react";
 import CustomerChatWidget from "@/components/customer/CustomerChatWidget";
+import CustomerTopBanner from "@/components/customer/CustomerTopBanner";
 
 export default function CustomerLayout({
   children,
@@ -8,7 +9,10 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative flex flex-col">
+      {/* Dynamic DataCamp-style Top Announcement Banner for all customer pages */}
+      <CustomerTopBanner />
+
       {/* Public top bar (no sidebar - no login required) */}
       <header className="border-b border-surface-border bg-surface-card/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
