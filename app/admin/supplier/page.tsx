@@ -13,12 +13,37 @@ import {
   RefreshCw,
   Code,
   ShieldCheck,
-  ExternalLink,
   Layers,
   Link as LinkIcon,
   X,
+  Wallet,
+  AlertCircle,
+  WifiOff,
 } from 'lucide-react';
 import { BridgeSupplier, BridgeBuiltInSupplier } from '@/lib/bridge/suppliersClient';
+
+interface SupplierBalanceInfo {
+  code: string;
+  displayName: string;
+  balance: number | null;
+  status: 'OK' | 'LOW' | 'ERROR' | 'CONFIG_IN_BRIDGE';
+  error?: string | null;
+  isBuiltIn: boolean;
+  updatedAt: string;
+}
+
+interface BridgeStatusInfo {
+  connected: boolean;
+  url: string;
+  error?: string | null;
+}
+
+const BUILT_IN_FALLBACKS: BridgeBuiltInSupplier[] = [
+  { code: 'RZK', displayName: 'Rezeki Shop', isBuiltIn: true },
+  { code: 'PDA', displayName: 'Prime Digital', isBuiltIn: true },
+  { code: 'DAI', displayName: 'Digital AI Store', isBuiltIn: true },
+];
+
 
 interface ProductOption {
   id: string;
@@ -157,9 +182,44 @@ export default function SupplierManagementPage() {
   // Validating supplier state (code in progress)
   const [validatingCode, setValidatingCode] = useState<string | null>(null);
 
+  // Balances & Bridge Status State
+  const [bridgeStatus, setBridgeStatus] = useState<BridgeStatusInfo | null>(null);
+  const [balances, setBalances] = useState<Record<string, SupplierBalanceInfo>>({});
+  const [loadingBalances, setLoadingBalances] = useState(false);
+  const [refreshingBalanceCode, setRefreshingBalanceCode] = useState<string | null>(null);
+  const [lastBalancesFetch, setLastBalancesFetch] = useState<Date | null>(null);
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  const fetchBalances = async (targetCode: string = 'ALL') => {
+    if (targetCode === 'ALL') {
+      setLoadingBalances(true);
+    } else {
+      setRefreshingBalanceCode(targetCode);
+    }
+
+    try {
+      const res = await fetch(`/api/admin/suppliers?action=balances&code=${encodeURIComponent(targetCode)}`);
+      const data = await res.json();
+      if (data.balances) {
+        setBalances((prev) => ({
+          ...prev,
+          ...data.balances,
+        }));
+        setLastBalancesFetch(new Date());
+      }
+    } catch (err) {
+      console.error('Failed to fetch supplier balances:', err);
+    } finally {
+      if (targetCode === 'ALL') {
+        setLoadingBalances(false);
+      } else {
+        setRefreshingBalanceCode(null);
+      }
+    }
+  };
 
   const fetchData = async () => {
     setLoadingSuppliers(true);
@@ -171,12 +231,15 @@ export default function SupplierManagementPage() {
       if (data.products) setProducts(data.products);
       if (data.suppliers) setSuppliers(data.suppliers);
       if (data.builtIns) setBuiltIns(data.builtIns);
+      if (data.bridgeStatus) setBridgeStatus(data.bridgeStatus);
     } catch (err) {
       console.error(err);
     } finally {
       setLoadingSuppliers(false);
       setLoadingMappings(false);
     }
+    // Fetch balances in background
+    fetchBalances('ALL');
   };
 
   const handleRegisterSupplier = async (e: React.FormEvent) => {
@@ -421,46 +484,298 @@ export default function SupplierManagementPage() {
       {/* ========================================================================= */}
       {/* TAB 1: INTEGRASI SUPPLIER DINAMIS (P2b Dynamic Engine & Descriptor)       */}
       {/* ========================================================================= */}
-      {activeTab === 'dynamic' && (
-        <div className="space-y-6">
-          {/* Quick Metrics & Action Banner */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-surface-card rounded-xl border border-surface-border p-4">
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Supplier</div>
-              <div className="text-2xl font-bold text-white mt-1">
-                {suppliers.length + builtIns.length}
+      {activeTab === 'dynamic' && (() => {
+        const effectiveBuiltIns = builtIns.length > 0 ? builtIns : BUILT_IN_FALLBACKS;
+
+        // Build unified list for balance monitoring
+        const allSuppliersForBalance: Array<{
+          code: string;
+          displayName: string;
+          isBuiltIn: boolean;
+        }> = [
+          ...effectiveBuiltIns.map((b) => ({
+            code: b.code,
+            displayName: b.displayName,
+            isBuiltIn: true,
+          })),
+          ...suppliers.map((s) => ({
+            code: s.code,
+            displayName: s.displayName,
+            isBuiltIn: false,
+          })),
+        ];
+
+        // Ensure any dynamic suppliers returned in balances are also included
+        const knownCodes = new Set(allSuppliersForBalance.map((s) => s.code));
+        for (const code of Object.keys(balances)) {
+          if (!knownCodes.has(code)) {
+            const b = balances[code];
+            allSuppliersForBalance.push({
+              code: b.code,
+              displayName: b.displayName,
+              isBuiltIn: b.isBuiltIn,
+            });
+            knownCodes.add(code);
+          }
+        }
+
+        return (
+          <div className="space-y-6">
+            {/* Bridge Connection Warning Banner */}
+            {bridgeStatus && !bridgeStatus.connected && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-200">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-amber-500/20 rounded-lg text-amber-400 shrink-0 mt-0.5 sm:mt-0">
+                    <WifiOff className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white text-sm">
+                      VendingLink Bridge Belum Terhubung
+                    </div>
+                    <p className="text-xs text-amber-300/80 mt-0.5">
+                      Service Bridge di <code className="font-mono bg-black/40 px-1.5 py-0.5 rounded text-amber-200">{bridgeStatus.url}</code> tidak merespons.
+                      Pendaftaran supplier dinamis memerlukan Bridge. Adapter bawaan (Rezeki Shop) tetap aktif via fallback Storefront.
+                    </p>
+                    {bridgeStatus.error && (
+                      <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                        Detail: {bridgeStatus.error}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={fetchData}
+                  disabled={loadingSuppliers}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-center"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingSuppliers ? 'animate-spin' : ''}`} />
+                  Coba Sambung Ulang
+                </button>
               </div>
-              <div className="text-xs text-slate-500 mt-1">
-                {builtIns.length} Built-in | {suppliers.length} Dynamic
+            )}
+
+            {/* Quick Metrics & Action Banner */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-surface-card rounded-xl border border-surface-border p-4">
+                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Supplier</div>
+                <div className="text-2xl font-bold text-white mt-1">
+                  {suppliers.length + effectiveBuiltIns.length}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {effectiveBuiltIns.length} Built-in | {suppliers.length} Dynamic
+                </div>
+              </div>
+
+              <div className="bg-surface-card rounded-xl border border-surface-border p-4">
+                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Aktif & Siap</div>
+                <div className="text-2xl font-bold text-emerald-400 mt-1">
+                  {suppliers.filter((s) => s.status === 'ACTIVE').length + effectiveBuiltIns.length}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">Siap untuk procurement</div>
+              </div>
+
+              <div className="bg-surface-card rounded-xl border border-surface-border p-4">
+                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Perlu Tinjauan</div>
+                <div className="text-2xl font-bold text-rose-400 mt-1">
+                  {suppliers.filter((s) => s.status === 'NEEDS_REVIEW').length}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">Gagal ping / kredensial salah</div>
+              </div>
+
+              <div className="bg-surface-card rounded-xl border border-surface-border p-4 flex items-center justify-center">
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="w-full h-full bg-brand-500 text-black rounded-lg px-4 py-3 text-sm font-bold hover:bg-brand-400 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all hover:scale-[1.02]"
+                >
+                  <Plus className="w-5 h-5" />
+                  Tambah Supplier Baru
+                </button>
               </div>
             </div>
 
-            <div className="bg-surface-card rounded-xl border border-surface-border p-4">
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Aktif & Siap</div>
-              <div className="text-2xl font-bold text-emerald-400 mt-1">
-                {suppliers.filter((s) => s.status === 'ACTIVE').length + builtIns.length}
-              </div>
-              <div className="text-xs text-slate-500 mt-1">Siap untuk procurement</div>
-            </div>
+            {/* ========================================================================= */}
+            {/* MULTI-SUPPLIER BALANCE MONITORING CARD                                     */}
+            {/* ========================================================================= */}
+            <div className="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-brand-500/10 rounded-xl border border-brand-500/20 text-brand-400">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      Monitoring Saldo Deposit Supplier
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Pantau ketersediaan saldo deposit procurement secara real-time dari seluruh supplier terdaftar.
+                    </p>
+                  </div>
+                </div>
 
-            <div className="bg-surface-card rounded-xl border border-surface-border p-4">
-              <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Perlu Tinjauan</div>
-              <div className="text-2xl font-bold text-rose-400 mt-1">
-                {suppliers.filter((s) => s.status === 'NEEDS_REVIEW').length}
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  {lastBalancesFetch && (
+                    <span className="text-xs text-slate-500 hidden sm:inline">
+                      Diperbarui: {lastBalancesFetch.toLocaleTimeString('id-ID')}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => fetchBalances('ALL')}
+                    disabled={loadingBalances}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/30 hover:bg-brand-500/20 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingBalances ? 'animate-spin' : ''}`} />
+                    Segarkan Semua Saldo
+                  </button>
+                </div>
               </div>
-              <div className="text-xs text-slate-500 mt-1">Gagal ping / kredensial salah</div>
-            </div>
 
-            <div className="bg-surface-card rounded-xl border border-surface-border p-4 flex items-center justify-center">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="w-full h-full bg-brand-500 text-black rounded-lg px-4 py-3 text-sm font-bold hover:bg-brand-400 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 transition-all hover:scale-[1.02]"
-              >
-                <Plus className="w-5 h-5" />
-                Tambah Supplier Baru
-              </button>
+              {/* Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {allSuppliersForBalance.map((s) => {
+                  const bInfo = balances[s.code];
+                  const isRefreshing = refreshingBalanceCode === s.code || (loadingBalances && !bInfo);
+                  const balance = bInfo?.balance;
+                  const isLow = balance !== null && balance !== undefined && balance < 20000;
+
+                  return (
+                    <div
+                      key={s.code}
+                      className={`relative bg-surface-base/90 rounded-xl p-4 border transition-all flex flex-col justify-between ${
+                        isLow && balance !== null
+                          ? 'border-amber-500/40 bg-amber-500/[0.02]'
+                          : bInfo?.status === 'ERROR'
+                          ? 'border-rose-500/40 bg-rose-500/[0.02]'
+                          : 'border-surface-border hover:border-slate-600'
+                      }`}
+                    >
+                      {/* Top row */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-white text-sm">
+                              {s.displayName}
+                            </span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                              s.isBuiltIn
+                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                            }`}>
+                              {s.code}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500">
+                            {s.isBuiltIn ? 'Built-in Adapter' : 'Dynamic Descriptor'}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => fetchBalances(s.code)}
+                          disabled={isRefreshing}
+                          title={`Segarkan saldo ${s.displayName}`}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-brand-400' : ''}`} />
+                        </button>
+                      </div>
+
+                      {/* Middle row: Balance Amount */}
+                      <div className="my-2">
+                        <div className="text-[11px] uppercase tracking-wider text-slate-400 font-medium mb-1">
+                          Saldo Deposit
+                        </div>
+
+                        {isRefreshing && !bInfo ? (
+                          <div className="py-2 flex items-center gap-2 text-slate-400 text-xs">
+                            <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
+                            <span>Memeriksa saldo...</span>
+                          </div>
+                        ) : bInfo?.status === 'CONFIG_IN_BRIDGE' ? (
+                          <div className="space-y-1 py-1">
+                            <div className="text-slate-400 text-sm font-medium flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-slate-500" />
+                              Belum Dikonfigurasi
+                            </div>
+                            <p className="text-[11px] text-slate-500">
+                              Kredensial adapter perlu diisi di Bridge (.env / config)
+                            </p>
+                          </div>
+                        ) : bInfo?.status === 'ERROR' ? (
+                          <div className="space-y-1 py-1">
+                            <div className="text-rose-400 text-sm font-semibold flex items-center gap-1.5">
+                              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                              Gagal Membaca Saldo
+                            </div>
+                            <p className="text-[11px] text-rose-300/80 line-clamp-2" title={bInfo.error || ''}>
+                              {bInfo.error || 'Periksa API Key / koneksi ke supplier'}
+                            </p>
+                          </div>
+                        ) : balance !== null && balance !== undefined ? (
+                          <div>
+                            <div className={`text-2xl font-bold font-mono tracking-tight ${
+                              isLow ? 'text-amber-400' : 'text-emerald-400'
+                            }`}>
+                              Rp {balance.toLocaleString('id-ID')}
+                            </div>
+
+                            {isLow && (
+                              <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                                Saldo Rendah (&lt; Rp 20.000)
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-slate-500 text-sm py-1">—</div>
+                        )}
+                      </div>
+
+                      {/* Bottom row: Helper Info & Status */}
+                      <div className="mt-3 pt-3 border-t border-surface-border/60 flex items-center justify-between text-[11px]">
+                        {s.code === 'RZK' ? (
+                          <span className="text-slate-400 flex items-center gap-1">
+                            <span>Top up:</span>
+                            <code className="text-brand-400 font-mono">@rezeki_shop_bot</code>
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">
+                            {bInfo?.updatedAt ? `Update: ${new Date(bInfo.updatedAt).toLocaleTimeString('id-ID')}` : 'Belum dicek'}
+                          </span>
+                        )}
+
+                        <div>
+                          {bInfo?.status === 'OK' && (
+                            <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Siap
+                            </span>
+                          )}
+                          {bInfo?.status === 'LOW' && (
+                            <span className="inline-flex items-center gap-1 text-amber-400 font-medium">
+                              <AlertTriangle className="w-3 h-3" />
+                              Perlu Top Up
+                            </span>
+                          )}
+                          {bInfo?.status === 'ERROR' && (
+                            <span className="inline-flex items-center gap-1 text-rose-400 font-medium">
+                              <AlertCircle className="w-3 h-3" />
+                              Error
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Tips footer */}
+              <div className="bg-surface-base/60 rounded-lg p-3 border border-surface-border/50 text-xs text-slate-400 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-brand-400 shrink-0" />
+                <span>
+                  <strong>Info Saldo:</strong> Saldo supplier dipotong secara otomatis saat pesanan pelanggan diproses. Saldo Rezeki Shop terbaca langsung melalui konfigurasi <code>REZEKI_API_KEY</code> atau adapter Bridge.
+                </span>
+              </div>
             </div>
-          </div>
 
           {/* Dynamic Suppliers Table */}
           <div className="bg-surface-card rounded-xl border border-surface-border overflow-hidden">
@@ -608,7 +923,7 @@ export default function SupplierManagementPage() {
               Adapter bawaan yang dikompilasi langsung di codebase Bridge sebagai fallback bawaan:
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {builtIns.map((b) => (
+              {effectiveBuiltIns.map((b) => (
                 <div
                   key={b.code}
                   className="p-3 rounded-lg bg-surface-base border border-surface-border flex items-center justify-between"
@@ -625,7 +940,8 @@ export default function SupplierManagementPage() {
             </div>
           </div>
         </div>
-      )}
+      );
+    })()}
 
       {/* ========================================================================= */}
       {/* TAB 2: PRODUCT MAPPINGS (Binding Etalase VendingLink)                      */}

@@ -1,4 +1,3 @@
-import SyncStockButton from "@/components/customer/SyncStockButton";
 import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { cache } from "@/lib/cache";
@@ -89,7 +88,6 @@ export default async function CustomerCatalogPage() {
             <div className="sm:ml-auto flex items-center gap-2 text-sm text-slate-400">
               <span className="stock-dot-available" />
               <span>Real-time Stock</span>
-              <SyncStockButton />
             </div>
           </div>
 

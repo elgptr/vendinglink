@@ -380,25 +380,6 @@ export async function sendAdminLowStockAlert(
 }
 
 
-export async function sendBridgeRezekiModeAlert(
-  productName: string
-): Promise<WhatsAppSendResult> {
-  const mode = getMode();
-  const adminPhone = process.env.ADMIN_PHONE || "";
-  const normalizedPhone = normalizePhone(adminPhone);
-  if (!normalizedPhone) return { sent: false, error: "Invalid admin phone", mode };
-
-  const message = `*⚠️ BRIDGE UPLOAD REJECTED*\n\nGagal upload stok dari Bridge untuk produk *${productName}* karena mode REZEKI sedang aktif.\n\nUbah ke mode AUTO atau MANUAL jika ingin menerima stok dari Bridge.`;
-
-  if (mode === "mock") {
-    log.info("WhatsApp (mock): sendBridgeRezekiModeAlert", { to: normalizedPhone, productName });
-    return { sent: true, mode: "mock" };
-  }
-
-  const result = await sendViaSaungwa(normalizedPhone, message);
-  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
-}
-
 export async function sendBridgeNewProductAlert(
   productName: string
 ): Promise<WhatsAppSendResult> {

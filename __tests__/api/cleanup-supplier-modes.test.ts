@@ -44,7 +44,6 @@ vi.mock("@/lib/csrf", () => ({
 vi.mock("@/lib/whatsapp", () => ({
   sendPaymentNotification: vi.fn(async () => ({ sent: true, mode: "mock" })),
   sendBridgeNewProductAlert: vi.fn(async () => ({ sent: true, mode: "mock" })),
-  sendBridgeRezekiModeAlert: vi.fn(async () => ({ sent: true, mode: "mock" })),
 }));
 
 describe("Cleanup 6: Supplier Modes (AUTO & REZEKI) Safely Deprecated", () => {
