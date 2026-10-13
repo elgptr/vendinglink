@@ -171,8 +171,7 @@ async function main() {
   }
 
   // REFERRAL_NEW rule (P1 ST-2d) — governs the discount a referee gets when
-  // redeeming someone's referral code. NOTE: value 5000 is a placeholder seed
-  // default — confirm with the business owner (same as referralCommissionPct).
+  // redeeming someone's referral code: 5% off product price with minSpend Rp 50.000.
   const existingReferralRule = await prisma.voucherRule.findFirst({
     where: { kind: "REFERRAL_NEW" },
   });
@@ -180,16 +179,25 @@ async function main() {
     await prisma.voucherRule.create({
       data: {
         code: "REFERRAL-NEW",
-        name: "Diskon customer baru via kode referral",
+        name: "Diskon customer baru via kode referral (5%)",
         kind: "REFERRAL_NEW",
-        discountType: "FIXED_IDR",
-        value: 5000,
+        discountType: "PERCENT",
+        value: 5,
+        minSpend: 50000,
         validFrom: new Date("2026-01-01T00:00:00Z"),
       },
     });
-    console.log(`✅ REFERRAL_NEW VoucherRule created (placeholder value)`);
+    console.log(`✅ REFERRAL_NEW VoucherRule created (5% discount, minSpend Rp 50.000)`);
   } else {
-    console.log(`✅ REFERRAL_NEW VoucherRule already exists`);
+    await prisma.voucherRule.update({
+      where: { id: existingReferralRule.id },
+      data: {
+        discountType: "PERCENT",
+        value: 5,
+        minSpend: 50000,
+      },
+    });
+    console.log(`✅ REFERRAL_NEW VoucherRule updated (5% discount, minSpend Rp 50.000)`);
   }
 
   console.log("\n🎉 Seed completed!");

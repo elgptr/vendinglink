@@ -81,22 +81,54 @@ export async function GET(request: NextRequest) {
           agent: { select: { username: true } },
           product: { select: { name: true } },
           voucher: { select: { code: true } },
+          promoCode: { select: { code: true } },
         },
       });
 
-      const csvData = allTransactions.map((t) => ({
-        "Order ID": t.orderId,
-        "Produk": t.product.name,
-        "Agen": t.agent?.username || "Customer (Langsung)",
-        "Nama Pembeli": t.customerName || "-",
-        "Voucher": t.voucher?.code || "-",
-        "Harga Asli": t.originalPrice,
-        "Diskon": t.discountAmount,
-        "Total Bayar": t.finalAmount,
-        "Status": t.status,
-        "Tgl Bayar": t.paidAt ? new Date(t.paidAt).toLocaleString("id-ID") : "-",
-        "Link Redeem": t.redeemUrl || "-",
-      }));
+      const allTxnIds = allTransactions.map((t) => t.id);
+      const [allVoucherRedemptions, allReferralRedemptions] = await Promise.all([
+        prisma.voucherRedemption.findMany({
+          where: { transactionId: { in: allTxnIds } },
+          include: { rule: { select: { code: true, name: true, kind: true } } },
+        }),
+        prisma.referralRedemption.findMany({
+          where: { transactionId: { in: allTxnIds } },
+          include: { referralCode: { select: { code: true } } },
+        }),
+      ]);
+
+      const vRuleMap = new Map(allVoucherRedemptions.map((vr) => [vr.transactionId, vr.rule]));
+      const refMap = new Map(allReferralRedemptions.map((rr) => [rr.transactionId, rr.referralCode]));
+
+      const csvData = allTransactions.map((t) => {
+        let discountLabel = "-";
+        const rule = vRuleMap.get(t.id);
+        const ref = refMap.get(t.id);
+        if (rule) {
+          discountLabel = `${rule.code} [Rule]`;
+        } else if (ref) {
+          discountLabel = `${ref.code} [Referral]`;
+        } else if (t.promoCode?.code) {
+          discountLabel = `${t.promoCode.code} [Kompensasi]`;
+        } else if (t.voucher?.code) {
+          discountLabel = `${t.voucher.code} [Legacy]`;
+        }
+
+        return {
+          "Order ID": t.orderId,
+          "Produk": t.product.name,
+          "Agen": t.agent?.username || "Customer (Langsung)",
+          "Nama Pembeli": t.customerName || "-",
+          "Kode Diskon / Voucher": discountLabel,
+          "Tipe Pembayaran": t.paymentType,
+          "Harga Asli": t.originalPrice,
+          "Diskon": t.discountAmount,
+          "Total Bayar": t.finalAmount,
+          "Status": t.status,
+          "Tgl Bayar": t.paidAt ? new Date(t.paidAt).toLocaleString("id-ID") : "-",
+          "Link Redeem": t.redeemUrl || "-",
+        };
+      });
 
       const csv = exportToCsv(csvData, "laporan-penjualan");
       const filename = `laporan-penjualan-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -141,10 +173,46 @@ export async function GET(request: NextRequest) {
           agent: { select: { username: true } },
           product: { select: { name: true } },
           voucher: { select: { code: true } },
+          promoCode: { select: { code: true } },
         },
       }),
       prisma.transaction.count({ where }),
     ]);
+
+    const txnIds = transactions.map((t) => t.id);
+    const [voucherRedemptions, referralRedemptions] = await Promise.all([
+      prisma.voucherRedemption.findMany({
+        where: { transactionId: { in: txnIds } },
+        include: { rule: { select: { code: true, name: true, kind: true } } },
+      }),
+      prisma.referralRedemption.findMany({
+        where: { transactionId: { in: txnIds } },
+        include: { referralCode: { select: { code: true } } },
+      }),
+    ]);
+
+    const vRuleMap = new Map(voucherRedemptions.map((vr) => [vr.transactionId, vr.rule]));
+    const refMap = new Map(referralRedemptions.map((rr) => [rr.transactionId, rr.referralCode]));
+
+    const enrichedTransactions = transactions.map((t) => {
+      let discountDetail: { code: string; label: string; source: string } | null = null;
+      const rule = vRuleMap.get(t.id);
+      const ref = refMap.get(t.id);
+      if (rule) {
+        discountDetail = { code: rule.code, label: "Rule", source: "VOUCHER_RULE" };
+      } else if (ref) {
+        discountDetail = { code: ref.code, label: "Referral", source: "REFERRAL" };
+      } else if (t.promoCode?.code) {
+        discountDetail = { code: t.promoCode.code, label: "Kompensasi", source: "PROMO_CODE" };
+      } else if (t.voucher?.code) {
+        discountDetail = { code: t.voucher.code, label: "Legacy", source: "VOUCHER_LEGACY" };
+      }
+
+      return {
+        ...t,
+        discountDetail,
+      };
+    });
 
     return NextResponse.json({
       metrics: {
@@ -153,7 +221,7 @@ export async function GET(request: NextRequest) {
         totalSold,
       },
       agents,
-      transactions,
+      transactions: enrichedTransactions,
       total,
       page,
       totalPages: Math.ceil(total / limit),

@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
       !transaction ||
       (transaction.paymentType !== "MIDTRANS" &&
         transaction.paymentType !== "DOKU" &&
-        transaction.paymentType !== "KASERA")
+        transaction.paymentType !== "KASERA" &&
+        transaction.paymentType !== "FREE_PROMO")
     ) {
       return NextResponse.json(
         { error: "Transaksi tidak ditemukan" },
@@ -158,6 +159,7 @@ export async function GET(request: NextRequest) {
       orderId: transaction.orderId,
       productId: transaction.productId,
       status: transaction.status,
+      paymentType: transaction.paymentType,
       finalAmount: transaction.finalAmount,
       originalPrice: transaction.originalPrice,
       discountAmount: transaction.discountAmount,

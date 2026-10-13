@@ -492,7 +492,7 @@ export default function SupplierManagementPage() {
                 </div>
                 <div className="text-slate-300 font-medium">Belum ada supplier dinamis</div>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Klik tombol <strong>"Tambah Supplier Baru"</strong> di atas untuk mendaftarkan supplier via REST Descriptor.
+                  Klik tombol <strong>&quot;Tambah Supplier Baru&quot;</strong> di atas untuk mendaftarkan supplier via REST Descriptor.
                 </p>
               </div>
             ) : (

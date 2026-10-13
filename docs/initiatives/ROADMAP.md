@@ -383,6 +383,21 @@ PayoutBatch
 - Pop-up muncul tepat saat `validFrom` tercapai dan hilang setelah `validUntil`.
 - Admin bisa buat promo baru dari UI tanpa deploy kode.
 
+### [Storefront] Refinements Bisnis P1 (Keputusan 1 s.d 5 — CLOSED · VERIFIED)
+- [x] **Keputusan 1 (Referee Discount & MinSpend):** Rule `REFERRAL_NEW` diskon 5% dari harga produk dengan `minSpend` Rp 50.000. Belanja di bawah Rp 50.000 ditolak dengan pesan yang jelas.
+- [x] **Keputusan 2 (Referral Commission Floor):** Ditetapkan `REFERRAL_COMMISSION_FLOOR = 100`. Setiap transaksi referee yang berhasil mendatangkan komisi minimal Rp 100 untuk referrer, bahkan untuk transaksi Rp 0.
+- [x] **Keputusan 3 (Penyatuan Dualisme Diskon & Labeling Admin):** Laporan penjualan (`/api/admin/reports` & UI `/admin/reports` + export CSV/GDrive) menyatukan riwayat diskon dari `VoucherRule`, `ReferralCode`, `PromoCode`, dan legacy `Voucher`. Label sidebar `/admin/voucher-rules` menjadi "Promo & Voucher" dan `/admin/vouchers` menjadi "Voucher (Legacy)".
+- [x] **Keputusan 4 (Audit Trail & paymentType FREE_PROMO):** Transaksi Rp 0 akibat diskon 100% diberi label `paymentType: "FREE_PROMO"` (bukan lagi `"MIDTRANS"`), mempermudah rekonsiliasi kas riil bank/Midtrans vs diskon promosi.
+- [x] **Keputusan 5 (Ekspektasi Payout Batch & Transparansi Kredit Referrer):** UI `/admin/reports` pada panel Payout Batch diperkaya dengan infobox masa tunggu 15 hari, ringkasan saldo PAYABLE/ACCRUED, dan tabel monitoring status kredit seluruh referrer via endpoint `GET /api/admin/payout-batches/summary`.
+
+### [Storefront] Initiative Cleanup 6 — Pembersihan Mode Supplier (AUTO & REZEKI) (PLANNED)
+- **Konteks:** Menegakkan batas arsitektur (*Architectural Boundary*). Storefront tidak boleh memanggil API pembelian supplier secara langsung/sinkron saat checkout. Seluruh pasokan stok eksternal dilakukan secara asinkron oleh `vendinglink_bridge` ke tabel `RedeemStock`.
+- **Rencana Fase:**
+  - **Fase 1 (Data & UI):** Normalisasi seluruh produk aktif ke `supplierMode = "MANUAL"`. Sembunyikan opsi `AUTO` dan `REZEKI` pada form produk inventory.
+  - **Fase 2 (Pruning Checkout):** Hapus percabangan panggilan langsung Rezeki API di alur checkout customer & agent. Kembalikan pemenuhan stok 100% ke `RedeemStock`.
+  - **Fase 3 (Deprecasi Modul):** Arsipkan `lib/suppliers/rezeki.ts` dan `lib/suppliers/sync.ts` di storefront.
+  - **Fase 4 (Skema DB):** Sederhanakan kolom `Product.supplierMode` default `MANUAL` / persiapkan penghapusan kolom pada migrasi database berikutnya.
+
 ---
 
 ## 6. Sprint P2 — Agentic Purchasing & Supplier Dinamis (v2.0)

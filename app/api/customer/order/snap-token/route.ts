@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       !transaction ||
       (transaction.paymentType !== "MIDTRANS" &&
         transaction.paymentType !== "DOKU" &&
-        transaction.paymentType !== "KASERA")
+        transaction.paymentType !== "KASERA" &&
+        transaction.paymentType !== "FREE_PROMO")
     ) {
       return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
     }

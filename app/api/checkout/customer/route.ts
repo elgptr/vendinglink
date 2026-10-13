@@ -338,7 +338,7 @@ export async function POST(request: NextRequest) {
               customerId,
               customerName: sanitizedCustomerName,
               customerPhone: sanitizedCustomerPhone,
-              paymentType: "MIDTRANS",
+              paymentType: "FREE_PROMO",
               originalPrice,
               discountAmount,
               finalAmount: 0,
@@ -351,8 +351,8 @@ export async function POST(request: NextRequest) {
 
           if (redeemResolution && customerId) {
             await recordRedemption(tx, redeemResolution, transaction.id, customerId);
-            // finalAmount is 0, so the commission computes to Rp 0 and the
-            // accrual no-ops — called anyway to keep both PAID paths uniform.
+            // finalAmount is 0, but with REFERRAL_COMMISSION_FLOOR (Rp 100),
+            // the referrer still receives Rp 100 credit to record the referee order.
             await accrueReferralCommission(tx, transaction.id);
           }
 

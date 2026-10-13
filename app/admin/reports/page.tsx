@@ -18,13 +18,14 @@ import Card, { StatCard } from "@/components/ui/Card";
 import Spinner from "@/components/ui/Spinner";
 import Modal from "@/components/ui/Modal";
 import toast from "@/components/ui/Toast";
-import { formatRupiah, formatDate } from "@/lib/utils";
+import { formatRupiah, formatDate, cn } from "@/lib/utils";
 import PayoutBatchPanel from "@/components/admin/PayoutBatchPanel";
 
 interface Transaction {
   id: string;
   orderId: string;
   status: string;
+  paymentType?: string;
   finalAmount: number;
   originalPrice: number;
   discountAmount: number;
@@ -34,6 +35,11 @@ interface Transaction {
   product: { name: string };
   agent: { username: string } | null;
   voucher: { code: string } | null;
+  discountDetail?: {
+    code: string;
+    label: string;
+    source: string;
+  } | null;
 }
 
 interface Metrics {
@@ -358,7 +364,8 @@ export default function ReportsPage() {
                     <th>Produk</th>
                     <th>Agen</th>
                     <th>Pembeli</th>
-                    <th>Voucher</th>
+                    <th>Kode Diskon / Promo</th>
+                    <th>Pembayaran</th>
                     <th>Total Bayar</th>
                     <th>Waktu Bayar</th>
                     <th>Aksi</th>
@@ -376,13 +383,50 @@ export default function ReportsPage() {
                       <td className="text-slate-300">{tx.agent?.username || "Customer"}</td>
                       <td className="text-slate-400">{tx.customerName || "—"}</td>
                       <td>
-                        {tx.voucher ? (
-                          <span className="font-mono text-xs text-brand-400">
-                            {tx.voucher.code}
+                        {tx.discountDetail ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono text-xs text-slate-200 font-semibold">
+                              {tx.discountDetail.code}
+                            </span>
+                            <span
+                              className={cn(
+                                "text-[10px] px-1.5 py-0.2 rounded font-medium",
+                                tx.discountDetail.source === "VOUCHER_RULE" &&
+                                  "bg-brand-500/20 text-brand-300 border border-brand-500/30",
+                                tx.discountDetail.source === "REFERRAL" &&
+                                  "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
+                                tx.discountDetail.source === "PROMO_CODE" &&
+                                  "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+                                tx.discountDetail.source === "VOUCHER_LEGACY" &&
+                                  "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              )}
+                            >
+                              [{tx.discountDetail.label}]
+                            </span>
+                          </div>
+                        ) : tx.voucher ? (
+                          <span className="font-mono text-xs text-amber-400">
+                            {tx.voucher.code} <span className="text-[10px] text-slate-400">[Legacy]</span>
                           </span>
                         ) : (
                           <span className="text-slate-500">—</span>
                         )}
+                      </td>
+                      <td>
+                        <span
+                          className={cn(
+                            "text-xs px-2 py-0.5 rounded font-mono",
+                            tx.paymentType === "FREE_PROMO" &&
+                              "bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold",
+                            tx.paymentType === "MIDTRANS" &&
+                              "bg-blue-500/10 text-blue-300 border border-blue-500/20",
+                            tx.paymentType === "AGENT_CREDIT" &&
+                              "bg-slate-700 text-slate-300",
+                            !tx.paymentType && "text-slate-400"
+                          )}
+                        >
+                          {tx.paymentType || "MIDTRANS"}
+                        </span>
                       </td>
                       <td className="font-semibold text-brand-400">
                         {formatRupiah(tx.finalAmount)}

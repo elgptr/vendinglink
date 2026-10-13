@@ -150,12 +150,21 @@ prod_002,https://example.com/code/ghi789,Batch 2
 
 ### 4.4 Reports (`/admin/reports`)
 
-- Sales Report: Total revenue, by product, by agent
-- Agent Performance: Sales trend, debt aging, approval rate
-- Stock Status: Low stock alerts
-- Export: Download reports as CSV/PDF
+- **Sales Report:** Total omset kotor, total omset bersih, link terjual.
+- **Diskon Terpadu:** Konsolidasi riwayat pemakaian diskon dari 4 sumber (`[Rule]` VoucherRule, `[Referral]` ReferralCode, `[Kompensasi]` PromoCode refund, `[Legacy]` Voucher).
+- **Audit Trail Pembayaran:** Pelabelan transparan antara pembayaran kas (`MIDTRANS`), kredit agen (`AGENT_CREDIT`), dan diskon 100% (`FREE_PROMO`).
+- **Referral Payout Panel:**
+  - Monitoring saldo seluruh referrer (PAYABLE, ACCRUED masa tunggu 15 hari, PAID).
+  - Indikator status kelayakan: `Siap Payout (≥ Rp 20.000)`, `< Ambang (Rollover)`, `Masa Tunggu 15 Hari`, `Rp 0`.
+  - Batch Generator & CSV export untuk transfer manual ke nomor e-wallet (GoPay/OVO).
+- **Export:** Unduh laporan ke format CSV dan Google Drive otomatis.
 
-### 4.5 Settings (`/admin/settings`)
+### 4.5 Promo & Voucher Management (`/admin/voucher-rules`)
+
+- **Promo Berjadwal:** Aturan diskon terjadwal dengan window tanggal UTC, batas kuota total, dan kuota per customer.
+- **Program Referral:** Diskon pelanggan baru (referee) 5% dengan minimal belanja Rp 50.000, serta garansi floor komisi referrer minimal Rp 100 per transaksi.
+
+### 4.6 Settings (`/admin/settings`)
 
 - **Change Password:** Update admin password
 - **AI Configuration:** Anthropic/Google API keys
