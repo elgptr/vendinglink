@@ -8,6 +8,8 @@ const log = createLogger({ module: "promo-accrual" });
 // has not been created yet (first boot / tests).
 const DEFAULT_REFERRAL_COMMISSION_PCT = 5;
 const DEFAULT_ACCRUAL_WINDOW_DAYS = 15;
+// Floor Rp 100 per transaksi baru referee untuk menandai adanya konversi kode referrer
+export const REFERRAL_COMMISSION_FLOOR = 100;
 
 /**
  * Accrue the referrer's commission when a referee order transitions to PAID.
@@ -50,19 +52,12 @@ export async function accrueReferralCommission(
   const windowDays = config?.accrualWindowDays ?? DEFAULT_ACCRUAL_WINDOW_DAYS;
 
   // Commission basis: Transaction.finalAmount (what the referee actually
-  // paid), not originalPrice.
-  let amount = Math.floor((txn.finalAmount * pct) / 100);
+  // paid), with a fixed floor of Rp 100 per qualifying order.
+  let computedAmount = Math.floor((txn.finalAmount * pct) / 100);
   if (config?.referralCommissionCap != null) {
-    amount = Math.min(amount, config.referralCommissionCap);
+    computedAmount = Math.min(computedAmount, config.referralCommissionCap);
   }
-  if (amount <= 0) {
-    log.info("Referral commission is Rp 0 — no credit accrued", {
-      transactionId,
-      finalAmount: txn.finalAmount,
-      pct,
-    });
-    return;
-  }
+  const amount = Math.max(REFERRAL_COMMISSION_FLOOR, computedAmount);
 
   try {
     await tx.customerCredit.create({

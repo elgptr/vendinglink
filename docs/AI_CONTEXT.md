@@ -33,9 +33,15 @@
 
 ### Transaction (Order)
 - `productId`, `agentId` (null for customer)
-- `paymentType` (MIDTRANS | AGENT_CREDIT)
+- `paymentType` (MIDTRANS | AGENT_CREDIT | FREE_PROMO)
 - `status` (PENDING | PAID | EXPIRED)
 - `snapToken` (Midtrans reference), `redeemUrl`
+
+### Promo, Referral & Payout Engine
+- `REFERRAL_NEW` Rule: Diskon referee 5% dari harga produk dengan `minSpend` Rp 50.000.
+- Referral Commission Floor: Komisi referrer dijamin minimal Rp 100 per transaksi referee valid (`REFERRAL_COMMISSION_FLOOR = 100`), termasuk untuk order Rp 0.
+- Masa Tunggu Payout: Komisi berstatus `ACCRUED` selama 15 hari sebelum matang menjadi `PAYABLE`. Ambang minimal penarikan batch Rp 20.000.
+- Supplier Mode Status: Semua produk menggunakan `supplierMode: "MANUAL"` (stok dari `RedeemStock`, dipasok manual CSV atau bot `vendinglink_bridge`). Mode sinkron checkout `AUTO` dan `REZEKI` didepresiasi dalam Cleanup 6.
 
 ---
 
@@ -55,13 +61,18 @@ docs/               All documentation
 
 ## 4. API Endpoints
 
+| Method | Endpoint | Keterangan |
+|---|---|---|
 | POST | `/api/auth/[...nextauth]` | NextAuth login/logout |
 | POST | `/api/auth/register` | Agent registration |
 | GET | `/api/admin/health` | Health check (ADMIN) |
 | PUT | `/api/admin/agents/{id}/approve` | Approve agent (ADMIN) |
-| POST | `/api/checkout/customer` | Customer checkout (Midtrans) |
+| POST | `/api/checkout/customer` | Customer checkout (Midtrans / FREE_PROMO) |
 | POST | `/api/checkout/agent` | Agent credit checkout (AGENT) |
 | POST | `/api/midtrans/webhook` | Payment webhook |
+| GET | `/api/admin/reports` | Laporan penjualan + diskon terpadu & export CSV |
+| GET | `/api/admin/payout-batches` | Riwayat batch payout komisi referral |
+| GET | `/api/admin/payout-batches/summary` | Monitoring saldo & masa tunggu 15 hari seluruh referrer |
 
 ---
 

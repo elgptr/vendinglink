@@ -65,9 +65,13 @@ VendingLink is a **vending machine management system** that enables:
 ### Core Tables
 - **users** — App users (admin & agent), role: `ADMIN` | `AGENT`
 - **products** — Produk digital (LINK | KODE), dengan harga, deskripsi, panduan penggunaan
-- **redeem_stocks** — Item stok individual (URL/kode), status: `AVAILABLE` | `SOLD`
-- **transactions** — Riwayat transaksi, payment: `MIDTRANS` | `AGENT_CREDIT`
-- **vouchers** — Kode diskon dengan kuota dan expiry
+- **redeem_stocks** — Item stok individual (URL/kode), status: `AVAILABLE` | `SOLD`, source: `MANUAL` | `BRIDGE`
+- **transactions** — Riwayat transaksi, payment: `MIDTRANS` | `AGENT_CREDIT` | `FREE_PROMO`
+- **voucher_rules** — Aturan promo terjadwal & referee discount engine baru
+- **referral_codes** — Kode referral pelanggan (1 level, reward komisi)
+- **customer_credits** — Buku besar komisi referral & refund stockout (`ACCRUED` ➔ `PAYABLE` 15 hari)
+- **payout_batches** — Batch pencairan payout komisi referral (GoPay/OVO manual transfer)
+- **vouchers** — Kode diskon legacy (dalam masa transisi & unifikasi laporan)
 - **promo_codes** — Kode promo kompensasi saat stok habis (`STOCKOUT_REFUND`)
 - **ai_configurations** — Konfigurasi AI provider (baseUrl, apiKey, model)
 - **google_drive_configs** — Konfigurasi Google Drive untuk export laporan
@@ -78,8 +82,10 @@ User → Transactions (one-to-many)
 User → RedeemStock via claimedByAgentId (one-to-many)
 Product → RedeemStock (one-to-many)
 Product → Transactions (one-to-many)
-Voucher → Transactions (one-to-many)
-PromoCode → Transactions (one-to-many)
+Customer → ReferralCode (one-to-one)
+Customer → CustomerCredit (one-to-many)
+PayoutBatch → CustomerCredit (one-to-many)
+VoucherRule → VoucherRedemption (one-to-many)
 ```
 
 See full schema: [Database Schema](../../architecture/database-schema.md)
@@ -94,6 +100,8 @@ GET  /api/health                           — Health check
 POST /api/auth/signin                      — Login
 POST /api/auth/signout                     — Logout
 POST /api/chat                             — AI chatbot (customer & agent)
+POST /api/checkout/customer                — Checkout customer (Midtrans / FREE_PROMO)
+GET  /api/customer/order/status            — Cek status pesanan pembeli
 ```
 
 ### Agent Endpoints
@@ -107,9 +115,13 @@ GET  /api/agents/orders                    — View orders
 GET/POST  /api/admin/products              — CRUD produk
 POST      /api/admin/products/generate-description — Generate AI description
 GET/POST  /api/admin/stock                 — Upload & manage redeem stock (CSV)
-GET       /api/admin/reports              — Laporan transaksi + export CSV
+GET       /api/admin/reports              — Laporan transaksi + diskon terpadu & export CSV
 POST      /api/admin/reports/insight      — AI sales insight (streaming)
-GET/POST  /api/admin/vouchers             — Manage voucher
+GET/POST  /api/admin/voucher-rules         — Manage aturan promo & voucher berjadwal
+GET/POST  /api/admin/vouchers             — Manage voucher (legacy)
+GET/POST  /api/admin/payout-batches        — Generate & riwayat batch payout referral
+GET       /api/admin/payout-batches/summary — Ringkasan kredit referrer & tracking 15 hari
+POST      /api/admin/payout-batches/{id}/paid — Konfirmasi transfer manual selesai
 GET/POST  /api/admin/ai-config            — Konfigurasi AI provider
 POST      /api/admin/ai-config/test       — Test koneksi AI
 GET/POST  /api/admin/google-drive-config  — Konfigurasi Google Drive

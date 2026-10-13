@@ -1,8 +1,11 @@
 /**
  * Rezeki Shop Supplier Client
  *
- * Implements ISupplier for Rezeki Shop API.
- * API Key comes from REZEKI_API_KEY env var.
+ * @deprecated [Cleanup 6 - Architectural Boundary]
+ * Direct synchronous purchasing from Storefront checkout is deprecated.
+ * All external stock procurement and supplier interactions are handled
+ * asynchronously by `vendinglink_bridge` pushing into `RedeemStock`.
+ * Kept only for balance checking / diagnostic tools.
  */
 
 import type {

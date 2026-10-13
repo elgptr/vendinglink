@@ -32,12 +32,6 @@ vi.mock("@/lib/kasera", () => ({
 vi.mock("@/lib/paymentConfig", () => ({
   getActivePaymentGateway: () => "MIDTRANS",
 }));
-vi.mock("@/lib/suppliers", () => ({
-  rezekiSupplier: {
-    checkProductStock: vi.fn(),
-    purchase: vi.fn(),
-  },
-}));
 // Public checkout is CSRF-guarded; tests bypass the double-submit check.
 vi.mock("@/lib/csrf", () => ({
   verifyCsrfRequest: () => true,

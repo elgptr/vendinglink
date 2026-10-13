@@ -12,6 +12,11 @@ export interface SyncResult {
   errors: string[];
 }
 
+/**
+ * @deprecated [Cleanup 6 - Architectural Boundary]
+ * Synchronous supplier stock polling is deprecated in Storefront.
+ * Stocks are pushed asynchronously to RedeemStock by vendinglink_bridge.
+ */
 export async function syncSupplierStocks(): Promise<SyncResult> {
   const result: SyncResult = {
     totalChecked: 0,

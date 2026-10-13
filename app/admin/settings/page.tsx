@@ -5,7 +5,6 @@ import AIConfigForm from "@/components/admin/AIConfigForm";
 import PaymentGatewaySettingsCard from "@/components/admin/PaymentGatewaySettingsCard";
 import GoogleDriveSettingsCard from "@/components/admin/GoogleDriveSettingsCard";
 import CleanupSettingsCard from "@/components/admin/CleanupSettingsCard";
-import RezekiSettingsCard from "@/components/admin/RezekiSettingsCard";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
@@ -24,9 +23,6 @@ export default async function AdminSettingsPage() {
       </div>
 
       <div className="grid gap-6">
-        {/* Rezeki Shop Supplier Card */}
-        <RezekiSettingsCard />
-
         {/* Payment Gateway Card */}
         <PaymentGatewaySettingsCard />
 

@@ -103,18 +103,11 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
       });
     }
 
-    if (product.supplierMode === "REZEKI") {
-      import("@/lib/whatsapp").then((wa) => {
-        wa.sendBridgeRezekiModeAlert(product.name).catch((e) => {
-          log.error("Failed to send rezeki mode alert", { error: String(e) });
-        });
+    if (product.supplierMode !== "MANUAL") {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { supplierMode: "MANUAL" },
       });
-      // User says: Reject the request with a 400 error, forcing the Bridge to mark it as NEEDS_REVIEW
-      await prisma.bridgeInboundEvent.update({
-        where: { id: event.id },
-        data: { status: "REJECTED", error: "Product is in REZEKI mode, cannot accept manual keys." },
-      });
-      return { status: 400, message: "Product is in REZEKI mode, cannot accept manual keys. Needs review." };
     }
 
     await prisma.bridgeInboundEvent.update({

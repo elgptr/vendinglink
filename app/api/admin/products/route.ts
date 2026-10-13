@@ -19,7 +19,7 @@ const productSchema = z.object({
   guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().or(z.literal("")),
   guideText: z.string().max(2000).optional(),
   isActive: z.boolean().optional(),
-  supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).optional(),
+  supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).default("MANUAL").optional(),
   supplierProductId: z.string().max(200).optional().nullable(),
   categoryId: z.string().optional().nullable(),
 });
@@ -35,7 +35,7 @@ const updateSchema = z.object({
   guideImageUrl: z.string().url("URL gambar tidak valid").max(2048).optional().nullable().or(z.literal("")),
   guideText: z.string().max(2000).optional().nullable(),
   isActive: z.boolean().optional(),
-  supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).optional(),
+  supplierMode: z.enum(["MANUAL", "REZEKI", "AUTO"]).default("MANUAL").optional(),
   supplierProductId: z.string().max(200).optional().nullable(),
   categoryId: z.string().optional().nullable(),
 });
@@ -153,7 +153,7 @@ export async function PATCH(request: NextRequest) {
       updateData.guideText = guideText ? sanitizeString(guideText) : null;
     }
     if (supplierMode !== undefined) {
-      updateData.supplierMode = supplierMode;
+      updateData.supplierMode = "MANUAL";
     }
     if (supplierProductId !== undefined) {
       updateData.supplierProductId = supplierProductId || null;

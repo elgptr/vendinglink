@@ -11,18 +11,30 @@ vi.mock("@/lib/auth", () => ({
 
 const {
   fetchBridgeSuppliersMock,
+  fetchBridgeSupplierMock,
   createBridgeSupplierMock,
   updateBridgeSupplierMock,
   validateBridgeSupplierMock,
+  checkBalanceMock,
 } = vi.hoisted(() => ({
   fetchBridgeSuppliersMock: vi.fn(),
+  fetchBridgeSupplierMock: vi.fn(),
   createBridgeSupplierMock: vi.fn(),
   updateBridgeSupplierMock: vi.fn(),
   validateBridgeSupplierMock: vi.fn(),
+  checkBalanceMock: vi.fn().mockResolvedValue(150000),
+}));
+
+vi.mock("@/lib/suppliers", () => ({
+  rezekiSupplier: {
+    name: "Rezeki Shop",
+    checkBalance: checkBalanceMock,
+  },
 }));
 
 vi.mock("@/lib/bridge/suppliersClient", () => ({
   fetchBridgeSuppliers: fetchBridgeSuppliersMock,
+  fetchBridgeSupplier: fetchBridgeSupplierMock,
   createBridgeSupplier: createBridgeSupplierMock,
   updateBridgeSupplier: updateBridgeSupplierMock,
   validateBridgeSupplier: validateBridgeSupplierMock,
@@ -92,6 +104,29 @@ describe("P2b Admin Dynamic Suppliers API & Bridge Proxy", () => {
       expect(data.suppliers[0].code).toBe("DGF");
       expect(data.suppliers[0].credentialsMasked).toBe("••••••••");
       expect(data.builtIns).toHaveLength(3);
+    });
+
+    it("returns real-time balances for all registered suppliers when action=balances", async () => {
+      fetchBridgeSuppliersMock.mockResolvedValueOnce({
+        suppliers: [
+          { code: "DGF", displayName: "Digiflazz" },
+        ],
+      });
+      fetchBridgeSupplierMock.mockImplementation((code: string) => {
+        if (code === "DGF") return Promise.resolve({ currentBalance: 320000 });
+        if (code === "PDA") return Promise.resolve({ currentBalance: 50000 });
+        return Promise.resolve({ currentBalance: null });
+      });
+
+      const req = new NextRequest("http://localhost:3000/api/admin/suppliers?action=balances");
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.balances.RZK.balance).toBe(150000);
+      expect(data.balances.RZK.status).toBe("OK");
+      expect(data.balances.DGF.balance).toBe(320000);
     });
   });
 

@@ -78,8 +78,7 @@ export default async function AdminDashboardPage() {
   // Process low stock products (<= 5 items left)
   const lowStockAlerts = activeProducts
     .map((p) => {
-      const isExternal = p.supplierMode === 'REZEKI' || p.supplierMode === 'DIGITALCORE';
-      const effectiveStock = isExternal ? p.supplierStock : p._count.stocks;
+      const effectiveStock = p._count.stocks;
       return { ...p, effectiveStock };
     })
     .filter((p) => p.effectiveStock <= 5)
@@ -356,7 +355,7 @@ export default async function AdminDashboardPage() {
                   <div key={product.id} className="flex items-center justify-between p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
                     <div>
                       <p className="font-medium text-white text-sm">{product.name}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Mode: {product.supplierMode}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Stok RedeemStock</p>
                     </div>
                     <div className="text-right">
                       <p className={`text-lg font-bold ${product.effectiveStock === 0 ? 'text-red-400' : 'text-amber-400'}`}>

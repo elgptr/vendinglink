@@ -22,7 +22,8 @@ export default async function CustomerOrderPage({ params }: OrderPageProps) {
     !transaction ||
     (transaction.paymentType !== "MIDTRANS" &&
       transaction.paymentType !== "DOKU" &&
-      transaction.paymentType !== "KASERA")
+      transaction.paymentType !== "KASERA" &&
+      transaction.paymentType !== "FREE_PROMO")
   ) {
     notFound();
   }
