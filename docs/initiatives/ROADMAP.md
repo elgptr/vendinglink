@@ -390,13 +390,14 @@ PayoutBatch
 - [x] **Keputusan 4 (Audit Trail & paymentType FREE_PROMO):** Transaksi Rp 0 akibat diskon 100% diberi label `paymentType: "FREE_PROMO"` (bukan lagi `"MIDTRANS"`), mempermudah rekonsiliasi kas riil bank/Midtrans vs diskon promosi.
 - [x] **Keputusan 5 (Ekspektasi Payout Batch & Transparansi Kredit Referrer):** UI `/admin/reports` pada panel Payout Batch diperkaya dengan infobox masa tunggu 15 hari, ringkasan saldo PAYABLE/ACCRUED, dan tabel monitoring status kredit seluruh referrer via endpoint `GET /api/admin/payout-batches/summary`.
 
-### [Storefront] Initiative Cleanup 6 — Pembersihan Mode Supplier (AUTO & REZEKI) (PLANNED)
-- **Konteks:** Menegakkan batas arsitektur (*Architectural Boundary*). Storefront tidak boleh memanggil API pembelian supplier secara langsung/sinkron saat checkout. Seluruh pasokan stok eksternal dilakukan secara asinkron oleh `vendinglink_bridge` ke tabel `RedeemStock`.
-- **Rencana Fase:**
-  - **Fase 1 (Data & UI):** Normalisasi seluruh produk aktif ke `supplierMode = "MANUAL"`. Sembunyikan opsi `AUTO` dan `REZEKI` pada form produk inventory.
-  - **Fase 2 (Pruning Checkout):** Hapus percabangan panggilan langsung Rezeki API di alur checkout customer & agent. Kembalikan pemenuhan stok 100% ke `RedeemStock`.
-  - **Fase 3 (Deprecasi Modul):** Arsipkan `lib/suppliers/rezeki.ts` dan `lib/suppliers/sync.ts` di storefront.
-  - **Fase 4 (Skema DB):** Sederhanakan kolom `Product.supplierMode` default `MANUAL` / persiapkan penghapusan kolom pada migrasi database berikutnya.
+### [Storefront] Initiative Cleanup 6 — Pembersihan Mode Supplier (AUTO & REZEKI) (CLOSED · VERIFIED)
+- **Konteks:** Menegakkan batas arsitektur (*Architectural Boundary*). Storefront tidak lagi memanggil API pembelian supplier secara langsung/sinkron saat checkout. Seluruh pasokan stok eksternal dilakukan secara asinkron oleh `vendinglink_bridge` ke tabel `RedeemStock`.
+- **Implementasi Terverifikasi:**
+  - **Fase 1 (Data & Normalisasi Aman):** Script `scripts/normalize-supplier-modes.ts` dan hook di `prisma/seed.ts` memastikan seluruh produk aktif berada pada `supplierMode = "MANUAL"`. Integritas DB produksi aman tanpa penghapusan kolom destruktif.
+  - **Fase 2 (Pruning Checkout):** Dihapus percabangan panggilan langsung Rezeki API di alur checkout customer (`/api/checkout/customer`), checkout agent (`/api/checkout/agent`), dan status settlement (`lib/transactionStatus.ts`). Pemenuhan stok 100% dipasok dari `RedeemStock`.
+  - **Fase 3 (Bridge Topup Unblock):** Dihapus penolakan 400 REZEKI di `lib/bridge/topup.ts`. Topup stok dari Bridge selalu berhasil masuk ke `RedeemStock`.
+  - **Fase 4 (Katalog & Admin UI):** Form admin inventory (`components/admin/SupplierProductLinker.tsx` & `app/admin/inventory/page.tsx`) mengunci mode ke `MANUAL` dan menyediakan input Bridge SKU/supplierProductId opsional. Tombol sync supplier dihapus dari inventory.
+  - **Fase 5 (Deprecasi Modul & Testing):** Modul `lib/suppliers/rezeki.ts` dan `lib/suppliers/sync.ts` dianotasi `@deprecated`. Suite pengujian `__tests__/api/cleanup-supplier-modes.test.ts` berhasil lulus 100%.
 
 ---
 

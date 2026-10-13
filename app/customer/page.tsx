@@ -1,5 +1,4 @@
 import SyncStockButton from "@/components/customer/SyncStockButton";
-import { syncSupplierStocks } from "@/lib/suppliers/sync";
 import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { cache } from "@/lib/cache";
@@ -25,7 +24,7 @@ export const metadata = {
 
 async function getProducts() {
   return cache.getOrSet("catalog-products", async () => {
-    let products = await prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: { isActive: true },
       include: {
         category: true,
@@ -37,41 +36,6 @@ async function getProducts() {
       },
       orderBy: { price: "desc" },
     });
-
-    const needsInitialSync = products.some(
-      (p) =>
-        (p.supplierMode === "REZEKI" || p.supplierMode === "AUTO") &&
-        p.supplierProductId &&
-        (!p.supplierLastCheckedAt || Date.now() - new Date(p.supplierLastCheckedAt).getTime() > 60 * 1000)
-    );
-
-    if (needsInitialSync) {
-      try {
-        // Anti-Ngadat mechanism: Try syncing, but if it takes more than 800ms, 
-        // we just proceed rendering and let the sync finish in the background.
-        await Promise.race([
-          syncSupplierStocks(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 800))
-        ]);
-        
-        // If it succeeded within 800ms, update the products list
-        products = await prisma.product.findMany({
-          where: { isActive: true },
-          include: {
-            category: true,
-            _count: {
-              select: {
-                stocks: { where: { status: "AVAILABLE" } },
-              },
-            },
-          },
-          orderBy: { price: "desc" },
-        });
-      } catch {
-        // If timeout or error, we just ignore and serve the stale products instantly.
-        // The sync might still finish in the background.
-      }
-    }
 
     return products.map((p): ProductForCatalog => ({
       id: p.id,

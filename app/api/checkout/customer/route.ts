@@ -6,7 +6,6 @@ import { createKaseraQrisPayment } from "@/lib/kasera";
 import { getActivePaymentGateway } from "@/lib/paymentConfig";
 import { generateOrderId, sanitizeString } from "@/lib/utils";
 import { claimAvailableStock } from "@/lib/stock";
-import { rezekiSupplier } from "@/lib/suppliers";
 import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
@@ -117,92 +116,15 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Check stock availability ──────────────────────────────────────────
-    // For REZEKI products, stock is fulfilled via external API at settlement
-    // time — there are no local RedeemStock rows to count. Skip the check so
-    // customers can proceed to payment. If the API fails (balance insufficient,
-    // out of stock at supplier), the promo-code compensation flow handles it.
-    // For MANUAL and AUTO, check local stock as before (AUTO also has a
-    // fallback at settlement if local stock runs out).
-    if (product.supplierMode === "MANUAL") {
-      const availableStock = await prisma.redeemStock.count({
-        where: { productId, status: "AVAILABLE" },
-      });
+    const availableStock = await prisma.redeemStock.count({
+      where: { productId, status: "AVAILABLE" },
+    });
 
-      if (availableStock === 0) {
-        return NextResponse.json(
-          { error: "Stok produk habis" },
-          { status: 400 }
-        );
-      }
-    } else if (product.supplierMode === "REZEKI") {
-      if (!product.supplierProductId) {
-        return NextResponse.json(
-          { error: "Produk belum dihubungkan ke supplier" },
-          { status: 400 }
-        );
-      }
-
-      const stockCheck = await rezekiSupplier.checkProductStock(product.supplierProductId);
-      if (stockCheck && (!stockCheck.inStock || stockCheck.stock <= 0)) {
-        await prisma.product.update({
-          where: { id: product.id },
-          data: {
-            supplierStock: 0,
-            isSupplierAvailable: false,
-            supplierLastCheckedAt: new Date(),
-          },
-        }).catch(() => null);
-
-        return NextResponse.json(
-          { error: "Stok produk di supplier sedang habis. Mohon tunggu beberapa saat hingga supplier restock." },
-          { status: 400 }
-        );
-      } else if (stockCheck && stockCheck.inStock) {
-        await prisma.product.update({
-          where: { id: product.id },
-          data: {
-            supplierStock: stockCheck.stock,
-            isSupplierAvailable: true,
-            supplierLastCheckedAt: new Date(),
-          },
-        }).catch(() => null);
-      }
-    } else if (product.supplierMode === "AUTO") {
-      const availableStock = await prisma.redeemStock.count({
-        where: { productId, status: "AVAILABLE" },
-      });
-
-      if (availableStock === 0) {
-        if (!product.supplierProductId) {
-          return NextResponse.json({ error: "Stok produk habis" }, { status: 400 });
-        }
-
-        const stockCheck = await rezekiSupplier.checkProductStock(product.supplierProductId);
-        if (stockCheck && (!stockCheck.inStock || stockCheck.stock <= 0)) {
-          await prisma.product.update({
-            where: { id: product.id },
-            data: {
-              supplierStock: 0,
-              isSupplierAvailable: false,
-              supplierLastCheckedAt: new Date(),
-            },
-          }).catch(() => null);
-
-          return NextResponse.json(
-            { error: "Stok produk habis (lokal & supplier)." },
-            { status: 400 }
-          );
-        } else if (stockCheck && stockCheck.inStock) {
-          await prisma.product.update({
-            where: { id: product.id },
-            data: {
-              supplierStock: stockCheck.stock,
-              isSupplierAvailable: true,
-              supplierLastCheckedAt: new Date(),
-            },
-          }).catch(() => null);
-        }
-      }
+    if (availableStock === 0) {
+      return NextResponse.json(
+        { error: "Stok produk habis" },
+        { status: 400 }
+      );
     }
 
     // ─── Calculate price with voucher or stockout-refund promo code ────────
@@ -286,29 +208,16 @@ export async function POST(request: NextRequest) {
       try {
         let redeemUrlStr = "";
 
-        if (product.supplierMode === "REZEKI") {
-          if (!product.supplierProductId) {
-            return NextResponse.json({ error: "Produk belum di-link ke Rezeki" }, { status: 400 });
-          }
-          const outcome = await rezekiSupplier.purchase(product.supplierProductId, 1);
-          if (!outcome.success) {
-            return NextResponse.json({ error: `Gagal beli dari supplier (${outcome.code}): ${outcome.message}` }, { status: 400 });
-          }
-          redeemUrlStr = outcome.items[0] || "";
-        }
-
         const result = await prisma.$transaction(async (tx) => {
-          if (product.supplierMode !== "REZEKI") {
-            const claimedStock = await claimAvailableStock(tx, productId, {
-              customerName: sanitizedCustomerName,
-              customerPhone: sanitizedCustomerPhone,
-            });
+          const claimedStock = await claimAvailableStock(tx, productId, {
+            customerName: sanitizedCustomerName,
+            customerPhone: sanitizedCustomerPhone,
+          });
 
-            if (!claimedStock) {
-              throw new Error("NO_STOCK");
-            }
-            redeemUrlStr = claimedStock.redeemUrl;
+          if (!claimedStock) {
+            throw new Error("NO_STOCK");
           }
+          redeemUrlStr = claimedStock.redeemUrl;
 
           if (resolvedPromoCodeId) {
             const promoUpdate = await tx.promoCode.updateMany({

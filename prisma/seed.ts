@@ -200,6 +200,12 @@ async function main() {
     console.log(`✅ REFERRAL_NEW VoucherRule updated (5% discount, minSpend Rp 50.000)`);
   }
 
+  // Normalize any existing non-MANUAL products to MANUAL (Cleanup 6)
+  await prisma.product.updateMany({
+    where: { supplierMode: { not: "MANUAL" } },
+    data: { supplierMode: "MANUAL" },
+  });
+
   console.log("\n🎉 Seed completed!");
   console.log("⚠️  For production: use change-password.js to set real passwords.");
 }

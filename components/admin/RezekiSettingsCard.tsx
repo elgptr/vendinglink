@@ -72,7 +72,7 @@ export default function RezekiSettingsCard() {
           <div>
             <h2 className="text-xl font-semibold text-white">Rezeki Shop Supplier</h2>
             <p className="text-sm text-slate-400">
-              Supplier otomatis via Rezeki Shop
+              Integrasi supplier pihak ketiga (Dikelola via Bridge)
             </p>
           </div>
         </div>
@@ -148,15 +148,13 @@ export default function RezekiSettingsCard() {
       {/* Info */}
       <div className="text-xs text-slate-500 space-y-1">
         <p>
-          • Untuk menonaktifkan Rezeki Shop, set{" "}
-          <code className="text-slate-400">REZEKI_ENABLED=false</code> di .env
+          • <strong>Architectural Boundary:</strong> Pengadaan stok dari Rezeki Shop dijalankan secara asinkron oleh <code className="text-slate-400">vendinglink_bridge</code> langsung ke tabel <code className="text-slate-400">RedeemStock</code>.
         </p>
         <p>
-          • Top up saldo via Bot Telegram Rezeki Shop → Menu Deposit
+          • Checkout pelanggan di Storefront bersifat 100% lokal dan instan dari stok yang tersedia.
         </p>
         <p>
-          • Koneksikan produk ke Rezeki Shop di halaman{" "}
-          <strong className="text-slate-400">Inventori → Edit Produk</strong>
+          • Top up saldo akun supplier dilakukan via Telegram bot supplier terkait.
         </p>
       </div>
     </div>

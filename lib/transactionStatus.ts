@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { claimAvailableStock } from "@/lib/stock";
 import { generatePromoCode } from "@/lib/utils";
 import { sendPaymentNotification, type WhatsAppPaymentData } from "@/lib/whatsapp";
-import { rezekiSupplier } from "@/lib/suppliers";
 import { accrueReferralCommission } from "@/lib/promo/accrual";
 import { releasePendingRedemptions } from "@/lib/promo/releasePending";
 import { createLogger } from "@/lib/logger";
@@ -18,21 +17,11 @@ type ApplyResult =
 
 const PROMO_CODE_EXPIRY_DAYS = 30;
 
-// ── Supplier-aware stock resolver ─────────────────────────────────────────────
+// ── Stock resolver ────────────────────────────────────────────────────────────
 /**
- * Resolves a redeemUrl for a transaction based on the product's supplierMode:
- *
- * - MANUAL:       claim from local RedeemStock table (existing behaviour, no change)
- * - REZEKI:       purchase from Rezeki API automatically
- * - AUTO:         try MANUAL first; if out-of-stock, fallback to REZEKI
- *
+ * Resolves a redeemUrl for a transaction from local RedeemStock.
  * Returns the redeemUrl string on success, or null on failure.
  * A null return triggers the promo code compensation flow upstream.
- *
- * NOTE: The external API call (REZEKI) runs outside the Prisma tx because
- * it leaves the database boundary. The API is called first; the DB is only
- * written to if the purchase succeeds. Failed DB writes after a successful
- * API purchase are logged for manual recovery.
  */
 async function resolveStock(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
@@ -43,66 +32,12 @@ async function resolveStock(
     customerPhone: string | null;
   }
 ): Promise<string | null> {
-  const product = await tx.product.findUnique({
-    where: { id: info.productId },
-    select: { supplierMode: true, supplierProductId: true },
+  const stock = await claimAvailableStock(tx, info.productId, {
+    claimedByAgentId: info.agentId,
+    customerName: info.customerName,
+    customerPhone: info.customerPhone,
   });
-
-  const mode = product?.supplierMode ?? "MANUAL";
-  const supplierProductId = product?.supplierProductId;
-
-  // ── MANUAL: existing atomic CAS logic ────────────────────────────────────
-  if (mode === "MANUAL") {
-    const stock = await claimAvailableStock(tx, info.productId, {
-      claimedByAgentId: info.agentId,
-      customerName: info.customerName,
-      customerPhone: info.customerPhone,
-    });
-    return stock?.redeemUrl ?? null;
-  }
-
-  // ── AUTO: try local MANUAL stock first ───────────────────────────────────
-  if (mode === "AUTO") {
-    const stock = await claimAvailableStock(tx, info.productId, {
-      claimedByAgentId: info.agentId,
-      customerName: info.customerName,
-      customerPhone: info.customerPhone,
-    });
-    if (stock) return stock.redeemUrl;
-  }
-
-  // ── REZEKI (or AUTO fallback) ──────────────────────────────────────────
-  if (!supplierProductId) {
-    log.error("supplierMode is REZEKI/AUTO but supplierProductId is not set", {
-      productId: info.productId,
-    });
-    return null;
-  }
-
-  const outcome = await rezekiSupplier.purchase(supplierProductId, 1);
-
-  if (!outcome.success) {
-    if (outcome.code === "OUT_OF_STOCK") {
-      await tx.product.update({
-        where: { id: info.productId },
-        data: {
-          supplierStock: 0,
-          isSupplierAvailable: false,
-          supplierLastCheckedAt: new Date(),
-        },
-      }).catch(() => null);
-    }
-    log.error("Rezeki purchase failed at settlement", {
-      productId: info.productId,
-      supplierProductId,
-      code: outcome.code,
-      message: outcome.message,
-    });
-    return null;
-  }
-
-  // Quantity is always 1 here; batch checkout is handled separately
-  return outcome.items[0] ?? null;
+  return stock?.redeemUrl ?? null;
 }
 
 // ── WhatsApp notification helper ──────────────────────────────────────────────

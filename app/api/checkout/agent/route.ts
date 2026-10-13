@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderId } from "@/lib/utils";
 import { claimAvailableStockBatch } from "@/lib/stock";
-import { rezekiSupplier } from "@/lib/suppliers";
 import { createRateLimiter } from "@/lib/rateLimit";
 import { verifyCsrfRequest, extractCsrfTokens } from "@/lib/csrf";
 import { validatePayloadSize } from "@/lib/inputValidation";
@@ -114,42 +113,17 @@ export async function POST(request: NextRequest) {
     // ─── Database Transaction ──────────────────────────────────────────────
     try {
       let redeemUrlsStr = "";
-      
-      // If REZEKI, purchase from external API first to avoid holding DB transaction
-      // and to ensure we only charge the agent if the API succeeds.
-      if (product.supplierMode === "REZEKI") {
-        if (!product.supplierProductId) {
-          return NextResponse.json({ error: "Produk belum di-link ke Rezeki" }, { status: 400 });
-        }
-        const outcome = await rezekiSupplier.purchase(product.supplierProductId, quantity);
-        if (!outcome.success) {
-          if (outcome.code === "OUT_OF_STOCK") {
-            await prisma.product.update({
-              where: { id: product.id },
-              data: {
-                supplierStock: 0,
-                isSupplierAvailable: false,
-                supplierLastCheckedAt: new Date(),
-              },
-            }).catch(() => null);
-          }
-          return NextResponse.json({ error: `Gagal beli dari supplier (${outcome.code}): ${outcome.message}` }, { status: 400 });
-        }
-        redeemUrlsStr = outcome.items.join(",");
-      }
 
       const result = await prisma.$transaction(async (tx) => {
-        // 1. Atomically claim available stock units in batch (only for MANUAL/AUTO)
-        if (product.supplierMode !== "REZEKI") {
-          const claimedStocks = await claimAvailableStockBatch(tx, productId, quantity, {
-            claimedByAgentId: session.user.id,
-          });
+        // 1. Atomically claim available stock units in batch
+        const claimedStocks = await claimAvailableStockBatch(tx, productId, quantity, {
+          claimedByAgentId: session.user.id,
+        });
 
-          if (!claimedStocks || claimedStocks.length < quantity) {
-            throw new Error("NO_STOCK");
-          }
-          redeemUrlsStr = claimedStocks.map(s => s.redeemUrl).join(',');
+        if (!claimedStocks || claimedStocks.length < quantity) {
+          throw new Error("NO_STOCK");
         }
+        redeemUrlsStr = claimedStocks.map(s => s.redeemUrl).join(',');
 
         // 2. Create the transaction as PAID
         const transaction = await tx.transaction.create({
