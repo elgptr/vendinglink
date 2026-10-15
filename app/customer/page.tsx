@@ -80,7 +80,7 @@ export default async function CustomerCatalogPage() {
         <HeroBanner />
 
         {/* Catalog Section */}
-        <section id="catalog" className="scroll-mt-8">
+        <section id="catalog" className="scroll-mt-28 sm:scroll-mt-32">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 animate-fade-in">
             <h2 className="section-header-title text-2xl sm:text-3xl">Pilihan Produk</h2>
             <div className="sm:ml-auto flex items-center gap-2 text-sm text-slate-400">

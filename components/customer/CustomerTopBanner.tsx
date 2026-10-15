@@ -127,7 +127,7 @@ export default function CustomerTopBanner() {
             <img
               src={promo.bannerImageUrl}
               alt={promo.name || "Promo Banner"}
-              className="w-full h-auto max-h-[85px] sm:max-h-[100px] object-cover sm:object-contain mx-auto"
+              className="w-full h-auto max-h-[65px] sm:max-h-[85px] md:max-h-[100px] object-cover sm:object-contain mx-auto"
             />
           </div>
         </div>

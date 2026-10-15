@@ -147,18 +147,18 @@ Uji restore otomatis mingguan ke database sementara + validasi jumlah baris.
 
 **Pekerjaan bridge (v1.1-BR):**
 
-- [ ] BR-8a: Tambah `rclone` ke service `db-backup` di `docker-compose.yml`.
+- [X] BR-8a: Tambah `rclone` ke service `db-backup` di `docker-compose.yml`.
   Konfigurasi env: `BACKUP_RCLONE_REMOTE` (nama remote rclone, misal `gdrive:backups/bridge`).
-- [ ] BR-8b: Enkripsi dump sebelum upload. Gunakan `openssl enc -aes-256-cbc` dengan kunci
+- [X] BR-8b: Enkripsi dump sebelum upload. Gunakan `openssl enc -aes-256-cbc` dengan kunci
   `BACKUP_ENCRYPTION_KEY` yang **disimpan terpisah dari VPS** (misalnya di password manager atau
   secret store terpisah dari `KEYS_ENCRYPTION_KEY`).
-- [ ] BR-8c: Perbarui `scripts/export_decrypted.ts` — tambah flag `--plaintext` yang wajib
+- [X] BR-8c: Perbarui `scripts/export_decrypted.ts` — tambah flag `--plaintext` yang wajib
   eksplisit. Default output dienkripsi dengan `KEYS_ENCRYPTION_KEY` yang sudah ada.
-- [ ] BR-8d: Tambah script `scripts/verify_backup.sh` — restore dump terakhir ke DB `bridge_verify`,
+- [X] BR-8d: Tambah script `scripts/verify_backup.sh` — restore dump terakhir ke DB `bridge_verify`,
   bandingkan `SELECT COUNT(*) FROM "Transaction"`, kirim hasil ke Telegram admin.
-- [ ] BR-8e: Dokumentasikan prosedur escrow kunci di `docs/operations/key-escrow.md`.
-- [ ] BR-8f: Tambah env vars baru ke `src/config/env.ts` (Zod schema) dan `.env.example`.
-- [ ] BR-8g: Perbaiki contoh `KEYS_ENCRYPTION_KEY=1234567890=` di `README.md:52` — bukan 32-byte
+- [X] BR-8e: Dokumentasikan prosedur escrow kunci di `docs/operations/key-escrow.md`.
+- [X] BR-8f: Tambah env vars baru ke `src/config/env.ts` (Zod schema) dan `.env.example`.
+- [X] BR-8g: Perbaiki contoh `KEYS_ENCRYPTION_KEY=1234567890=` di `README.md:52` — bukan 32-byte
   valid dan berisiko disalin apa adanya.
 
 **Acceptance criteria:**
