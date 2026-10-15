@@ -8,6 +8,7 @@ import { generatePromoCode } from '@/lib/utils';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     $transaction: vi.fn((callback) => callback(prisma)),
+    $queryRaw: vi.fn().mockResolvedValue([{ id: 'tx-1' }]),
     transaction: {
       findUnique: vi.fn(),
       update: vi.fn(),

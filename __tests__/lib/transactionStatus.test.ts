@@ -171,4 +171,37 @@ describe("transactionStatus.ts — applyMidtransStatusUpdate", () => {
       expect(result.transaction.refundPromoCodeId).toBeDefined();
     }
   });
+
+  it("prevents double-claiming stock when concurrent settlement calls fire simultaneously", async () => {
+    const product = await createMockProduct(prisma);
+    await createMockStock(prisma, product.id, 2);
+    const transaction = await createMockTransaction(prisma, {
+      productId: product.id,
+      status: "PENDING",
+      paymentType: "KASERA",
+      customerName: "RaceTest",
+      customerPhone: "08123456789",
+    });
+
+    // Fire 2 simultaneous settlements (simulating Kasera webhook + customer polling arriving together)
+    const [res1, res2] = await Promise.all([
+      applyMidtransStatusUpdate(transaction.orderId, "settlement"),
+      applyMidtransStatusUpdate(transaction.orderId, "settlement"),
+    ]);
+
+    // Exactly one should succeed in updating
+    const updateCount = [res1.updated, res2.updated].filter(Boolean).length;
+    expect(updateCount).toBe(1);
+
+    // Exactly one stock should be claimed (status: SOLD), other must remain AVAILABLE
+    const soldCount = await prisma.redeemStock.count({
+      where: { productId: product.id, status: "SOLD" },
+    });
+    expect(soldCount).toBe(1);
+
+    const availableCount = await prisma.redeemStock.count({
+      where: { productId: product.id, status: "AVAILABLE" },
+    });
+    expect(availableCount).toBe(1);
+  });
 });

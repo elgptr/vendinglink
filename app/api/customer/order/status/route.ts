@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
           midtransStatus.fraud_status
         );
 
-        if (result.updated) {
+        if (result.updated || (!result.updated && result.reason === "ALREADY_PROCESSED")) {
           transaction = await prisma.transaction.findUnique({
             where: { orderId },
             select: transactionSelect,
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
 
         if (internalStatus) {
           const result = await applyMidtransStatusUpdate(orderId, internalStatus);
-          if (result.updated) {
+          if (result.updated || (!result.updated && result.reason === "ALREADY_PROCESSED")) {
             transaction = await prisma.transaction.findUnique({
               where: { orderId },
               select: transactionSelect,

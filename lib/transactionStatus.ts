@@ -107,6 +107,24 @@ export async function applyMidtransStatusUpdate(
   // and the stock resolution happen atomically, preventing race conditions
   // if webhook and polling fire simultaneously.
   const result = await prisma.$transaction(async (tx: Prisma.TransactionClient): Promise<ApplyResult> => {
+    // ─── Concurrency Guard: Row-Level Locking ──────────────────────────────
+    // In PostgreSQL (READ COMMITTED), findUnique does NOT acquire a lock.
+    // Concurrent callers (e.g. Kasera/Midtrans webhook + customer status polling)
+    // could both read status: "PENDING" before either commits, leading to duplicate
+    // stock claims and multiple WhatsApp notifications for a single payment.
+    // Explicitly lock the transaction row with SELECT ... FOR UPDATE so concurrent
+    // executions for the same orderId are strictly serialized.
+    if (typeof tx.$queryRaw === "function") {
+      try {
+        await tx.$queryRaw`SELECT id FROM "transactions" WHERE "orderId" = ${orderId} FOR UPDATE`;
+      } catch (lockError) {
+        log.warn("Could not acquire row lock, falling back to read-committed check", {
+          orderId,
+          error: lockError instanceof Error ? lockError.message : String(lockError),
+        });
+      }
+    }
+
     const transaction = await tx.transaction.findUnique({
       where: { orderId },
     });
@@ -119,7 +137,8 @@ export async function applyMidtransStatusUpdate(
     if (
       transaction.status === "PAID" ||
       transaction.status === "CANCELLED" ||
-      transaction.status === "EXPIRED"
+      transaction.status === "EXPIRED" ||
+      Boolean(transaction.redeemUrl)
     ) {
       return { updated: false, reason: "ALREADY_PROCESSED" as const };
     }
