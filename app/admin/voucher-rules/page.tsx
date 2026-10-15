@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { submitVoucherRule } from "@/lib/voucherRuleForm";
 import {
   Sparkles,
   Upload,
@@ -72,6 +73,7 @@ export default function VoucherRulesPage() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [validationInfo, setValidationInfo] = useState<{
     type: "success" | "warning" | "error" | null;
     message: string;
@@ -206,36 +208,28 @@ export default function VoucherRulesPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setMessage("");
+    setSubmitting(true);
+    try {
+      const result = await submitVoucherRule({
+        form,
+        editing,
+      });
 
-    // Enforce mandatory CTA Target URL for FULL_STRIP mode if image is provided
-    if (form.bannerType === "FULL_STRIP" && form.bannerImageUrl) {
-      if (!form.bannerCtaUrl || !form.bannerCtaUrl.trim()) {
-        setMessage("CTA Target URL wajib diisi jika menggunakan Banner Horizontal Penuh (Full Strip) agar banner dapat diklik pelanggan.");
+      if (!result.success) {
+        setMessage(result.message);
         return;
       }
-    }
 
-    const body = {
-      ...form,
-      ...(editing ? { id: editing } : {}),
-      validFrom: new Date(form.validFrom).toISOString(),
-      validUntil: new Date(form.validUntil).toISOString(),
-    };
-    const res = await fetch("/api/admin/voucher-rules", {
-      method: editing ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setMessage(err.error || "Gagal menyimpan. Periksa kode, waktu, kategori, kuota, atau konfigurasi banner.");
-      return;
+      setMessage(result.message);
+      setEditing(null);
+      setForm({ ...empty });
+      setValidationInfo(null);
+      await load();
+    } catch {
+      setMessage("Koneksi ke server gagal. Periksa jaringan Anda dan coba lagi.");
+    } finally {
+      setSubmitting(false);
     }
-    setMessage("Aturan voucher dan banner tersimpan dengan sukses.");
-    setEditing(null);
-    setForm({ ...empty });
-    setValidationInfo(null);
-    await load();
   };
 
   return (
@@ -803,9 +797,10 @@ export default function VoucherRulesPage() {
         <div className="flex items-center gap-3 pt-4 border-t border-surface-border">
           <button
             type="submit"
-            className="rounded-xl bg-brand-500 px-6 py-2.5 font-bold text-black shadow-lg shadow-brand-500/20 hover:bg-brand-400 transition-colors"
+            disabled={submitting || uploading}
+            className="rounded-xl bg-brand-500 px-6 py-2.5 font-bold text-black shadow-lg shadow-brand-500/20 hover:bg-brand-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {editing ? "Simpan Perubahan Promo" : "Buat Promo & Aktifkan"}
+            {submitting ? "Menyimpan..." : (editing ? "Simpan Perubahan Promo" : "Buat Promo & Aktifkan")}
           </button>
           {editing && (
             <button

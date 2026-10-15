@@ -25,7 +25,7 @@ export default function CustomerTopBanner() {
   const [promos, setPromos] = useState<ActivePromo[]>([]);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
-  const [now, setNow] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     let active = true;

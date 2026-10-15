@@ -225,6 +225,8 @@ export async function cleanupTestDatabase(prisma: PrismaClient): Promise<void> {
     () => prisma.voucherRule.deleteMany({}),
     () => prisma.payoutBatch.deleteMany({}),
     () => prisma.transaction.deleteMany({}),
+    () => prisma.referralCode.deleteMany({}),
+    () => prisma.customer.deleteMany({}),
     () => prisma.voucher.deleteMany({}),
     () => prisma.promoCode.deleteMany({}),
     () => prisma.redeemStock.deleteMany({}),
