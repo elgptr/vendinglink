@@ -27,3 +27,5 @@ _archive/
 test-results/
 playwright-report/
 scratch/
+public/uploads/*
+!public/uploads/.gitkeep

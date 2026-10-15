@@ -48,12 +48,47 @@ describe("admin scheduled VoucherRule lifecycle", () => {
     const changed = await PATCH(request({ ...body, id: rule.id, name: "Baru" }, "PATCH"));
     expect(changed.status).toBe(200);
     expect((await changed.json()).name).toBe("Baru");
-    const buyer = await db.customer.create({ data: { phone: "628556987654" } });
+    const buyer = await db.customer.create({ data: { phone: `62855${Date.now()}` } });
     const product = await db.product.create({ data: { name: "Scheduled test", price: 5000, type: "LINK" } });
     const order = await db.transaction.create({ data: { orderId: "SCHEDULED-ORDER", productId: product.id, originalPrice: 5000, finalAmount: 4000 } });
     await db.voucherRedemption.create({ data: { ruleId: rule.id, customerId: buyer.id, transactionId: order.id } });
     expect((await DELETE(new NextRequest(`http://localhost/api/admin/voucher-rules?id=${rule.id}`, { method: "DELETE" }))).status).toBe(200);
     expect((await db.voucherRule.findUniqueOrThrow({ where: { id: rule.id } })).isActive).toBe(false);
     expect(await db.voucherRedemption.count({ where: { ruleId: rule.id } })).toBe(1);
+  });
+
+  it("updates and clears categoryId via PATCH", async () => {
+    const category = await db.category.create({
+      data: { name: "Snack & Drink", slug: `snack-drink-${Date.now()}` },
+    });
+
+    const createRes = await POST(request({ ...body, code: "SCHED-CAT-UPD", categoryId: null }));
+    expect(createRes.status).toBe(201);
+    const createdRule = await createRes.json();
+    expect(createdRule.categoryId).toBeNull();
+
+    // Update with categoryId
+    const patchWithCat = await PATCH(
+      request({ ...body, id: createdRule.id, code: "SCHED-CAT-UPD", categoryId: category.id }, "PATCH")
+    );
+    expect(patchWithCat.status).toBe(200);
+    const patchedRule = await patchWithCat.json();
+    expect(patchedRule.categoryId).toBe(category.id);
+
+    // Verify in DB
+    const inDbWithCat = await db.voucherRule.findUniqueOrThrow({ where: { id: createdRule.id } });
+    expect(inDbWithCat.categoryId).toBe(category.id);
+
+    // Update clearing categoryId back to null
+    const patchClearCat = await PATCH(
+      request({ ...body, id: createdRule.id, code: "SCHED-CAT-UPD", categoryId: null }, "PATCH")
+    );
+    expect(patchClearCat.status).toBe(200);
+    const clearedRule = await patchClearCat.json();
+    expect(clearedRule.categoryId).toBeNull();
+
+    // Verify in DB
+    const inDbCleared = await db.voucherRule.findUniqueOrThrow({ where: { id: createdRule.id } });
+    expect(inDbCleared.categoryId).toBeNull();
   });
 });

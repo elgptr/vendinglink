@@ -162,6 +162,7 @@ prod_002,https://example.com/code/ghi789,Batch 2
 ### 4.5 Promo & Voucher Management (`/admin/voucher-rules`)
 
 - **Promo Berjadwal:** Aturan diskon terjadwal dengan window tanggal UTC, batas kuota total, dan kuota per customer.
+- **Banner Promosi Dinamis (DataCamp Style):** Konfigurasi banner pengumuman atas layar di seluruh halaman pelanggan, lengkap dengan upload/lampiran grafis (validasi dimensi real-time & batas ukuran file 2MB), salin kode otomatis, tombol CTA kustom, dan tombol dismiss (✕).
 - **Program Referral:** Diskon pelanggan baru (referee) 5% dengan minimal belanja Rp 50.000, serta garansi floor komisi referrer minimal Rp 100 per transaksi.
 
 ### 4.6 Settings (`/admin/settings`)

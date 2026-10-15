@@ -19,13 +19,27 @@ const fields = z.object({
   quotaPerCustomer: z.number().int().positive().max(100),
   categoryId: z.string().nullable(),
   isActive: z.boolean(),
+  bannerImageUrl: z.string().nullable().optional(),
+  bannerType: z.enum(["FULL_STRIP", "BADGE_COMPOSED"]).optional().default("BADGE_COMPOSED"),
+  bannerText: z.string().nullable().optional(),
+  bannerCtaText: z.string().nullable().optional(),
+  bannerCtaUrl: z.string().nullable().optional(),
 }).strict().refine((v) => new Date(v.validUntil) > new Date(v.validFrom), {
   message: "Akhir promo harus setelah awal promo", path: ["validUntil"],
 }).refine((v) => v.discountType !== "PERCENT" || (v.value <= 100 && v.maxDiscount !== null), {
   message: "Persentase maksimal 100 dan wajib memiliki batas diskon", path: ["maxDiscount"],
+}).refine((v) => {
+  if (v.bannerType === "FULL_STRIP" && v.bannerImageUrl) {
+    return Boolean(v.bannerCtaUrl && v.bannerCtaUrl.trim().length > 0);
+  }
+  return true;
+}, {
+  message: "CTA Target URL wajib diisi jika menggunakan Banner Horizontal Penuh (Full Strip)",
+  path: ["bannerCtaUrl"],
 });
 
-const bad = () => NextResponse.json({ error: "Data aturan voucher tidak valid" }, { status: 400 });
+const bad = (detail?: string) =>
+  NextResponse.json({ error: detail || "Data aturan voucher tidak valid" }, { status: 400 });
 const conflict = () => NextResponse.json({ error: "Kode sudah digunakan atau kuota di bawah pemakaian" }, { status: 409 });
 
 async function authorized() { return Boolean(await requireAdminSession()); }
@@ -42,16 +56,21 @@ export async function POST(request: NextRequest) {
   let body: unknown;
   try { body = await request.json(); } catch { return bad(); }
   const parsed = fields.safeParse(body);
-  if (!parsed.success) return bad();
-  const { validFrom, validUntil, ...rest } = parsed.data;
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+    return bad(`Validasi gagal — ${issues}`);
+  }
+  const { validFrom, validUntil, categoryId, ...rest } = parsed.data;
   try {
     const rule = await prisma.voucherRule.create({ data: {
       ...rest, kind: "SCHEDULED", validFrom: new Date(validFrom), validUntil: new Date(validUntil),
+      ...(categoryId ? { category: { connect: { id: categoryId } } } : {}),
     } });
     return NextResponse.json(rule, { status: 201 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return conflict();
-    return bad();
+    console.error("[voucher-rules POST]", error);
+    return bad(error instanceof Error ? error.message : "Gagal menyimpan ke database");
   }
 }
 
@@ -62,17 +81,21 @@ export async function PATCH(request: NextRequest) {
   if (!body || typeof body !== "object" || !("id" in body) || typeof body.id !== "string") return bad();
   const { id, ...values } = body as Record<string, unknown> & { id: string };
   const parsed = fields.safeParse(values);
-  if (!parsed.success) return bad();
-  const { validFrom, validUntil, ...rest } = parsed.data;
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+    return bad(`Validasi gagal — ${issues}`);
+  }
+  const { validFrom, validUntil, categoryId, ...rest } = parsed.data;
   try {
     const result = await prisma.voucherRule.updateMany({ where: {
       id, kind: "SCHEDULED", ...(rest.quotaTotal === null ? {} : { usedCount: { lte: rest.quotaTotal } }),
-    }, data: { ...rest, validFrom: new Date(validFrom), validUntil: new Date(validUntil) } });
+    }, data: { ...rest, categoryId, validFrom: new Date(validFrom), validUntil: new Date(validUntil) } });
     if (!result.count) return conflict();
     return NextResponse.json(await prisma.voucherRule.findUnique({ where: { id } }));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return conflict();
-    return bad();
+    console.error("[voucher-rules PATCH]", error);
+    return bad(error instanceof Error ? error.message : "Gagal menyimpan perubahan ke database");
   }
 }
 
