@@ -189,6 +189,30 @@ describe("Kasera Pay Library (lib/kasera.ts)", () => {
       expect(result.qrString).toBe("00020101021226670016COM.KASERA...");
     });
 
+    it("should clamp amounts below 1,000 to the minimum Kasera QRIS amount of 1,000", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          id: "payreq_min_test",
+          status: "pending",
+          amount: 1000,
+          checkout_url: "https://pay.kasera.id/p/test-url",
+        }),
+      });
+      global.fetch = mockFetch;
+
+      await createKaseraQrisPayment({
+        orderId: "VM-MIN-1",
+        amount: 1,
+        productName: "Rp 1 Sandbox Item",
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [, options] = mockFetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.amount).toBe(1000);
+    });
+
     it("should throw informative error if API key is missing", async () => {
       delete process.env.KASERA_API_KEY;
 

@@ -13,6 +13,7 @@ interface CustomerCheckoutFormProps {
   productId: string;
   productName: string;
   productPrice: number;
+  preOrderRequestId?: string;
 }
 
 type PromoState = {
@@ -28,6 +29,7 @@ type PromoState = {
 export default function CustomerCheckoutForm({
   productId,
   productPrice,
+  preOrderRequestId,
 }: CustomerCheckoutFormProps) {
   const router = useRouter();
   const [customerName, setCustomerName] = useState("");
@@ -127,6 +129,7 @@ export default function CustomerCheckoutForm({
         },
         body: JSON.stringify({
           productId,
+          preOrderRequestId,
           promoCodeId: promo?.redeemCode ? undefined : promo?.isVoucher ? undefined : promo?.id,
           voucherId: promo?.redeemCode ? undefined : promo?.isVoucher ? promo?.id : undefined,
           discountCode: promo?.redeemCode,

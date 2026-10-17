@@ -140,7 +140,7 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
       return { status: 201, message: "All items already exist", inserted: 0, skipped: items.length };
     }
 
-    // 5. Insert new items
+    // 5. Insert new items and fulfill any PENDING_DELIVERY transactions
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.redeemStock.createMany({
         data: newItems.map((item) => ({
@@ -152,7 +152,39 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
         })),
       });
 
-      return await tx.bridgeInboundEvent.update({
+      const pendingTx = await tx.transaction.findFirst({
+        where: {
+          productId: product.id,
+          status: "PAID",
+          stockStatus: "PENDING_DELIVERY",
+          redeemUrl: null,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      let fulfilledItem: string | undefined;
+      if (pendingTx && newItems.length > 0) {
+        fulfilledItem = newItems[0];
+        await tx.redeemStock.updateMany({
+          where: { productId: product.id, redeemUrl: fulfilledItem },
+          data: {
+            status: "CLAIMED",
+            claimedAt: new Date(),
+            customerName: pendingTx.customerName,
+            customerPhone: pendingTx.customerPhone,
+          },
+        });
+
+        await tx.transaction.update({
+          where: { id: pendingTx.id },
+          data: {
+            redeemUrl: fulfilledItem,
+            stockStatus: "FULFILLED",
+          },
+        });
+      }
+
+      const eventUpdate = await tx.bridgeInboundEvent.update({
         where: { id: event.id },
         data: {
           status: "COMPLETED",
@@ -160,12 +192,25 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
           skippedQty: items.length - newItems.length,
         },
       });
+
+      return { eventUpdate, pendingTx, fulfilledItem };
     });
+
+    if (result.pendingTx && result.fulfilledItem) {
+      import("@/lib/transactionStatus").then((ts) => {
+        ts.notifyPaymentSuccess({
+          ...result.pendingTx!,
+          redeemUrl: result.fulfilledItem!,
+          stockStatus: "FULFILLED",
+          refundPromoCodeId: null,
+        }).catch((err) => log.error("Failed to notify delivery via WA", { error: String(err) }));
+      });
+    }
 
     log.info("Bridge top-up completed", {
       transactionId: transaction_id,
-      inserted: result.insertedQty,
-      skipped: result.skippedQty,
+      inserted: result.eventUpdate.insertedQty,
+      skipped: result.eventUpdate.skippedQty,
     });
 
     return {
@@ -173,8 +218,8 @@ export async function handleStockTopup(data: z.infer<typeof stockTopupSchema>) {
       message: "Top-up successful",
       transaction_id: transaction_id,
       product_id: product.id,
-      inserted: result.insertedQty,
-      skipped: result.skippedQty,
+      inserted: result.eventUpdate.insertedQty,
+      skipped: result.eventUpdate.skippedQty,
     };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);

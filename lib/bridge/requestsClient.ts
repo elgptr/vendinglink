@@ -14,6 +14,7 @@ function getBridgeSecretKey(): string {
 export interface CreateProductRequestInput {
   customerRef: string;
   query: string;
+  productId?: string | null;
   categorySlug?: string | null;
   maxBudget?: number | null;
 }
@@ -49,6 +50,7 @@ export async function createBridgeProductRequest(
       url,
       customerRef: input.customerRef,
       query: input.query,
+      productId: input.productId,
     });
 
     const res = await fetch(url, {
@@ -61,6 +63,7 @@ export async function createBridgeProductRequest(
       body: JSON.stringify({
         customerRef: input.customerRef,
         query: input.query,
+        vlProductId: input.productId || undefined,
         categorySlug: input.categorySlug || undefined,
         maxBudget: input.maxBudget || undefined,
       }),

@@ -57,6 +57,7 @@ describe("resolveRouteProtection", () => {
       ["/api/discount/validate"],
       ["/api/csrf"],
       ["/api/cron/sync-supplier-stock"],
+      ["/pre-order/track/trk_123"],
     ])("%s → next even without a session", (path) => {
       expect(resolveRouteProtection(path, noSession)).toEqual({ type: "next" });
     });

@@ -2,7 +2,7 @@ import { calculateProductStock } from "@/lib/productStock";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import CustomerCheckoutForm from "@/components/customer/CustomerCheckoutForm";
-import { formatRupiah } from "@/lib/utils";
+import { formatRupiah, getPreOrderDisplayPrices } from "@/lib/utils";
 import { ArrowLeft, Package, ShieldCheck, Zap, Clock } from "lucide-react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
@@ -16,22 +16,43 @@ export const dynamic = "force-dynamic";
 
 interface CheckoutPageProps {
   params: Promise<{ productId: string }>;
+  searchParams?: Promise<{ requestId?: string }>;
 }
 
-export default async function CustomerCheckoutPage({ params }: CheckoutPageProps) {
+export default async function CustomerCheckoutPage({ params, searchParams }: CheckoutPageProps) {
   const p = await params;
+  const s = searchParams ? await searchParams : {};
   const product = await prisma.product.findFirst({
     where: { id: p.productId, isActive: true },
   });
 
   if (!product) notFound();
 
+  let hasPreOrderAccess = false;
+  let preOrderInfo: { id: string; quotedPrice?: number | null } | null = null;
+  if (s.requestId) {
+    const preOrder = await prisma.customerProductRequest.findFirst({
+      where: {
+        id: s.requestId,
+        status: { in: ["FOUND", "CONFIRMED"] },
+      },
+      select: {
+        id: true,
+        quotedPrice: true,
+      },
+    });
+    if (preOrder) {
+      hasPreOrderAccess = true;
+      preOrderInfo = preOrder;
+    }
+  }
+
   const manualStock = await prisma.redeemStock.count({
     where: { productId: product.id, status: "AVAILABLE" },
   });
   const stockCount = calculateProductStock({ ...product, stocksCount: manualStock });
 
-  if (stockCount === 0) {
+  if (stockCount === 0 && !hasPreOrderAccess) {
     return (
       <div className="max-w-xl mx-auto py-16 px-4 text-center animate-slide-up">
         <div className="p-8 bg-surface-card rounded-3xl border border-surface-border shadow-2xl space-y-6">
@@ -65,7 +86,9 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
     );
   }
 
-  const hasDiscount = product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price;
+  const effectivePrice = product.price;
+  const { originalPrice: strikePrice, discountPercent } = getPreOrderDisplayPrices(product);
+  const hasDiscount = strikePrice > effectivePrice;
 
   return (
     <div className="max-w-6xl mx-auto animate-slide-up pt-8 pb-20">
@@ -97,7 +120,9 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
                 <h2 className="font-bold text-white text-xl mb-1">{product.name}</h2>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="stock-dot-available" />
-                  <span className="text-sm text-emerald-400 font-medium">{stockCount} stok tersedia</span>
+                  <span className="text-sm text-emerald-400 font-medium">
+                    {hasPreOrderAccess ? "1 kuota pre-order dialokasikan" : `${stockCount} stok tersedia`}
+                  </span>
                 </div>
                 
                 {product.description && (
@@ -108,18 +133,35 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
                   <p className="text-xs text-slate-500 mb-1">Total Harga</p>
                   <div className="flex flex-col">
                     {hasDiscount && (
-                      <span className="price-tag-original">
-                        {formatRupiah(product.originalPrice!)}
-                      </span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="price-tag-original">
+                          {formatRupiah(strikePrice)}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                          Diskon {discountPercent}%
+                        </span>
+                      </div>
                     )}
                     <p className={hasDiscount ? "price-tag text-brand-400 text-3xl" : "price-tag text-3xl"}>
-                      {formatRupiah(product.price)}
+                      {formatRupiah(effectivePrice)}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
           </Card>
+
+          {hasPreOrderAccess && (
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-3 text-emerald-400 text-sm">
+              <ShieldCheck size={20} className="flex-shrink-0" />
+              <div>
+                <p className="font-bold text-white">Pre-Order Khusus Terverifikasi</p>
+                <p className="text-xs text-emerald-300">
+                  Kuota produk ini telah diamankan oleh bagian Purchasing kami khusus untuk Anda.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Trust points */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -145,7 +187,8 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
           <CustomerCheckoutForm
             productId={product.id}
             productName={product.name}
-            productPrice={product.price}
+            productPrice={effectivePrice}
+            preOrderRequestId={s.requestId}
           />
         </div>
       </div>

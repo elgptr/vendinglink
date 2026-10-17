@@ -404,7 +404,9 @@ export async function sendBridgeNewProductAlert(
 export interface ProductFoundNotificationData {
   customerPhone: string;
   productName: string;
-  quotedPrice: number;
+  productPrice?: number;
+  originalPrice?: number;
+  quotedPrice?: number;
   confirmationUrl: string;
 }
 
@@ -415,25 +417,35 @@ export async function sendProductFoundNotification(
   const normalizedPhone = normalizePhone(data.customerPhone);
   if (!normalizedPhone) return { sent: false, error: "Invalid customer phone", mode };
 
-  const formattedPrice = `Rp ${data.quotedPrice.toLocaleString("id-ID")}`;
+  const finalPrice = data.productPrice ?? data.quotedPrice ?? 0;
+  const formattedPrice = `Rp ${finalPrice.toLocaleString("id-ID")}`;
+  const strikeFormatted =
+    data.originalPrice && data.originalPrice > finalPrice
+      ? `~Rp ${data.originalPrice.toLocaleString("id-ID")}~`
+      : null;
+
+  const priceLine = strikeFormatted
+    ? `Harga Promo: *${formattedPrice}* (${strikeFormatted} diskon 40%)`
+    : `Harga Promo: *${formattedPrice}*`;
+
   const message = [
-    `*Kabar Baik! Produk Ditemukan* 🎉`,
+    `*Kabar Baik! Kuota Produk Berhasil Diamankan* 🎉`,
     ``,
-    `Produk yang Anda minta:`,
-    `*${data.productName}*`,
-    `Penawaran Harga: *${formattedPrice}*`,
+    `Halo Kak! Bagian Purchasing kami berhasil mengamankan kuota stok untuk:`,
+    `📦 *${data.productName}*`,
+    priceLine,
     ``,
-    `Stok terbatas dari supplier. Segera klik link di bawah untuk konfirmasi pesanan Anda:`,
+    `Kuota dialokasikan khusus untuk Anda. Segera klik link di bawah untuk menyelesaikan pesanan Anda:`,
     data.confirmationUrl,
     ``,
-    `_Link konfirmasi berlaku terbatas. Terima kasih telah menggunakan VendingLink!_`,
+    `_Link berlaku terbatas. Terima kasih telah menggunakan VendingLink!_`,
   ].join("\n");
 
   if (mode === "mock") {
     log.info("WhatsApp (mock): sendProductFoundNotification", {
       to: normalizedPhone,
       productName: data.productName,
-      quotedPrice: data.quotedPrice,
+      price: finalPrice,
     });
     return { sent: true, mode: "mock" };
   }
@@ -481,4 +493,146 @@ export async function sendProductStatusNotification(
 
   const result = await sendViaSaungwa(normalizedPhone, message);
   return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
-}
+}
+
+export interface AdminMappingConfirmationAlertData {
+  productName: string;
+  customerPhone: string;
+  supplierCode: string;
+  supplierProductId: string;
+  quotedPrice: number;
+  requestId: string;
+}
+
+export async function sendAdminMappingConfirmationAlert(
+  data: AdminMappingConfirmationAlertData
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const adminPhone = process.env.ADMIN_PHONE || "6282254203272";
+  const normalizedPhone = normalizePhone(adminPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid admin phone", mode };
+
+  const formattedPrice = `Rp ${data.quotedPrice.toLocaleString("id-ID")}`;
+  const message = [
+    `*🚨 KONFIRMASI MAPPING DIBUTUHKAN* 🤖`,
+    ``,
+    `Halo Admin, ada pesanan pre-order yang berhasil dicocokkan oleh Hermes dan *membutuhkan persetujuan mapping Anda*:`,
+    ``,
+    `• *Produk:* ${data.productName}`,
+    `• *Supplier:* ${data.supplierCode} (SKU: ${data.supplierProductId})`,
+    `• *Harga Modal:* ${formattedPrice}`,
+    `• *Customer (WA):* ${data.customerPhone}`,
+    `• *Request ID:* ${data.requestId}`,
+    ``,
+    `👉 *Aksi Diperlukan:* Buka bot Telegram VendingLink dan tekan tombol:`,
+    `[✅ Setujui Mapping] atau [❌ Tolak]`,
+    ``,
+    `_Pemberitahuan SaungWA otomatis jika Anda sedang tidak standby di Telegram._`,
+  ].join("\n");
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendAdminMappingConfirmationAlert", {
+      to: normalizedPhone,
+      productName: data.productName,
+      supplierCode: data.supplierCode,
+      supplierProductId: data.supplierProductId,
+      quotedPrice: data.quotedPrice,
+    });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+export interface AdminPreOrderRequestAlertData {
+  productName: string;
+  customerPhone: string;
+  maxBudget?: number | null;
+  requestId: string;
+}
+
+export async function sendAdminPreOrderReceivedAlert(
+  data: AdminPreOrderRequestAlertData
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const adminPhone = process.env.ADMIN_PHONE || "6282254203272";
+  const normalizedPhone = normalizePhone(adminPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid admin phone", mode };
+
+  const budgetInfo = data.maxBudget
+    ? `Rp ${data.maxBudget.toLocaleString("id-ID")}`
+    : "Tanpa batas anggaran";
+  const message = [
+    `*📥 PRE-ORDER BARU DITERIMA* 🛒`,
+    ``,
+    `Pelanggan baru saja mengajukan pre-order produk di etalase:`,
+    `• *Produk:* ${data.productName}`,
+    `• *Customer (WA):* ${data.customerPhone}`,
+    `• *Maksimal Anggaran:* ${budgetInfo}`,
+    `• *Request ID:* ${data.requestId}`,
+    ``,
+    `🤖 *Hermes Agent* sedang otomatis mencari supplier terbaik. Jika cocok, konfirmasi mapping akan segera dikirimkan ke Telegram bot Anda.`,
+  ].join("\n");
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendAdminPreOrderReceivedAlert", {
+      to: normalizedPhone,
+      productName: data.productName,
+      customerPhone: data.customerPhone,
+    });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+export interface CustomerPreOrderTrackingData {
+  customerPhone: string;
+  productName: string;
+  maxBudget?: number | null;
+  trackingUrl: string;
+}
+
+export async function sendCustomerPreOrderTrackingNotification(
+  data: CustomerPreOrderTrackingData
+): Promise<WhatsAppSendResult> {
+  const mode = getMode();
+  const normalizedPhone = normalizePhone(data.customerPhone);
+  if (!normalizedPhone) return { sent: false, error: "Invalid customer phone", mode };
+
+  const formattedBudget = data.maxBudget
+    ? `Rp ${data.maxBudget.toLocaleString("id-ID")}`
+    : "Sesuai harga terbaik supplier";
+
+  const message = [
+    `*STATUS PRE-ORDER: PERMINTAAN DITERIMA* 📦`,
+    ``,
+    `Halo Kak! Permintaan pengadaan produk Anda telah kami terima di VendingLink:`,
+    ``,
+    `• *Produk:* ${data.productName}`,
+    `• *Target Anggaran:* ${formattedBudget}`,
+    `• *Status:* 🔍 Bagian Purchasing Kami Sedang Berburu Stok`,
+    `• *Estimasi Waktu:* ~3 hingga 5 Menit`,
+    ``,
+    `Pantau progres live pencarian bagian Purchasing kami melalui link tracking khusus berikut:`,
+    `👉 ${data.trackingUrl}`,
+    ``,
+    `Kami juga akan mengirimkan update WhatsApp begitu stok terverifikasi dan siap untuk di-checkout. Terima kasih!`,
+  ].join("\n");
+
+  if (mode === "mock") {
+    log.info("WhatsApp (mock): sendCustomerPreOrderTrackingNotification", {
+      to: normalizedPhone,
+      productName: data.productName,
+      trackingUrl: data.trackingUrl,
+    });
+    return { sent: true, mode: "mock" };
+  }
+
+  const result = await sendViaSaungwa(normalizedPhone, message);
+  return { sent: result.success, messageId: result.messageId, error: result.error, mode: "live" };
+}
+
+

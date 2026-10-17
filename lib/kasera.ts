@@ -65,8 +65,13 @@ export async function createKaseraQrisPayment(
     ? params.customerPhone.replace(/[^0-9+]/g, "").substring(0, 20)
     : undefined;
 
+  // Kasera Pay (and Indonesian QRIS standard) enforces a minimum transaction amount of Rp 1,000.
+  // In development / testing environments where products or test quotes may be set to Rp 1 or Rp 10,
+  // clamp the gateway charge amount to 1,000 so that QRIS creation does not fail with 422 amount_too_small.
+  const chargeAmount = Math.max(1000, Math.round(params.amount));
+
   const payload = {
-    amount: Math.round(params.amount),
+    amount: chargeAmount,
     description: cleanDescription,
     external_id: params.orderId,
     payment_methods: ["qris"],

@@ -147,6 +147,53 @@ describe("Cleanup 6: Supplier Modes (AUTO & REZEKI) Safely Deprecated", () => {
       expect(data.snapToken).toBe("test-snap-token-cleanup");
       expect(data.orderId).toBeDefined();
     });
+
+    it("allows checkout without local RedeemStock when verified preOrderRequestId is provided", async () => {
+      const emptyProduct = await createMockProduct(prisma, {
+        name: "Produk Pre-Order",
+        price: 50000,
+        supplierMode: "MANUAL",
+      });
+
+      const preOrder = await prisma.customerProductRequest.create({
+        data: {
+          customerPhone: "08123456789",
+          customerRef: "cust_test_preorder",
+          productId: emptyProduct.id,
+          productName: emptyProduct.name,
+          status: "FOUND",
+          quotedPrice: 45000,
+          expiresAt: new Date(Date.now() + 86400000),
+        },
+      });
+
+      const req = new NextRequest("http://localhost:3000/api/checkout/customer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-forwarded-for": "10.88.1.3",
+        },
+        body: JSON.stringify({
+          productId: emptyProduct.id,
+          preOrderRequestId: preOrder.id,
+          customerName: "Budi Preorder",
+          customerPhone: "08123456789",
+        }),
+      });
+
+      const res = await customerCheckout(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.orderId).toBeDefined();
+      expect(data.originalPrice).toBe(50000);
+      expect(data.amount).toBe(50000);
+
+      const updatedRequest = await prisma.customerProductRequest.findUnique({
+        where: { id: preOrder.id },
+      });
+      expect(updatedRequest?.transactionId).toBe(data.orderId);
+    });
   });
 
   describe("3. Bridge topup inbound no longer blocked by REZEKI mode", () => {

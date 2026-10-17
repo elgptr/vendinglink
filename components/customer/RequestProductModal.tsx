@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, Sparkles, Send, CheckCircle2, AlertCircle, ArrowRight, ExternalLink } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 
@@ -21,10 +22,14 @@ export default function RequestProductModal({
   onClose,
   product,
 }: RequestProductModalProps) {
+  const router = useRouter();
   const [customerPhone, setCustomerPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [trackingUrl, setTrackingUrl] = useState<string | null>(null);
+  const [guardCheckoutUrl, setGuardCheckoutUrl] = useState<string | null>(null);
+  const [guardTrackingUrl, setGuardTrackingUrl] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -32,6 +37,8 @@ export default function RequestProductModal({
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setGuardCheckoutUrl(null);
+    setGuardTrackingUrl(null);
 
     try {
       const res = await fetch("/api/customer/product-requests", {
@@ -51,19 +58,29 @@ export default function RequestProductModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Gagal mengirim permintaan.");
+        if (res.status === 409 && data.trackingUrl) {
+          setGuardTrackingUrl(data.trackingUrl);
+        } else if (res.status === 400 && data.checkoutUrl) {
+          setGuardCheckoutUrl(data.checkoutUrl);
+        }
+        throw new Error(data.message || data.error || "Gagal mengirim permintaan.");
       }
 
+      const generatedTrackingUrl =
+        data.trackingUrl || `/pre-order/track/${data.trackingToken || data.id}`;
+      setTrackingUrl(generatedTrackingUrl);
       setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        setCustomerPhone("");
-        onClose();
-      }, 3500);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenTracking = () => {
+    if (trackingUrl) {
+      router.push(trackingUrl);
+      onClose();
     }
   };
 
@@ -110,9 +127,37 @@ export default function RequestProductModal({
             </div>
 
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-400 text-xs mb-4">
-                <AlertCircle size={16} className="flex-shrink-0" />
-                <span>{error}</span>
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2 text-red-400 text-xs mb-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{error}</span>
+                </div>
+                {guardTrackingUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2 text-xs border-red-400/40 text-red-300 hover:text-white flex items-center justify-center gap-1.5"
+                    onClick={() => {
+                      router.push(guardTrackingUrl);
+                      onClose();
+                    }}
+                  >
+                    Buka Tracking Pre-Order Aktif <ArrowRight size={14} />
+                  </Button>
+                )}
+                {guardCheckoutUrl && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full mt-2 text-xs text-black font-bold flex items-center justify-center gap-1.5"
+                    onClick={() => {
+                      router.push(guardCheckoutUrl);
+                      onClose();
+                    }}
+                  >
+                    Beli Sekarang di Checkout <ArrowRight size={14} />
+                  </Button>
+                )}
               </div>
             )}
 
@@ -130,7 +175,7 @@ export default function RequestProductModal({
                   required
                 />
                 <span className="text-[11px] text-slate-500 mt-1 block">
-                  Kami akan mengirim link penawaran instan ke WhatsApp ini saat stok ditemukan.
+                  Link live tracking pengadaan akan langsung dikirimkan ke WhatsApp Anda.
                 </span>
               </div>
 
@@ -155,12 +200,24 @@ export default function RequestProductModal({
             </div>
             <h4 className="text-xl font-bold text-white">Permintaan Terkirim!</h4>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Worker pencarian kami sedang menghubungi jaringan supplier untuk produk{" "}
-              <strong>{product.name}</strong>.
+              Bagian Purchasing kami sedang mencari alokasi stok untuk produk{" "}
+              <strong>{product.name}</strong> (~3–5 menit).
             </p>
-            <p className="text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 p-3 rounded-xl">
-              Cek WhatsApp Anda secara berkala untuk notifikasi penawaran harga & link pembelian.
+            <p className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl">
+              📲 Link live tracking unik telah dikirim ke nomor WhatsApp Anda.
             </p>
+
+            <div className="pt-2">
+              <Button
+                id="btn-open-live-tracking"
+                variant="primary"
+                className="w-full text-black font-bold flex items-center justify-center gap-2 shadow-glow"
+                onClick={handleOpenTracking}
+              >
+                Pantau Live Tracking Sekarang
+                <ArrowRight size={16} />
+              </Button>
+            </div>
           </div>
         )}
       </div>
