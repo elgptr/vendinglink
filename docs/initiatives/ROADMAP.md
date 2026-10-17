@@ -67,7 +67,7 @@ Setiap perubahan kontrak wajib direvisi di kedua dokumen sebelum implementasi.
 | v1.0  | Foundation                                | CLOSED · VERIFIED           | Selesai       |
 | v1.1  | Ketahanan Data & Fondasi Katalog (P0)     | CLOSED · VERIFIED           | Sprint 1      |
 | v1.2  | Program Promo & Loyalitas (P1)            | CLOSED · VERIFIED           | Sprint 2      |
-| v2.0  | Agentic Purchasing & Supplier Dinamis (P2)| IN PROGRESS (P2a VERIFIED)  | Sprint 3 (P2a)|
+| v2.0  | Agentic Purchasing & Supplier Dinamis (P2)| CLOSED · VERIFIED           | Sprint 3 (P2a/b)|
 | v3.x  | Long-Term / P3                            | OPTIONAL · GATED            | TBD           |
 
 ---
@@ -590,7 +590,7 @@ enum SupplierStatus {
 - [x] BR-P2b-3: Update `SupplierFactory` — load dari tabel `Supplier` (DB), RZK hardcode sebagai fallback.
 - [x] BR-P2b-4: `POST /api/v1/suppliers` + `PATCH /api/v1/suppliers/:code` dengan Bearer auth.
 - [x] BR-P2b-5: Validation worker — dry-run saat supplier baru didaftarkan.
-- [ ] BR-P2b-6: Hermes Agent adapter builder pipeline (feature-flagged `AGENT_ADAPTER_BUILD_ENABLED`) — sanitizer layer, sandbox Vitest runner, GitHub API Draft PR creator, notif link PR ke Telegram.
+- [x] BR-P2b-6: Hermes Agent adapter builder pipeline (feature-flagged `AGENT_ADAPTER_BUILD_ENABLED`) — sanitizer layer, sandbox Vitest runner, GitHub API Draft PR creator, notif link PR ke Telegram.
 - [x] BR-P2b-7: Command `/suppliers` — list semua supplier dan statusnya.
 - [x] BR-P2b-8: `SUPPLIER_RZK_*` di `env.ts` jadi deprecated (baca tapi tidak required, backward-compat).
 
@@ -671,7 +671,7 @@ Bangun CMS minimal di storefront dengan MDX atau rich-text editor yang mirip tel
 | TD-1 | Nol test file di `src/` meski Vitest + nock + supertest terpasang. `npm run test` tidak memverifikasi apa pun. | TINGGI — wajib selesai sebelum P2a deploy | P0/v1.1 |
 | TD-2 | `scripts/export_decrypted.ts` menulis kunci terdekripsi ke JSON plaintext tanpa flag eksplisit. File sudah ada di working tree. | TINGGI — data kunci di disk tanpa enkripsi | P0/v1.1 |
 | TD-3 | `README.md:52` contoh `KEYS_ENCRYPTION_KEY=1234567890=` bukan 32-byte valid, berisiko disalin apa adanya. | MEDIUM | P0/v1.1 (BR-8g) |
-| TD-4 | `db.ts:12` logging `query` aktif di production — noise log dan potensi ekspos query sensitif. Ganti ke `['error']` di production. | MEDIUM | P0/v1.1 |
+| TD-4 | `db.ts:12` logging `query` aktif di production — noise log dan potensi ekspos query sensitif. Ganti ke `['error']` di production. | ✅ RESOLVED (db.ts production check) | P0/v1.1 |
 | TD-5 | `ProductMapping` model di schema tapi 0 referensi di `src/` (dead model). `vlProductId = "[UNKNOWN]"` di orchestrator. | MEDIUM | P0/v1.1 (BR-5a) |
 | TD-6 | `orchestrator.ts:42-52` `executePurchase()` stub kosong + import menganggur. | LOW | P2a (BR-P2a-1) |
 | TD-7 | Session middleware in-memory (`session.ts:20`). Restart bot = state AWAITING_EMAIL hilang. Cukup untuk admin tunggal, tapi dokumentasikan limitasinya di README. | LOW | Opsional |
