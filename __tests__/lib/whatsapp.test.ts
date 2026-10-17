@@ -247,4 +247,92 @@ describe("sendPaymentNotification (live mode)", () => {
     expect(result.sent).toBe(false);
     expect(result.error).toBe("Invalid phone");
   });
+
+  describe("Admin Pre-Order & Mapping Alerts", () => {
+    it("sendAdminMappingConfirmationAlert formats message and calls Saungwa in live mode", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ message_status: "Success", data: { message_id: "saungwa-map-999" } }),
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      process.env.ADMIN_PHONE = "628999888777";
+      const { sendAdminMappingConfirmationAlert } = await import("@/lib/whatsapp");
+
+      const result = await sendAdminMappingConfirmationAlert({
+        productName: "Duolingo Super 1 Year",
+        customerPhone: "628123456789",
+        supplierCode: "RZK",
+        supplierProductId: "duo_1y",
+        quotedPrice: 120000,
+        requestId: "req-test-999",
+      });
+
+      expect(result.sent).toBe(true);
+      expect(mockFetch).toHaveBeenCalledOnce();
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://app.saungwa.com/api/create-message");
+      const body = options.body as FormData;
+      expect(body.get("to")).toBe("628999888777");
+      expect(body.get("message")).toContain("KONFIRMASI MAPPING DIBUTUHKAN");
+      expect(body.get("message")).toContain("Duolingo Super 1 Year");
+      expect(body.get("message")).toContain("Setujui Mapping");
+    });
+
+    it("sendAdminPreOrderReceivedAlert formats message and calls Saungwa in live mode", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ message_status: "Success", data: { message_id: "saungwa-po-888" } }),
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      process.env.ADMIN_PHONE = "628999888777";
+      const { sendAdminPreOrderReceivedAlert } = await import("@/lib/whatsapp");
+
+      const result = await sendAdminPreOrderReceivedAlert({
+        productName: "Canva Pro 1 Year",
+        customerPhone: "628123456789",
+        maxBudget: 50000,
+        requestId: "req-test-po-888",
+      });
+
+      expect(result.sent).toBe(true);
+      expect(mockFetch).toHaveBeenCalledOnce();
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://app.saungwa.com/api/create-message");
+      const body = options.body as FormData;
+      expect(body.get("to")).toBe("628999888777");
+      expect(body.get("message")).toContain("PRE-ORDER BARU DITERIMA");
+      expect(body.get("message")).toContain("Canva Pro 1 Year");
+      expect(body.get("message")).toContain("Rp 50.000");
+    });
+
+    it("sendCustomerPreOrderTrackingNotification formats message with trackingUrl in live mode", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ message_status: "Success", data: { message_id: "saungwa-trk-999" } }),
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      const { sendCustomerPreOrderTrackingNotification } = await import("@/lib/whatsapp");
+
+      const result = await sendCustomerPreOrderTrackingNotification({
+        customerPhone: "081234567890",
+        productName: "Cursor AI Pro",
+        maxBudget: 250000,
+        trackingUrl: "https://vendinglink.com/pre-order/track/trk_abc123",
+      });
+
+      expect(result.sent).toBe(true);
+      expect(mockFetch).toHaveBeenCalledOnce();
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://app.saungwa.com/api/create-message");
+      const body = options.body as FormData;
+      expect(body.get("to")).toBe("6281234567890");
+      expect(body.get("message")).toContain("STATUS PRE-ORDER: PERMINTAAN DITERIMA");
+      expect(body.get("message")).toContain("Cursor AI Pro");
+      expect(body.get("message")).toContain("https://vendinglink.com/pre-order/track/trk_abc123");
+    });
+  });
 });
+

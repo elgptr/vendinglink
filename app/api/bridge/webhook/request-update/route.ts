@@ -7,8 +7,10 @@ import { checkBridgeRateLimit } from "@/lib/bridge/rateLimit";
 import {
   sendProductFoundNotification,
   sendProductStatusNotification,
+  sendAdminMappingConfirmationAlert,
 } from "@/lib/whatsapp";
 import { createLogger } from "@/lib/logger";
+import { getPreOrderDisplayPrices } from "@/lib/utils";
 
 const log = createLogger({ module: "bridge-webhook-request-update" });
 
@@ -119,20 +121,46 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.PUBLIC_BASE_URL ||
       "http://localhost:3000";
-    const confirmationUrl = `${baseUrl.replace(/\/$/, "")}/request-confirm/${updated.id}`;
+    const trackingToken = updated.trackingToken || updated.id;
+    const confirmationUrl = `${baseUrl.replace(/\/$/, "")}/pre-order/track/${trackingToken}`;
 
     if (status === "FOUND" && updated.quotedPrice && !updated.notifiedAt) {
+      const product = updated.productId
+        ? await prisma.product.findUnique({
+            where: { id: updated.productId },
+            select: { price: true, originalPrice: true, showOriginalPrice: true },
+          })
+        : null;
+
+      const productPrice = product?.price ?? (typeof updated.maxBudget === "number" ? updated.maxBudget : Math.round(updated.quotedPrice * 1.5));
+      const displayPrices = product
+        ? getPreOrderDisplayPrices(product)
+        : getPreOrderDisplayPrices({ price: productPrice });
+
       log.info("Sending product found notification to customer via WhatsApp", {
         to: updated.customerPhone,
         productName: updated.productName,
-        quotedPrice: updated.quotedPrice,
+        price: productPrice,
       });
 
       await sendProductFoundNotification({
         customerPhone: updated.customerPhone,
         productName: updated.productName,
-        quotedPrice: updated.quotedPrice,
+        productPrice,
+        originalPrice: displayPrices.originalPrice,
         confirmationUrl,
+      });
+
+      // Notify Admin via SaungWA that mapping confirmation is needed in Telegram bot
+      await sendAdminMappingConfirmationAlert({
+        productName: updated.productName,
+        customerPhone: updated.customerPhone,
+        supplierCode: foundSupplierCode || "UNKNOWN",
+        supplierProductId: foundProductId || "UNKNOWN",
+        quotedPrice: updated.quotedPrice,
+        requestId: updated.id,
+      }).catch((err) => {
+        log.warn("Failed to dispatch admin mapping alert via SaungWA", { error: err?.message });
       });
 
       await prisma.customerProductRequest.update({

@@ -85,6 +85,10 @@ All agent behavior flows from these:
 | ❌ Ignore test failures | Hides problems | Fix or ask for checkpoint |
 | ❌ Use `any` type in TypeScript | Defeats type safety | Use proper types or ask lead |
 | ❌ Mix generated files with source | Repository bloat | Exclude via .gitignore |
+| ❌ Leak supplier cost (`quotedPrice`) or supplier code (`RZK`) | Exposes confidential vendor trade secrets & margins | Redact all supplier fields in public APIs (`/api/customer/product-requests/track/*`) |
+| ❌ Charge customer supplier cost (`quotedPrice`) | Destroys merchant gross profit margin | Always charge catalog selling price `product.price` in checkout |
+| ❌ Expose "Hermes" or AI agent branding to customers | Confuses customers with internal jargon | Always use "bagian Purchasing kami" in public UI & WhatsApp |
+| ❌ Bypass stock check without valid pre-order | Causes overselling & phantom fulfillment | Strictly verify `requestId` is `STOCKED` and matched to product |
 
 ---
 

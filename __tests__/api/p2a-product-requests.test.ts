@@ -13,11 +13,17 @@ vi.mock("@/lib/auth", () => ({
 const {
   sendProductFoundNotificationMock,
   sendProductStatusNotificationMock,
+  sendAdminMappingConfirmationAlertMock,
+  sendAdminPreOrderReceivedAlertMock,
+  sendCustomerPreOrderTrackingNotificationMock,
   createBridgeProductRequestMock,
   confirmBridgeProductRequestMock,
 } = vi.hoisted(() => ({
   sendProductFoundNotificationMock: vi.fn().mockResolvedValue({ sent: true, mode: "mock" }),
   sendProductStatusNotificationMock: vi.fn().mockResolvedValue({ sent: true, mode: "mock" }),
+  sendAdminMappingConfirmationAlertMock: vi.fn().mockResolvedValue({ sent: true, mode: "mock" }),
+  sendAdminPreOrderReceivedAlertMock: vi.fn().mockResolvedValue({ sent: true, mode: "mock" }),
+  sendCustomerPreOrderTrackingNotificationMock: vi.fn().mockResolvedValue({ sent: true, mode: "mock" }),
   createBridgeProductRequestMock: vi.fn().mockResolvedValue({
     success: true,
     requestId: "brg-req-mock-12345",
@@ -36,6 +42,9 @@ vi.mock("@/lib/whatsapp", async (importOriginal) => {
     ...actual,
     sendProductFoundNotification: sendProductFoundNotificationMock,
     sendProductStatusNotification: sendProductStatusNotificationMock,
+    sendAdminMappingConfirmationAlert: sendAdminMappingConfirmationAlertMock,
+    sendAdminPreOrderReceivedAlert: sendAdminPreOrderReceivedAlertMock,
+    sendCustomerPreOrderTrackingNotification: sendCustomerPreOrderTrackingNotificationMock,
   };
 });
 
@@ -47,6 +56,7 @@ vi.mock("@/lib/bridge/requestsClient", () => ({
 import { POST as customerSubmitHandler } from "@/app/api/customer/product-requests/route";
 import { POST as webhookUpdateHandler } from "@/app/api/bridge/webhook/request-update/route";
 import { POST as customerConfirmHandler } from "@/app/api/customer/product-requests/[id]/confirm/route";
+import { GET as trackingHandler } from "@/app/api/customer/product-requests/track/[trackingToken]/route";
 
 describe("Sprint P2a Storefront: Product Request, Webhook & Confirmation", () => {
   const prisma = new PrismaClient();
@@ -122,6 +132,8 @@ describe("Sprint P2a Storefront: Product Request, Webhook & Confirmation", () =>
     expect(json.success).toBe(true);
     expect(json.bridgeRequestId).toBe("brg-req-mock-12345");
     expect(json.status).toBe("SEARCHING");
+    expect(json.trackingToken).toBeDefined();
+    expect(json.trackingUrl).toContain("/pre-order/track/");
 
     // Verify DB
     const saved = await prisma.customerProductRequest.findUnique({
@@ -131,6 +143,105 @@ describe("Sprint P2a Storefront: Product Request, Webhook & Confirmation", () =>
     expect(saved?.customerPhone).toBe("6281234567890");
     expect(saved?.status).toBe("SEARCHING");
     expect(saved?.bridgeRequestId).toBe("brg-req-mock-12345");
+    expect(saved?.trackingToken).toBe(json.trackingToken);
+
+    // Check admin WhatsApp alert triggered
+    expect(sendAdminPreOrderReceivedAlertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productName: testProduct.name,
+        customerPhone: "6281234567890",
+      })
+    );
+
+    // Check customer WhatsApp alert with tracking URL triggered
+    expect(sendCustomerPreOrderTrackingNotificationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productName: testProduct.name,
+        customerPhone: "6281234567890",
+        trackingUrl: json.trackingUrl,
+      })
+    );
+  });
+
+  it("ST-P2a-1 Guard 1: Menolak request kedua jika user masih memiliki request aktif (max 1 per user)", async () => {
+    const req = new NextRequest("http://localhost:3000/api/customer/product-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerPhone: "081234567890",
+        productName: "Another Product While Active",
+      }),
+    });
+
+    const res = await customerSubmitHandler(req);
+    expect(res.status).toBe(409);
+    const json = await res.json();
+    expect(json.error).toBe("ACTIVE_REQUEST_EXISTS");
+    expect(json.trackingUrl).toBeDefined();
+  });
+
+  it("ST-P2a-1 Guard 2: Menolak pre-order jika stok riil produk sudah tersedia di etalase", async () => {
+    // Seed product with available stock
+    const inStockProduct = await prisma.product.create({
+      data: {
+        name: `In-Stock Product ${Date.now()}`,
+        price: 99000,
+        type: "LINK",
+        stocks: {
+          create: {
+            redeemUrl: "https://example.com/redeem-123",
+            status: "AVAILABLE",
+          },
+        },
+      },
+    });
+
+    const req = new NextRequest("http://localhost:3000/api/customer/product-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerPhone: "089876543210", // fresh phone
+        productName: inStockProduct.name,
+        productId: inStockProduct.id,
+      }),
+    });
+
+    const res = await customerSubmitHandler(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("ALREADY_IN_STOCK");
+    expect(json.checkoutUrl).toBe(`/customer/checkout/${inStockProduct.id}`);
+
+    // Clean up
+    await prisma.redeemStock.deleteMany({ where: { productId: inStockProduct.id } });
+    await prisma.product.delete({ where: { id: inStockProduct.id } });
+  });
+
+  it("ST-P2a-1 Tracking API: Berhasil membaca status pesanan lewat GET /track/[trackingToken]", async () => {
+    const seeded = await prisma.customerProductRequest.create({
+      data: {
+        customerPhone: "628999999999",
+        customerRef: "cust_track_test",
+        productName: "Tracked Test Product",
+        status: "SEARCHING",
+        trackingToken: `trk_test_${Date.now()}`,
+      },
+    });
+
+    const req = new NextRequest(
+      `http://localhost:3000/api/customer/product-requests/track/${seeded.trackingToken}`
+    );
+    const res = await trackingHandler(req, {
+      params: Promise.resolve({ trackingToken: seeded.trackingToken! }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.request.productName).toBe("Tracked Test Product");
+    expect(json.request.status).toBe("SEARCHING");
+
+    await prisma.customerProductRequest.delete({ where: { id: seeded.id } });
   });
 
   it("ST-P2a-1: Menolak nomor WhatsApp tidak valid", async () => {
@@ -194,13 +305,25 @@ describe("Sprint P2a Storefront: Product Request, Webhook & Confirmation", () =>
     expect(updated?.foundSupplierCode).toBe("RZK");
     expect(updated?.notifiedAt).toBeDefined();
 
-    // Check WhatsApp notification called
+    // Check WhatsApp notification called (Customer receives selling & promo price, not supplier cost)
     expect(sendProductFoundNotificationMock).toHaveBeenCalledWith(
       expect.objectContaining({
         customerPhone: "6281234567890",
         productName: testProduct.name,
+        productPrice: 150000,
+        originalPrice: 250000,
+        confirmationUrl: `http://localhost:3000/pre-order/track/${seeded.trackingToken || seeded.id}`,
+      })
+    );
+
+    // Check Admin WhatsApp mapping alert called
+    expect(sendAdminMappingConfirmationAlertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productName: testProduct.name,
+        customerPhone: "6281234567890",
+        supplierCode: "RZK",
+        supplierProductId: "rzk-ai-001",
         quotedPrice: 135000,
-        confirmationUrl: `http://localhost:3000/request-confirm/${seeded.id}`,
       })
     );
   });

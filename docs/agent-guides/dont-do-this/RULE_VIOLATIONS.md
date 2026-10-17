@@ -192,6 +192,8 @@ if (!dbPassword) throw new Error('DATABASE_PASSWORD not set');
 - [ ] Delete production data
 - [ ] Disable security
 - [ ] Skip tests before deploy
+- [ ] Leaking supplier wholesale cost (`quotedPrice`) or vendor code (`RZK`) to customer endpoints
+- [ ] Charging customer supplier modal cost instead of catalog retail price
 
 ### ⚠️ HIGH RISK (Checkpoint)
 - [ ] Database schema changes

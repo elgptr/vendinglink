@@ -22,6 +22,39 @@ export function formatRupiah(amount: number): string {
 }
 
 /**
+ * Calculate display selling price and 40% strikethrough anchor price
+ * for pre-order and customer catalog presentation.
+ */
+export function getPreOrderDisplayPrices(product: {
+  price: number;
+  originalPrice?: number | null;
+  showOriginalPrice?: boolean;
+}): { price: number; originalPrice: number; discountPercent: number } {
+  const price = product.price;
+  let originalPrice = product.originalPrice;
+
+  if (!originalPrice || originalPrice <= price) {
+    // Pemanis diskon 40%: price = originalPrice * (1 - 0.40) => originalPrice = price / 0.60
+    if (price >= 100) {
+      originalPrice = Math.round((price / 0.6) / 100) * 100;
+    } else {
+      originalPrice = Math.round(price / 0.6);
+    }
+  }
+
+  const discountPercent = Math.min(
+    99,
+    Math.max(1, Math.round(((originalPrice - price) / originalPrice) * 100))
+  );
+
+  return {
+    price,
+    originalPrice,
+    discountPercent,
+  };
+}
+
+/**
  * Format date to Indonesian locale string
  */
 export function formatDate(date: Date | string): string {

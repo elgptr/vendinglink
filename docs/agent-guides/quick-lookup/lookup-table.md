@@ -19,6 +19,12 @@ Can't find what you're looking for? Search here.
 | How do I configure AI provider? | Admin Settings → AI Configuration (`/api/admin/ai-config`) |
 | Where is Google Drive integration? | `/lib/gdrive.ts` |
 | How do I configure Google Drive export? | Admin Settings → Google Drive (`/api/admin/google-drive-config`) |
+| Where are pre-order anti-abuse guards? | `/lib/guards/preorderGuard.ts` |
+| Where is pre-order tracking audit logging? | `/lib/audit/trackingAudit.ts` |
+| Where is pre-order live tracking page? | `/app/pre-order/track/[trackingToken]/` |
+| Where is pre-order pricing formula? | `/lib/utils.ts` (`getPreOrderDisplayPrices`) |
+| Where is Hermes Bridge request client? | `/lib/bridge/requestsClient.ts` |
+| Where is WhatsApp notification logic? | `/lib/whatsapp.ts` |
 | Where is payment gateway logic? | `/lib/midtrans.ts`, `/lib/doku.ts`, `/lib/kasera.ts` |
 | Where is encryption logic? | `/lib/encryption.ts` |
 

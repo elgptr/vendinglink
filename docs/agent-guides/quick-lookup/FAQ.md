@@ -103,6 +103,25 @@ A: Request checkpoint with details.
 
 ---
 
+## On-Demand Pre-Order & Live Tracking
+
+**Q: How does pre-order live tracking work without login?**
+A: Each pre-order generates an opaque cryptographic tracking token (`trk_...`). The route `/pre-order/track/[trackingToken]` and API `/api/customer/product-requests/track/*` are whitelisted as public routes in `lib/routeProtection.ts`. The link is delivered directly to the customer's WhatsApp via SaungWA.
+
+**Q: What price does the customer pay for a pre-order item?**
+A: **Always the catalog retail price (`product.price`)!** Never charge `quotedPrice` (supplier wholesale cost). The UI displays a marketing anchor with an automated 40% strikethrough discount calculated by `getPreOrderDisplayPrices(product.price)`.
+
+**Q: What happens if a customer requests a product that already has stock?**
+A: `checkExistingStockRedirect()` in `lib/guards/preorderGuard.ts` detects existing `AVAILABLE` items in `RedeemStock`. It rejects the pre-order with a redirect hint, guiding the customer directly to checkout.
+
+**Q: Can a customer create multiple pre-orders at once?**
+A: No. `getActivePreOrderForPhone()` enforces a hard limit of 1 active pre-order (`PENDING_SOURCING`, `AGENT_PURCHASING`, or `STOCKED`) per customer phone number. Subsequent requests return HTTP 409 Conflict until the active order is resolved.
+
+**Q: Why do we call the agent "bagian Purchasing kami" instead of "Hermes"?**
+A: To provide a clean, human-centric, and non-confusing customer experience. Technical agent names, architecture codenames, or AI prompt jargon must remain internal.
+
+---
+
 ## Common Mistakes
 
 **Q: I skipped tests. OK?**

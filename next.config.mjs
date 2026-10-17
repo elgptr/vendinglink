@@ -53,6 +53,14 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/webhook/telegram",
+        destination: "http://localhost:5000/webhook/telegram",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

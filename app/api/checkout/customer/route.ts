@@ -24,6 +24,7 @@ const checkoutLimiter = createRateLimiter(20, 60 * 1000);
 
 const customerCheckoutSchema = z.object({
   productId: z.string().min(1),
+  preOrderRequestId: z.string().optional(),
   voucherId: z.string().optional(),
   promoCodeId: z.string().optional(),
   // Unified discount field (B5, ST-2d): raw referral/voucher code resolved
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productId, voucherId, promoCodeId, discountCode, customerName, customerPhone, consentPromo } = parsed.data;
+    const { productId, preOrderRequestId, voucherId, promoCodeId, discountCode, customerName, customerPhone, consentPromo } = parsed.data;
     const sanitizedCustomerName = sanitizeString(customerName);
     const sanitizedCustomerPhone = customerPhone ? sanitizeString(customerPhone) : undefined;
 
@@ -115,12 +116,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ─── Check stock availability ──────────────────────────────────────────
+    // ─── Check stock availability or verified pre-order quota ─────────────
+    let verifiedPreOrder: { id: string; quotedPrice?: number | null } | null = null;
+    if (preOrderRequestId) {
+      verifiedPreOrder = await prisma.customerProductRequest.findFirst({
+        where: {
+          id: preOrderRequestId,
+          status: { in: ["FOUND", "CONFIRMED"] },
+        },
+        select: {
+          id: true,
+          quotedPrice: true,
+        },
+      });
+    }
+
     const availableStock = await prisma.redeemStock.count({
       where: { productId, status: "AVAILABLE" },
     });
 
-    if (availableStock === 0) {
+    if (availableStock === 0 && !verifiedPreOrder) {
       return NextResponse.json(
         { error: "Stok produk habis" },
         { status: 400 }
@@ -193,6 +208,8 @@ export async function POST(request: NextRequest) {
       discountAmount = resolution.discountAmount;
     }
 
+    // Always charge the customer the product's catalog selling price (product.price).
+    // Supplier procurement cost (quotedPrice) remains strictly internal for Bridge fulfillment.
     const originalPrice = product.price;
     const finalAmount = Math.max(0, originalPrice - discountAmount);
 
@@ -410,6 +427,15 @@ export async function POST(request: NextRequest) {
           // rolls back and the unpaid gateway token simply expires — no money
           // has moved at token-creation time.
           await recordRedemption(tx, redeemResolution, created.id, customerId);
+        }
+
+        if (verifiedPreOrder) {
+          await tx.customerProductRequest.update({
+            where: { id: verifiedPreOrder.id },
+            data: {
+              transactionId: orderId,
+            },
+          });
         }
 
         return created;

@@ -41,7 +41,7 @@
 
 ## 🛠️ Tech Stack (Must Know)
 
-- **Framework:** Next.js 14
+- **Framework:** Next.js 16
 - **Language:** TypeScript (strict mode)
 - **Database:** Prisma + PostgreSQL
 - **Testing:** Vitest (unit), Playwright (E2E)
@@ -56,12 +56,16 @@ Before starting, explore these:
 
 ```
 /app/api/               ← Route handlers
-/lib/stock.ts          ← Business logic
-/lib/storage.ts        ← File operations
-/__tests__/            ← Test patterns
-/__tests__/lib/        ← Utility tests
-/e2e/                  ← E2E examples
-/prisma/schema.prisma  ← Database schema
+/app/pre-order/track/   ← Pre-order public live tracking
+/lib/guards/            ← Pre-order anti-abuse & stock guards
+/lib/bridge/            ← Hermes Bridge integration
+/lib/audit/             ← Tracking audit logging
+/lib/stock.ts           ← Business logic
+/lib/storage.ts         ← File operations
+/__tests__/             ← Test patterns
+/__tests__/lib/         ← Utility tests
+/e2e/                   ← E2E examples
+/prisma/schema.prisma   ← Database schema
 ```
 
 ---
