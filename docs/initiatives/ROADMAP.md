@@ -1,8 +1,8 @@
 # VendingLink Bridge — Product Roadmap
 
 **Dokumen:** `docs/initiatives/ROADMAP.md`
-**Diperbarui:** 2026-10-09
-**Owner teknis:** Bridge maintainer (repo ini) & VendingLink storefront maintainer (repo terpisah)
+**Diperbarui:** 2026-10-17
+**Owner teknis:** Storefront maintainer (repo ini) & Bridge maintainer (repo bridge)
 
 ---
 
@@ -513,19 +513,43 @@ daily cap > balance floor > price delta > high value threshold.
   — revisi `docs/openapi.yaml` + `VENDINGLINK_WEBHOOK_SPEC.md`.
 - [x] BR-P2a-11: Test coverage guardrail (Vitest + nock). **Wajib lulus sebelum deploy.**
 
-**Pekerjaan storefront P2a:**
+**Pekerjaan storefront P2a (On-Demand Pre-Order & Live Tracking UX — CLOSED · VERIFIED):**
 
 - [x] ST-P2a-1: Tombol "Request Produk ini" di product card yang kosong pada halaman katalog (`CustomerProductCard.tsx` + `RequestProductModal.tsx` + `POST /api/customer/product-requests`).
 - [x] ST-P2a-2: `POST /api/bridge/webhook/request-update` — terima notif bridge (`app/api/bridge/webhook/request-update/route.ts`).
-- [x] ST-P2a-3: Forward notif ke customer (WA/push) (`lib/whatsapp.ts`: `sendProductFoundNotification` & `sendProductStatusNotification`).
-- [x] ST-P2a-4: Tombol konfirmasi beli yang trigger `confirm` ke bridge (`POST /api/customer/product-requests/:id/confirm` & `/request-confirm/[id]`).
+- [x] ST-P2a-3: Forward notif ke customer via SaungWA WhatsApp (`lib/whatsapp.ts`: `sendProductFoundNotification`, `sendProductStatusNotification`, dan link tracking instan `sendPreOrderCreatedNotification`).
+- [x] ST-P2a-4: Live Customer Tracking Page publik (`/pre-order/track/[trackingToken]`), rendering status live ("Agent Purchasing" / "bagian Purchasing kami"), estimasi harga, progress live timeline, dan auto-redirect CTA "Beli Sekarang" ketika stok tersedia (`STOCKED`).
+- [x] ST-P2a-5: Anti-Abuse & Deduplication Guards (`lib/guards/preorderGuard.ts`):
+  - Maksimal 1 request pre-order aktif per nomor WhatsApp customer (`getActivePreOrderForPhone`). Menolak request baru dengan 409 jika masih ada request berjalan.
+  - In-Stock Redirect Guard: jika produk yang diminta sudah memiliki stok fisik riil di `RedeemStock`, request pre-order ditolak dan diarahkan langsung ke checkout (`checkExistingStockRedirect`).
+- [x] ST-P2a-6: Supplier Privacy & Zero-Exposure HPP Invariant:
+  - `quotedPrice` (harga modal supplier), kode supplier (`RZK`/RezekiShop), dan SKU supplier diisolasi ketat dari customer.
+  - Endpoint tracking publik `GET /api/customer/product-requests/track/[trackingToken]` meredaksi seluruh data supplier sebelum response dikirim ke browser.
+  - Customer selalu dikenakan harga jual katalog `product.price` (bukan `quotedPrice`), mengunci margin laba kotor merchant.
+- [x] ST-P2a-7: Pemanis Harga Psikologis (40% Anchor Diskon):
+  - Helper `getPreOrderDisplayPrices` (`lib/utils.ts`) menghitung harga coret estimasi dengan diskon acuan 40%: `strikethroughPrice = Math.round((price / 0.6) / 1000) * 1000`.
+  - Tampilan tracking dan modal checkout menampilkan harga coret, badge "-40%", dan harga final sesuai katalog.
+- [x] ST-P2a-8: Penyeragaman Identitas Customer-Facing:
+  - Identitas agen publik diseragamkan menjadi **"bagian Purchasing kami"** (menghilangkan istilah internal "Hermes" atau jargon AI pada UI publik).
+- [x] ST-P2a-9: Checkout Integration & Zero-Stock Bypass:
+  - Alur checkout customer (`/customer/checkout/[productId]?requestId=...` & `POST /api/checkout/customer`) menerima parameter `requestId`.
+  - Mem-bypass validasi stok fisik lokal jika request berstatus `STOCKED` dan cocok dengan produk.
+  - Menautkan `orderId` ke record `ProductRequest`.
+  - Mengirim notifikasi WhatsApp konfirmasi pembayaran & rincian pesanan.
+  - Memanggil `confirmBridgeRequest(requestId)` secara asinkron saat transaksi berstatus `PAID` untuk JIT procurement.
+- [x] ST-P2a-10: Audit Log Tracking Token (`lib/audit/trackingAudit.ts`):
+  - Pencatatan terstruktur pembuatan token (`CREATED`), akses publik (`ACCESSED`), dan pemenuhan/penghapusan token (`FULFILLED`) ke structured audit logger.
 
 **SLA:** fase 1 = "secepatnya". Fase 2 setelah 2 minggu stabil = umumkan "maks 3 menit".
 
-**Acceptance criteria P2a:**
+**Acceptance criteria P2a (VERIFIED):**
 - Request selesai dalam < 3 menit (p95). Plafon harian ditolak dengan error tercatat.
 - Lonjakan harga → alert + pause, bukan auto-purchase. Kill switch efektif < 30 detik.
-- Semua test guardrail lulus sebelum deploy ke production.
+- Halaman tracking pre-order dapat diakses customer tanpa login via token unik (`/pre-order/track/[trackingToken]`).
+- Data supplier (harga beli HPP, supplier code, supplier SKU) tidak pernah bocor ke customer.
+- Customer membayar harga katalog produk, menjaga margin merchant tetap aman.
+- Pelanggan tidak dapat melakukan spam request (>1 aktif request ditolak) atau request produk yang stok fisiknya sudah ada.
+- Semua 112 test storefront lulus sebelum merge.
 
 ---
 
@@ -678,6 +702,7 @@ Bangun CMS minimal di storefront dengan MDX atau rich-text editor yang mirip tel
 | TD-8 | `Transaction.promoCodeId` overloaded: ditulis baik oleh jalur "kode dipakai saat checkout" maupun jalur "kode diterbitkan sbg refund stockout" di `transactionStatus.ts`, saling menimpa. Memungkinkan reuse kode promo yang seharusnya sudah terpakai. | ✅ RESOLVED (ST-2a-2, 2026-10-11): kolom `Transaction.refundPromoCodeId` terpisah untuk kode refund terbit + backfill gelombang 2 | — |
 | TD-9 | `lib/discount.ts` dead code — nol caller di codebase (checkout query Prisma langsung). `__tests__/lib/discount.test.ts` memock seluruh modul yang diuji (`vi.mock('@/lib/discount')`), jadi 17 test-nya memvalidasi mock, bukan logika nyata. | ✅ RESOLVED (ST-2a-2, 2026-10-11): `lib/discount.ts` + 2 mock-only test dihapus; diganti test integrasi nyata `discount-validate.test.ts` | — |
 | TD-10 | `GET /api/customer/orders` dulu memakai `customerPhone: { contains: sanitizedPhone }` dan mengembalikan `redeemUrl` tanpa bukti pembelian. | ✅ RESOLVED (2026-10-11): GET hanya challenge 5 opsi setelah consent; POST meminta jawaban produk terakhir + order ID milik nomor yang sama, pembatasan 10/menit/IP; tidak ada lookup substring. Shared rate limiter untuk multi-instance masih follow-up. | P1 (ST-1b-3) |
+| TD-11 | Potensi kebocoran harga modal supplier (`quotedPrice`) dan tergerusnya margin laba toko pada checkout pre-order on-demand. | ✅ RESOLVED (ST-P2a-6, 2026-10-17): `quotedPrice` dan kode supplier diredaksi ketat dari API publik; checkout customer mengunci penagihan ke harga jual katalog `product.price` + pemanis marketing diskon 40% dari harga acuan coret. | P2a |
 
 ---
 

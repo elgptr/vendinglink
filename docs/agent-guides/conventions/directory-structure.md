@@ -13,17 +13,23 @@ vendinglink/
 │   │   ├── /auth/           Authentication endpoints
 │   │   ├── /admin/          Admin operations
 │   │   ├── /agents/         Agent operations
-│   │   └── /utils/          Shared API utilities
+│   │   ├── /bridge/         Bridge webhook & SKU mappings
+│   │   ├── /customer/       Customer endpoints (orders, product-requests)
+│   │   └── /checkout/       Midtrans checkout initiation
+│   ├── /customer/checkout/  Checkout pages
+│   ├── /pre-order/track/    Zero-login public pre-order live tracking
 │   ├── layout.tsx           Root layout
 │   └── page.tsx             Home page
 │
-├── /lib/                      Shared business logic
+├── /lib/                      Shared business logic & utilities
+│   ├── audit/               Audit logging (trackingAudit.ts)
+│   ├── guards/              Pre-order deduplication & stock guards (preorderGuard.ts)
+│   ├── bridge/              Bridge client & topup processing (requestsClient.ts, topup.ts)
 │   ├── ai.ts                AI chatbot, description gen, sales insight
 │   ├── auth.ts              Authentication helpers
 │   ├── auth.config.ts       NextAuth configuration
 │   ├── cache.ts             Caching utilities
 │   ├── csrf.ts              CSRF protection
-│   ├── discount.ts          Voucher/promo discount logic
 │   ├── doku.ts              Doku payment gateway
 │   ├── encryption.ts        API key encryption
 │   ├── gdrive.ts            Google Drive upload
@@ -34,16 +40,16 @@ vendinglink/
 │   ├── paymentConfig.ts     Payment gateway config
 │   ├── prisma.ts            Database client
 │   ├── rateLimit.ts         Rate limiting
-│   ├── routeProtection.ts   Route access control
+│   ├── routeProtection.ts   Route access control (public tracking bypass)
 │   ├── stock.ts             Stock management
 │   ├── storage.ts           File storage
-│   ├── transactionStatus.ts Transaction polling & settlement
-│   ├── utils.ts             General utilities
-│   └── whatsapp.ts          WhatsApp notification
+│   ├── transactionStatus.ts Transaction polling, settlement & JIT handshake
+│   ├── utils.ts             General utilities (getPreOrderDisplayPrices, formatRupiah)
+│   └── whatsapp.ts          WhatsApp notification (SaungWA engine)
 │
 ├── /components/               React components
 │   ├── /admin/              Admin-specific UI components
-│   └── /customer/           Customer-facing UI components
+│   └── /customer/           Customer-facing UI components (RequestProductModal, etc.)
 │
 ├── /prisma/                  Database
 │   ├── schema.prisma        Data schema
@@ -86,6 +92,10 @@ vendinglink/
 |------|----------|
 | API routes | `/app/api/` |
 | Business logic | `/lib/` |
+| Pre-order guards | `/lib/guards/preorderGuard.ts` |
+| Tracking audit | `/lib/audit/trackingAudit.ts` |
+| Pre-order live tracking page | `/app/pre-order/track/[trackingToken]/` |
+| Bridge client | `/lib/bridge/requestsClient.ts` |
 | AI integration | `/lib/ai.ts` |
 | Google Drive | `/lib/gdrive.ts` |
 | Payment gateways | `/lib/midtrans.ts`, `/lib/doku.ts`, `/lib/kasera.ts` |

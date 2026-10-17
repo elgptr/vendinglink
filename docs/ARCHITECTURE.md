@@ -238,43 +238,30 @@ npx prisma db seed      # Seed test data
 
 ---
 
-**Last Updated:** 2026-09-15 | **For:** Developers & AI Assistants
-
-- **Session:** JWT tokens
-- **Roles:** ADMIN, AGENT (customers are unauthenticated)
-
-### 6.2 Role-Based Access Control (RBAC)
-
-Middleware checks:
-1. Is user authenticated? (valid session)
-2. Does user have required role? (ADMIN or AGENT)
-3. Is user approved? (for agents only)
-
 ---
 
 ## 7. Database Models (Prisma)
 
-**User** → Admin & Agent accounts
-- `username` unique identifier
-- `passwordHash` bcrypt-hashed password
-- `role` "ADMIN" | "AGENT"
-- `isApproved` false for new agents (await approval)
+- **User:** Admin & Agent accounts (`ADMIN`, `AGENT`)
+- **Product:** Digital products (`LINK`, `KODE`), category, guide
+- **RedeemStock:** Individual stock codes/URLs (`AVAILABLE`, `SOLD`), source `MANUAL` or `BRIDGE`
+- **Transaction:** Order records (`MIDTRANS`, `AGENT_CREDIT`, `FREE_PROMO`), status (`PENDING`, `PAID`, `EXPIRED`)
+- **CustomerProductRequest:** On-demand pre-order requests with unique `trackingToken`, status (`PENDING_SOURCING`, `AGENT_PURCHASING`, `STOCKED`, `ORDERED`, `FULFILLED`)
+- **Customer & CustomerCredit:** Customer records, 1-level referral system, 15-day accrual ledger
+- **VoucherRule:** Scheduled promos and referee discount engine
 
-**Product** → Vending items
-- `name`, `price` (in Rupiah), `category`
-- `guideImageUrl` usage instructions
+---
 
-**RedeemStock** → Individual redeem URLs
-- `status` "AVAILABLE" | "SOLD"
-- `claimedByAgentId` if purchased by agent
-- `redeemUrl` unique link
+## 8. Detailed Architectural Documentation
 
-**Transaction** → Order records
-- `paymentType` "MIDTRANS" (customer) | "AGENT_CREDIT"
-- `status` "PENDING" | "PAID" | "EXPIRED"
-- `snapToken` Midtrans payment reference
+Untuk dokumentasi arsitektur sistem mendalam, silakan rujuk direktori [docs/architecture/](./architecture/README.md):
+- [System Design & On-Demand Lifecycle](./architecture/system-design.md)
+- [REST API Architecture](./architecture/api-architecture.md)
+- [Database Schema & Data Models](./architecture/database-schema.md)
+- [Tech Stack & Dependencies](./architecture/tech-stack.md)
+- [Directory Structure Map](./architecture/directory-structure.md)
 
-| POST | `/api/checkout/customer` | — | Midtrans payment initiation |
-| POST | `/api/checkout/agent` | AGENT | Credit checkout (no Midtrans) |
-| POST | `/api/midtrans/webhook` | — | Payment status from Midtrans |
-| POST | `/api/chat` | AGENT | AI assistant chat |
+---
+
+**Last Updated:** 2026-10-17 | **For:** Developers & AI Assistants
+

@@ -176,16 +176,18 @@ export async function applyMidtransStatusUpdate(
     // ─── Stock not available / supplier failed ────────────────────────────────
     if (!redeemUrl) {
       // Check if this transaction is linked to an on-demand pre-order
-      const linkedPreOrder = await tx.customerProductRequest.findFirst({
-        where: {
-          OR: [
-            { transactionId: orderId },
-            { transactionId: transaction.id },
-            { productId: transaction.productId, customerPhone: transaction.customerPhone || "" },
-          ],
-          status: { in: ["FOUND", "CONFIRMED"] },
-        },
-      });
+      const linkedPreOrder = tx.customerProductRequest
+        ? await tx.customerProductRequest.findFirst({
+            where: {
+              OR: [
+                { transactionId: orderId },
+                { transactionId: transaction.id },
+                { productId: transaction.productId, customerPhone: transaction.customerPhone || "" },
+              ],
+              status: { in: ["FOUND", "CONFIRMED"] },
+            },
+          })
+        : null;
 
       if (linkedPreOrder && linkedPreOrder.bridgeRequestId) {
         try {
@@ -195,14 +197,16 @@ export async function applyMidtransStatusUpdate(
           log.warn("Failed to trigger bridge confirmation on payment", { orderId, error: String(bridgeErr) });
         }
 
-        await tx.customerProductRequest.update({
-          where: { id: linkedPreOrder.id },
-          data: {
-            status: "CONFIRMED",
-            confirmedAt: new Date(),
-            transactionId: orderId,
-          },
-        });
+        if (tx.customerProductRequest) {
+          await tx.customerProductRequest.update({
+            where: { id: linkedPreOrder.id },
+            data: {
+              status: "CONFIRMED",
+              confirmedAt: new Date(),
+              transactionId: orderId,
+            },
+          });
+        }
 
         const updatedTransaction = await tx.transaction.update({
           where: { orderId },

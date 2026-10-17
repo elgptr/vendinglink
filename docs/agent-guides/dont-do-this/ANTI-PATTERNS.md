@@ -281,6 +281,101 @@ describe('calculateShipping', () => {
 
 ---
 
+## 1️⃣1️⃣ Exposing Supplier Cost (`quotedPrice`) or Vendor Identity to Customers
+
+**❌ ANTI-PATTERN:**
+```typescript
+// Returning raw ProductRequest to customer without redacting supplier data
+return NextResponse.json({
+  productRequest: {
+    ...request,
+    quotedPrice: request.quotedPrice,       // Leaks wholesale cost!
+    supplierCode: request.foundSupplierCode // Leaks supplier (e.g. 'RZK')!
+  }
+});
+```
+
+**✅ CORRECT:**
+```typescript
+// Explicitly redact internal supplier fields and expose catalog selling price
+return NextResponse.json({
+  request: {
+    id: request.id,
+    status: request.status,
+    productName: request.productName,
+    estimatedPrice: request.product.price, // Always catalog selling price!
+    strikethroughPrice,
+    discountPercent: 40
+  }
+});
+```
+
+**Why:** Wholesale costs and supplier identities are confidential business assets. Leaking them destroys bargaining power and trust.
+
+---
+
+## 1️⃣2️⃣ Charging Customer Supplier Modal Cost (`quotedPrice`)
+
+**❌ ANTI-PATTERN:**
+```typescript
+// Charging customer the cost price from the supplier!
+const chargeAmount = request?.quotedPrice || product.price; // 💥 Loss of profit margin!
+```
+
+**✅ CORRECT:**
+```typescript
+// Customer always pays the catalog retail price, protecting merchant gross margin
+const chargeAmount = product.price; // Merchant margin preserved!
+```
+
+**Why:** Storefront exists to earn gross margins on retail sales. Charging wholesale price eliminates profit.
+
+---
+
+## 1️⃣3️⃣ Bypassing Stock Checks Without Valid Pre-Order State
+
+**❌ ANTI-PATTERN:**
+```typescript
+// Bypassing stock check simply because requestId parameter exists
+if (requestId) {
+  // skip stock check blindly!
+}
+```
+
+**✅ CORRECT:**
+```typescript
+// Verify request exists, belongs to STOCKED status, and matches product
+const validPreOrder = await db.customerProductRequest.findFirst({
+  where: {
+    id: requestId,
+    productId,
+    status: "STOCKED",
+    orderId: null
+  }
+});
+if (!validPreOrder) throw new Error("Stok fisik kosong atau pre-order belum siap");
+```
+
+**Why:** Blindly bypassing stock checks allows malicious users to order out-of-stock items without procurement.
+
+---
+
+## 1️⃣4️⃣ Exposing "Hermes" or Technical AI Jargon in Customer Interfaces
+
+**❌ ANTI-PATTERN:**
+```tsx
+<p>Hermes AI Agent sedang melakukan crawling di supplier kami...</p>
+```
+
+**✅ CORRECT:**
+```tsx
+<p>bagian Purchasing kami sedang memproses pencarian produk...</p>
+```
+
+**Why:** Internal agent names and AI jargon confuse non-technical customers and feel impersonal. Use friendly, human-centric naming ("bagian Purchasing kami").
+
+---
+
 ## 📋 Anti-Patterns Checklist
 
 - ❌ `any` types
@@ -293,6 +388,10 @@ describe('calculateShipping', () => {
 - ❌ Functions with too many responsibilities
 - ❌ Race conditions
 - ❌ Missing tests
+- ❌ Leaking supplier cost (`quotedPrice`) or supplier codes
+- ❌ Charging customer supplier cost instead of catalog selling price
+- ❌ Bypassing stock check without valid `STOCKED` pre-order
+- ❌ Exposing "Hermes" / AI jargon in customer-facing UI
 
 ---
 
