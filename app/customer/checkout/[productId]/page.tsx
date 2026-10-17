@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import CustomerCheckoutForm from "@/components/customer/CustomerCheckoutForm";
 import { formatRupiah } from "@/lib/utils";
-import { ArrowLeft, Package, ShieldCheck, Zap } from "lucide-react";
+import { ArrowLeft, Package, ShieldCheck, Zap, Clock } from "lucide-react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 
@@ -15,7 +15,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 interface CheckoutPageProps {
-  params: { productId: string };
+  params: Promise<{ productId: string }>;
 }
 
 export default async function CustomerCheckoutPage({ params }: CheckoutPageProps) {
@@ -31,7 +31,39 @@ export default async function CustomerCheckoutPage({ params }: CheckoutPageProps
   });
   const stockCount = calculateProductStock({ ...product, stocksCount: manualStock });
 
-  if (stockCount === 0) notFound();
+  if (stockCount === 0) {
+    return (
+      <div className="max-w-xl mx-auto py-16 px-4 text-center animate-slide-up">
+        <div className="p-8 bg-surface-card rounded-3xl border border-surface-border shadow-2xl space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+            <Package size={32} />
+          </div>
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 mb-3">
+              <span className="stock-dot-empty" /> Stok Habis
+            </span>
+            <h1 className="text-2xl font-bold text-white mb-2">{product.name}</h1>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Stok untuk produk ini saat ini sedang habis. Anda dapat melakukan on-demand request (hanya butuh sekitar 5 menit)!
+            </p>
+          </div>
+          <div className="p-4 bg-brand-500/10 border border-brand-500/25 rounded-2xl text-xs text-brand-300 flex items-center gap-2.5 text-left">
+            <Clock size={18} className="text-brand-400 flex-shrink-0 animate-pulse" />
+            <span>
+              Kembali ke katalog dan klik tombol <strong>"Request Produk ini"</strong> pada kartu produk untuk memicu pencarian otomatis multi-supplier.
+            </span>
+          </div>
+          <Link
+            href="/customer"
+            className="inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold rounded-xl transition-all shadow-glow"
+          >
+            <ArrowLeft size={16} />
+            Kembali ke Katalog
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const hasDiscount = product.showOriginalPrice && product.originalPrice && product.originalPrice > product.price;
 
