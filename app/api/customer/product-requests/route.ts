@@ -203,12 +203,17 @@ export async function POST(req: NextRequest) {
       { status: 202 }
     );
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     log.error("Failed to process customer product request", {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     });
     return NextResponse.json(
-      { error: "Terjadi kesalahan internal saat memproses permintaan." },
+      {
+        error: "Terjadi kesalahan internal saat memproses permintaan.",
+        message: errorMessage,
+      },
       { status: 500 }
     );
   }
 }
+
